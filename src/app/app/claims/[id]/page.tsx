@@ -6,7 +6,7 @@ import { ClaimEditor } from "@/components/claims/claim-editor";
 import { Confidence, Money, StatusPill } from "@/components/ui";
 import { requirePageCtx } from "@/lib/auth";
 import { LOW_CONFIDENCE, workspaceMembers } from "@/lib/claims";
-import { batches, batchItems, claims, claimSplits, db, receipts } from "@/lib/db";
+import { batches, batchItems, claims, claimSplits, db } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
 
 export const metadata = { title: "Claim" };
@@ -23,13 +23,13 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
   const [claim] = await db.select().from(claims).where(and(eq(claims.id, id), eq(claims.workspaceId, ctx.workspace.id)));
   if (!claim) notFound();
 
-  const [members, splits, receipt, dupOf, batchRow] = await Promise.all([
+  const [members, splits, dupOf, batchRow] = await Promise.all([
     workspaceMembers(ctx.workspace.id),
     db.select().from(claimSplits).where(eq(claimSplits.claimId, id)),
-    claim.receiptId ? db.select({ id: receipts.id, mime: receipts.mime, filename: receipts.filename }).from(receipts).where(eq(receipts.id, claim.receiptId)).then((r) => r[0]) : null,
     claim.duplicateOfId ? db.select().from(claims).where(eq(claims.id, claim.duplicateOfId)).then((r) => r[0]) : null,
     db.select({ item: batchItems, batch: batches }).from(batchItems).innerJoin(batches, eq(batches.id, batchItems.batchId)).where(eq(batchItems.claimId, id)).then((r) => r.at(-1)),
   ]);
+  const receipt = claim.receiptKey ? { src: `/api/v1/claims/${claim.id}/receipt`, mime: claim.receiptMime ?? "", filename: claim.receiptName ?? "receipt" } : null;
   const name = (uid: string) => members.find((m) => m.id === uid)?.name ?? "Unknown";
   const ai = claim.aiJson as Ai | null;
   const match = claim.matchJson as MatchJson | null;
@@ -92,9 +92,9 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
             <div className="flex min-h-[320px] items-center justify-center overflow-hidden rounded-[12px] border border-line bg-sunken p-5">
               {receipt.mime.startsWith("image/") ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`/api/v1/receipts/${receipt.id}`} alt={`Receipt ${receipt.filename}`} className="max-h-[560px] w-auto rounded-[6px] shadow-soft" />
+                <img src={receipt.src} alt={`Receipt ${receipt.filename}`} className="max-h-[560px] w-auto rounded-[6px] shadow-soft" />
               ) : (
-                <a href={`/api/v1/receipts/${receipt.id}`} target="_blank" className="flex flex-col items-center gap-3 text-muted hover:text-ink">
+                <a href={receipt.src} target="_blank" className="flex flex-col items-center gap-3 text-muted hover:text-ink">
                   <FilePdfIcon className="size-14" weight="light" aria-hidden />
                   <span className="text-sm">Open {receipt.filename}</span>
                 </a>
