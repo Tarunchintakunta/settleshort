@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRightIcon, CheckCircleIcon, CircleDashedIcon } from "@phosphor-icons/react/ssr";
+import { ArrowRightIcon } from "@phosphor-icons/react/ssr";
 import { PageHeader, PROVIDER_LABEL } from "@/components/ui";
 import { SettingsForm } from "@/components/settings/settings-form";
 import { aiProvider } from "@/lib/ai";
@@ -11,10 +11,10 @@ export const metadata = { title: "Settings" };
 function Status({ ok, title, body }: { ok: boolean; title: string; body: string }) {
   return (
     <div className="flex gap-3">
-      {ok ? <CheckCircleIcon className="mt-0.5 size-5 shrink-0 text-success" weight="fill" aria-hidden /> : <CircleDashedIcon className="mt-0.5 size-5 shrink-0 text-warning" aria-hidden />}
+      <span className={ok ? "mt-1.5 size-2 shrink-0 rounded-full bg-success" : "mt-1.5 size-2 shrink-0 rounded-full bg-warning"} aria-hidden />
       <div>
-        <p className="text-sm font-medium">{title}</p>
-        <p className="text-sm text-muted">{body}</p>
+        <p className="text-sm font-medium tracking-[-0.011em]">{title}</p>
+        <p className="mt-0.5 text-sm leading-relaxed text-muted">{body}</p>
       </div>
     </div>
   );
@@ -28,13 +28,14 @@ export default async function SettingsPage() {
     <>
       <PageHeader title="Settings" sub="Workspace, safety caps and connections." />
       <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-        <section>
-          <h2 className="mb-4 text-sm font-medium">Workspace and safety caps</h2>
+        <section className="rounded-[12px] border border-line p-6 shadow-soft">
+          <h2 className="mb-1 text-[15px] font-semibold tracking-[-0.015em]">Workspace and safety caps</h2>
+          <p className="mb-5 text-sm text-muted">Approve is blocked above these limits.</p>
           <SettingsForm ws={ctx.workspace} isAdmin={ctx.isAdmin} />
         </section>
         <div className="space-y-6">
-          <section className="space-y-5 rounded-[12px] border border-line p-5">
-            <h2 className="text-sm font-medium">Connections</h2>
+          <section className="space-y-5 rounded-[12px] border border-line p-6 shadow-soft">
+            <h2 className="text-[15px] font-semibold tracking-[-0.015em]">Connections</h2>
             <Status
               ok={pp === "sandbox"}
               title={pp === "sandbox" ? "PayPal Sandbox connected" : "PayPal simulator"}
@@ -53,7 +54,7 @@ export default async function SettingsPage() {
             />
           </section>
           <Link href="/app/settings/integrations" className="block">
-            <div className="flex items-center justify-between rounded-[12px] border border-line p-5 transition-colors hover:bg-sunken">
+            <div className="flex items-center justify-between gap-4 rounded-[12px] border border-line p-5 shadow-soft transition-colors hover:border-line-strong hover:bg-sunken">
               <div>
                 <p className="text-sm font-medium">Integrations</p>
                 <p className="text-sm text-muted">Slack through Zapier, PayPal webhooks</p>

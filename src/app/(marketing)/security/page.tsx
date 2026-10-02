@@ -71,18 +71,20 @@ export default function SecurityPage() {
           preload
         />
       </header>
-      <dl className="mt-20 grid gap-x-12 gap-y-12 sm:grid-cols-2">
+      <dl className="mt-24 grid gap-x-16 gap-y-14 sm:grid-cols-2">
         {ITEMS.map(({ icon: Icon, title, body }) => (
-          <div key={title} className="border-t border-line pt-6">
-            <dt className="flex items-center gap-3 text-lg font-semibold tracking-tight text-ink">
-              <Icon size={20} className="text-accent" aria-hidden />
+          <div key={title} className="border-t border-line pt-7">
+            <dt className="flex items-center gap-3.5 text-[17px] font-semibold tracking-[-0.02em] text-ink">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-line bg-panel text-accent">
+                <Icon size={18} aria-hidden />
+              </span>
               {title}
             </dt>
-            <dd className="mt-3 max-w-[56ch] text-[15px] leading-relaxed text-muted">{body}</dd>
+            <dd className="mt-4 max-w-[56ch] pl-[3.375rem] text-[15px] leading-relaxed text-ink-2">{body}</dd>
           </div>
         ))}
       </dl>
-      <p className="mt-16 text-sm text-muted">
+      <p className="mt-20 text-sm text-muted">
         Found an issue? Open a report on{" "}
         <a href="https://github.com/Tarunchintakunta/settleshort" className="text-accent underline-offset-4 hover:underline" target="_blank" rel="noopener noreferrer">
           GitHub

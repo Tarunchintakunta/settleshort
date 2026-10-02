@@ -5,7 +5,7 @@ import { AllCommunityModule, ModuleRegistry, themeQuartz, type ColDef, type Grid
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { GitMergeIcon, MagnifyingGlassIcon, StackIcon } from "@phosphor-icons/react";
-import { Alert, Button, Confidence, cx, inputCls, StatusPill } from "@/components/ui";
+import { Alert, Button, Confidence, cx, inputCls, Pill, StatusPill, tabBtn } from "@/components/ui";
 import { api } from "@/lib/client";
 import { formatMoney } from "@/lib/money";
 
@@ -36,7 +36,7 @@ const theme = themeQuartz.withParams({
   headerBackgroundColor: "var(--panel)",
   headerTextColor: "var(--muted)",
   headerFontWeight: 500,
-  headerFontSize: 12.5,
+  headerFontSize: 11,
   rowHoverColor: "var(--sunken)",
   selectedRowBackgroundColor: "var(--accent-soft)",
   wrapperBorderRadius: 12,
@@ -44,9 +44,10 @@ const theme = themeQuartz.withParams({
   columnBorder: false,
   headerColumnBorder: false,
   rowHeight: 52,
-  headerHeight: 40,
+  headerHeight: 42,
   fontSize: 13.5,
-  spacing: 7,
+  spacing: 8,
+  cellHorizontalPadding: 16,
 });
 
 const FILTERS = [
@@ -70,24 +71,28 @@ export function ClaimsGrid({ rows, isAdmin }: { rows: GridClaim[]; isAdmin: bool
   const cols = useMemo<ColDef<GridClaim>[]>(
     () => [
       { field: "number", headerName: "#", width: 76, cellClass: "font-mono text-muted", valueFormatter: (p) => `${p.value}` },
-      { field: "txnDate", headerName: "Date", width: 120, cellClass: "tnum text-ink-2", valueFormatter: (p) => (p.value ? new Date(p.value + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "No date") },
+      { field: "txnDate", headerName: "Date", width: 120, cellClass: "tnum font-mono text-ink-2", valueFormatter: (p) => (p.value ? new Date(p.value + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "No date") },
       {
         field: "vendor",
         flex: 1.4,
-        minWidth: 160,
+        minWidth: 180,
         cellRenderer: (p: CustomCellRendererProps<GridClaim>) => (
-          <span>
-            {p.value || <span className="text-muted">Untitled</span>}
-            {p.data?.duplicate && <span className="ml-2 rounded-full bg-warning-soft px-2 py-0.5 text-[11px] font-medium text-warning">Possible duplicate</span>}
+          <span className="inline-flex min-w-0 items-center">
+            <span className="truncate">{p.value || <span className="text-muted">Untitled</span>}</span>
+            {p.data?.duplicate && (
+              <Pill tone="warning" dot className="ml-2 shrink-0">
+                Possible duplicate
+              </Pill>
+            )}
           </span>
         ),
       },
       {
         field: "amountCents",
         headerName: "Amount",
-        width: 130,
+        width: 140,
         type: "rightAligned",
-        cellClass: "tnum font-medium",
+        cellClass: "tnum font-mono font-medium",
         valueFormatter: (p) => formatMoney(p.value, p.data!.currency),
       },
       { field: "payer", headerName: "Paid by", flex: 1, minWidth: 130 },
@@ -120,31 +125,25 @@ export function ClaimsGrid({ rows, isAdmin }: { rows: GridClaim[]; isAdmin: bool
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div className="mb-3 flex flex-col gap-2 rounded-[12px] border border-line bg-panel p-2 shadow-soft sm:flex-row sm:items-center">
         <div className="flex flex-wrap gap-0.5 rounded-[10px] bg-sunken p-1" role="tablist" aria-label="Filter by status">
           {FILTERS.map((f) => (
-            <button
-              key={f.key}
-              role="tab"
-              aria-selected={status === f.key}
-              onClick={() => setStatus(f.key)}
-              className={cx("rounded-[7px] px-3 py-1.5 text-[13px] transition-colors", status === f.key ? "bg-panel font-medium text-ink shadow-soft" : "text-muted hover:text-ink")}
-            >
+            <button key={f.key} role="tab" aria-selected={status === f.key} onClick={() => setStatus(f.key)} className={tabBtn(status === f.key)}>
               {f.label}
-              <span className="ml-1.5 tnum opacity-60">{f.key ? rows.filter((r) => r.status === f.key).length : rows.length}</span>
+              <span className="tnum ml-1.5 font-mono opacity-60">{f.key ? rows.filter((r) => r.status === f.key).length : rows.length}</span>
             </button>
           ))}
         </div>
-        <div className="relative ml-auto w-full sm:w-64">
-          <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
-          <input aria-label="Search claims" placeholder="Search vendor, person…" value={q} onChange={(e) => setQ(e.target.value)} className={cx(inputCls, "h-10 pl-9")} />
+        <div className="relative w-full sm:ml-auto sm:w-64">
+          <MagnifyingGlassIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" aria-hidden />
+          <input aria-label="Search claims" placeholder="Search vendor, person…" value={q} onChange={(e) => setQ(e.target.value)} className={cx(inputCls, "h-9 pl-9")} />
         </div>
       </div>
 
       {isAdmin && selected.length > 0 && (
-        <div className="rise mb-3 flex flex-wrap items-center gap-3 rounded-[10px] bg-ink px-4 py-2 text-panel shadow-pop">
+        <div className="rise mb-3 flex flex-wrap items-center gap-3 rounded-[12px] bg-ink px-4 py-2.5 text-panel shadow-pop">
           <span className="text-sm">
-            <b className="tnum">{selected.length}</b> selected
+            <b className="tnum font-mono">{selected.length}</b> selected
             {ready.length !== selected.length && <span className="opacity-60"> ({ready.length} ready to batch)</span>}
           </span>
           <div className="ml-auto flex gap-2">
@@ -204,7 +203,7 @@ export function ClaimsGrid({ rows, isAdmin }: { rows: GridClaim[]; isAdmin: bool
           animateRows
         />
       </div>
-      <p className="mt-3 text-xs text-muted">Select ready claims to build a settlement batch. Select two look-alikes to merge them.</p>
+      <p className="mt-3 text-xs leading-relaxed text-muted">Select ready claims to build a settlement batch. Select two look-alikes to merge them.</p>
     </div>
   );
 }

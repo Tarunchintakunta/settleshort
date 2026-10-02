@@ -14,10 +14,10 @@ const LINKS: [string, string][] = [
 export function Footer() {
   return (
     <footer className="mt-auto border-t border-line">
-      <div className={`${wrap} flex flex-col gap-8 py-12 md:flex-row md:items-start md:justify-between`}>
+      <div className={`${wrap} flex flex-col gap-10 py-14 md:flex-row md:items-start md:justify-between md:py-16`}>
         <div>
           <Logo />
-          <p className="mt-3 max-w-xs text-sm text-muted">Receipt in. Settled out. One approve.</p>
+          <p className="mt-4 max-w-xs text-[15px] tracking-[-0.015em] text-ink-2">Receipt in. Settled out. One approve.</p>
           <p className="mt-6 max-w-sm text-xs leading-relaxed text-muted">
             Built for Build What&rsquo;s Next with PayPal and AI, 2026. MIT license. Sandbox only, no real money moves.
           </p>

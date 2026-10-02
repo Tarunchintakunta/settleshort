@@ -11,9 +11,9 @@ export default async function OnboardingPage() {
   if (ctx.workspace) redirect("/app");
   return (
     <>
-      <p className="text-xs font-medium uppercase tracking-wider text-accent">Step 1 of 2</p>
-      <h1 className="mt-1 text-xl font-semibold tracking-tight">Create your workspace</h1>
-      <p className="mb-6 mt-1 text-sm text-muted">You&apos;ll be the owner, the only role (with admins) that can approve payouts.</p>
+      <p className="text-[11px] font-medium tracking-[0.14em] text-accent uppercase">Step 1 of 2</p>
+      <h1 className="mt-2 text-[22px] font-semibold tracking-[-0.03em]">Create your workspace</h1>
+      <p className="mt-1.5 mb-6 text-sm leading-relaxed text-muted">You&apos;ll be the owner, the only role (with admins) that can approve payouts.</p>
       <AuthForm
         action={createWorkspace}
         submit="Create workspace"

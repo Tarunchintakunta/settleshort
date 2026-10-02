@@ -8,7 +8,7 @@ export default function MarketingLayout({ children }: LayoutProps<"/">) {
         Skip to content
       </a>
       <Nav />
-      <main id="main" className="flex-1">
+      <main id="main" className="min-w-0 flex-1">
         {children}
       </main>
       <Footer />

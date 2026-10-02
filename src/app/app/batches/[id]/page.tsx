@@ -44,50 +44,48 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
 
   return (
     <>
-      <Link href="/app/batches" className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-muted hover:text-ink">
+      <Link href="/app/batches" className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-muted transition-colors hover:text-ink">
         <ArrowLeftIcon className="size-3.5" aria-hidden /> Batches
       </Link>
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-6">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
             <StatusPill status={batch.status} />
-            {batch.paypalMode && (
-              <Pill>PayPal {batch.paypalMode}</Pill>
-            )}
+            {batch.paypalMode && <Pill dot>PayPal {batch.paypalMode}</Pill>}
           </div>
-          <h1 className="mt-3 text-[28px] font-semibold tracking-[-0.02em]">{batch.name}</h1>
+          <h1 className="mt-3 break-words text-[26px] font-semibold tracking-[-0.03em] sm:text-[28px]">{batch.name}</h1>
           <p className="mt-1 text-sm text-muted">
             {items.length} claims to {recipients} {recipients === 1 ? "person" : "people"}
           </p>
         </div>
-        <Money cents={batch.totalCents} currency={batch.currency} className="text-[36px] font-semibold tracking-tight" />
+        <Money cents={batch.totalCents} currency={batch.currency} className="text-[44px] leading-none font-semibold sm:text-[56px]" />
       </div>
 
       {warnings.length > 0 && batch.status === "awaiting_approval" && (
-        <div className="mb-6 space-y-1.5 rounded-[12px] bg-warning-soft p-4">
+        <div className="mb-6 space-y-2 rounded-[12px] border border-warning/40 bg-warning-soft p-4 shadow-soft" role="status">
           {warnings.map((w) => (
-            <p key={w} className="flex items-start gap-2 text-sm text-warning">
+            <p key={w} className="flex items-start gap-2 text-sm font-medium text-warning">
               <WarningIcon className="mt-0.5 size-4 shrink-0" weight="fill" aria-hidden /> {w}
             </p>
           ))}
         </div>
       )}
       {batch.errorMessage && (
-        <div className="mb-6 rounded-[12px] bg-danger-soft p-4 text-sm text-danger">
+        <div role="alert" className="mb-6 rounded-[12px] border border-danger/25 bg-danger-soft p-4 text-sm text-danger">
           <b>PayPal error:</b> {batch.errorMessage}. The claims were released, so you can batch them again.
         </div>
       )}
 
       <div className="grid gap-8 lg:grid-cols-[1fr_260px]">
-        <div className="overflow-hidden rounded-[12px] border border-line">
+        <div className="overflow-hidden rounded-[12px] border border-line shadow-soft">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-line text-left text-xs text-muted">
+              <thead className="border-b border-line text-left text-[11px] font-medium tracking-[0.06em] text-muted uppercase">
                 <tr>
-                  <th className="px-5 py-3 font-normal">Recipient</th>
-                  <th className="px-5 py-3 font-normal">Claim</th>
-                  <th className="px-5 py-3 text-right font-normal">Amount</th>
-                  <th className="px-5 py-3 font-normal">Status</th>
+                  <th className="px-5 py-3 font-medium">Recipient</th>
+                  <th className="px-5 py-3 font-medium">Claim</th>
+                  <th className="px-5 py-3 text-right font-medium">Amount</th>
+                  <th className="px-5 py-3 font-medium">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -106,7 +104,7 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
                       </div>
                     </td>
                     <td className="px-5 py-3.5 text-right">
-                      <Money cents={item.amountCents} currency={item.currency} />
+                      <Money cents={item.amountCents} currency={item.currency} className="font-medium" />
                     </td>
                     <td className="px-5 py-3.5">
                       <StatusPill status={item.status} />
@@ -132,14 +130,17 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
           </div>
         </div>
 
-        <div className="h-fit">
-          <h2 className="text-sm font-medium">Timeline</h2>
-          <ol className="mt-4 space-y-4">
+        <div className="h-fit rounded-[12px] border border-line p-5">
+          <h2 className="text-[15px] font-semibold tracking-[-0.015em]">Timeline</h2>
+          <ol className="mt-5">
             {timeline.map((t, i) => (
-              <li key={t.label} className="flex gap-3">
+              <li key={t.label} className="relative flex gap-3 pb-6 last:pb-0">
+                {i < timeline.length - 1 && (
+                  <span className={cx("absolute top-5 left-[9px] h-[calc(100%-12px)] w-px", t.done ? "bg-success/50" : "bg-line")} aria-hidden />
+                )}
                 <span
                   className={cx(
-                    "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border",
+                    "relative z-10 mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border",
                     t.done ? "border-success bg-success text-white" : "border-line-strong bg-panel text-transparent",
                   )}
                   aria-hidden
@@ -148,7 +149,7 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
                 </span>
                 <div>
                   <p className={cx("text-sm", t.done ? "font-medium" : "text-muted")}>{t.label}</p>
-                  {t.at && <p className="text-xs text-muted">{t.at.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}</p>}
+                  {t.at && <p className="tnum text-xs text-muted">{t.at.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}</p>}
                   {i === 1 && !t.done && <p className="text-xs text-muted">Requires an owner or admin</p>}
                 </div>
               </li>

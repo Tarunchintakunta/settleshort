@@ -14,8 +14,8 @@ export function InviteForm() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   return (
-    <section className="rounded-[12px] border border-line p-6">
-      <h2 className="mb-5 flex items-center gap-2 text-sm font-medium">
+    <section className="rounded-[12px] border border-line p-6 shadow-soft">
+      <h2 className="mb-5 flex items-center gap-2 text-[15px] font-semibold tracking-[-0.015em]">
         <UserPlusIcon className="size-4" aria-hidden /> Add a teammate
       </h2>
       <form
@@ -80,7 +80,7 @@ export function PaypalEmailCell({ m, canEdit }: { m: Member; canEdit: boolean })
         }
       }}
     >
-      <input aria-label={`PayPal email for ${m.name}`} type="email" value={v} onChange={(e) => setV(e.target.value)} className={`${inputCls} h-9 font-mono text-xs`} />
+      <input aria-label={`PayPal email for ${m.name}`} type="email" value={v} onChange={(e) => setV(e.target.value)} className={`${inputCls} h-9 min-w-0 font-mono text-xs sm:min-w-[220px]`} />
       {v !== (m.paypalEmail ?? "") && (
         <Button size="sm" variant="secondary" disabled={state === "saving"}>
           Save

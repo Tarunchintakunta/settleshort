@@ -104,30 +104,32 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence }:
       {msg && <Alert tone={msg.ok ? "success" : "danger"}>{msg.text}</Alert>}
 
       {editable && (
-        <div className="flex flex-wrap gap-2 border-t border-line pt-5">
-          <Button type="submit" variant="secondary" disabled={busy}>
-            Save changes
-          </Button>
-          {isAdmin && claim.status === "pending_review" && (
-            <Button type="button" disabled={busy} onClick={() => run(() => patch({ markReady: true }), "Marked ready to settle")}>
-              <CheckIcon className="size-4" weight="bold" aria-hidden /> Mark ready
+        <div className="flex flex-col gap-3 border-t border-line pt-5 sm:flex-row sm:items-center">
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" variant="secondary" disabled={busy}>
+              Save changes
             </Button>
-          )}
-          {isAdmin && claim.duplicateOfId && (
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={busy}
-              onClick={() => run(() => api("/claims/merge", { json: { ids: [claim.duplicateOfId, claim.id] } }), "Merged into the original claim")}
-            >
-              <GitMergeIcon className="size-4" aria-hidden /> Merge into original
-            </Button>
-          )}
+            {isAdmin && claim.status === "pending_review" && (
+              <Button type="button" disabled={busy} onClick={() => run(() => patch({ markReady: true }), "Marked ready to settle")}>
+                <CheckIcon className="size-4" weight="bold" aria-hidden /> Mark ready
+              </Button>
+            )}
+            {isAdmin && claim.duplicateOfId && (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => run(() => api("/claims/merge", { json: { ids: [claim.duplicateOfId, claim.id] } }), "Merged into the original claim")}
+              >
+                <GitMergeIcon className="size-4" aria-hidden /> Merge into original
+              </Button>
+            )}
+          </div>
           {isAdmin && (
             <Button
               type="button"
               variant="danger"
-              className="ml-auto"
+              className="sm:ml-auto"
               disabled={busy}
               onClick={() => {
                 const reason = prompt("Reason for rejecting (optional)") ?? undefined;

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getImageProps } from "next/image";
 import Link from "next/link";
 import { ArrowDownIcon, CpuIcon, GitMergeIcon, GaugeIcon, PlusIcon, QuotesIcon } from "@phosphor-icons/react/ssr";
+import { CopyButton } from "@/components/copy-button";
 import { HowItWorks } from "@/components/marketing/HowItWorks";
 import { DemoLink, wrap } from "@/components/marketing/Nav";
 import { Reveal } from "@/components/marketing/Reveal";
@@ -13,8 +14,8 @@ export const metadata: Metadata = {
     "SettleShort reads receipts and expense messages, catches duplicates, and pays your team through PayPal Payouts after an admin approves.",
 };
 
-const h2 = "text-[30px] font-semibold leading-[1.08] tracking-[-0.025em] text-ink sm:text-[40px]";
-const eyebrow = "text-[13px] font-medium uppercase tracking-[0.12em] text-accent";
+const h2 = "text-[30px] font-semibold leading-[1.08] tracking-[-0.03em] text-ink sm:text-[40px]";
+const eyebrow = "text-[12px] font-medium uppercase tracking-[0.14em] text-accent";
 
 const EVIDENCE = [
   {
@@ -98,7 +99,7 @@ export default function Home() {
   return (
     <>
       {/* Hero */}
-      <section className={`${wrap} pt-14 sm:pt-20`}>
+      <section className={`${wrap} pt-16 sm:pt-24`}>
         <div className="max-w-[880px]">
           <h1 className="rise text-[42px] font-semibold leading-[1.02] tracking-[-0.035em] text-ink sm:text-[60px] lg:text-[68px]">
             Receipt in. Settled out. <span className="text-accent sm:block">One approve.</span>
@@ -122,13 +123,12 @@ export default function Home() {
             alt="SettleShort reading a $186.50 Nopa receipt: each extracted field (vendor, total, date, tax, tip, card) sits beside the receipt with the quoted text it came from, and a warning says it is likely a duplicate of claim #3."
             sizes="(min-width: 1240px) 1152px, calc(100vw - 32px)"
             preload
-            className="shadow-pop"
           />
         </div>
       </section>
 
       {/* Problem */}
-      <section className={`${wrap} py-24 sm:py-32`} aria-labelledby="problem">
+      <section className={`${wrap} py-28 sm:py-36`} aria-labelledby="problem">
         <h2 id="problem" className="sr-only">
           Why paying people back is slow
         </h2>
@@ -144,7 +144,7 @@ export default function Home() {
       </section>
 
       {/* How it works */}
-      <section id="how" className="scroll-mt-16 border-y border-line bg-panel py-20 sm:py-24" aria-labelledby="how-title">
+      <section id="how" className="scroll-mt-16 border-y border-line bg-panel py-24 sm:py-32" aria-labelledby="how-title">
         <div className={wrap}>
           <p className={eyebrow}>How it works</p>
           <h2 id="how-title" className={`${h2} mt-3 max-w-[640px]`}>
@@ -155,8 +155,8 @@ export default function Home() {
       </section>
 
       {/* Extraction evidence */}
-      <section className={`${wrap} py-24 sm:py-32`} aria-labelledby="evidence">
-        <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-16">
+      <section className={`${wrap} py-28 sm:py-36`} aria-labelledby="evidence">
+        <div className="grid min-w-0 items-center gap-12 lg:grid-cols-12 lg:gap-16">
           <Reveal className="lg:col-span-5">
             <Shot
               src="/marketing/extraction.png"
@@ -188,7 +188,7 @@ export default function Home() {
       </section>
 
       {/* Approval gate */}
-      <section className="border-y border-line bg-sunken py-20 sm:py-28" aria-labelledby="gate">
+      <section className="border-y border-line bg-sunken py-24 sm:py-32" aria-labelledby="gate">
         <div className={wrap}>
           <div className="max-w-[780px]">
             <h2 id="gate" className={h2}>
@@ -218,27 +218,30 @@ export default function Home() {
       </section>
 
       {/* PayPal */}
-      <section className={`${wrap} py-24 sm:py-32`} aria-labelledby="paypal">
-        <div className="grid gap-12 lg:grid-cols-12 lg:gap-16">
-          <div className="lg:col-span-6">
+      <section className={`${wrap} py-28 sm:py-36`} aria-labelledby="paypal">
+        <div className="grid min-w-0 gap-12 lg:grid-cols-12 lg:gap-16">
+          <div className="min-w-0 lg:col-span-6">
             <p className={eyebrow}>PayPal integration</p>
             <h2 id="paypal" className={`${h2} mt-3`}>
               Real PayPal APIs, held to the sandbox.
             </h2>
             <dl className="mt-10 space-y-7">
               {PAYPAL.map(([t, d]) => (
-                <div key={t} className="grid gap-1.5 sm:grid-cols-[200px_1fr] sm:gap-6">
-                  <dt className="font-mono text-[13px] leading-6 text-ink">{t}</dt>
+                <div key={t} className="grid min-w-0 gap-1.5 sm:grid-cols-[minmax(0,200px)_minmax(0,1fr)] sm:gap-6">
+                  <dt className="font-mono text-[13px] leading-6 break-words text-ink">{t}</dt>
                   <dd className="text-sm leading-6 text-muted">{d}</dd>
                 </div>
               ))}
             </dl>
             <p className="mt-10 text-sm text-muted">On the roadmap, not built yet: Venmo payouts and Hyperwallet.</p>
           </div>
-          <Reveal className="lg:col-span-6" delay={0.1}>
-            <figure className="overflow-hidden rounded-[12px] border border-line bg-panel shadow-soft">
-              <figcaption className="border-b border-line px-5 py-3 text-[13px] text-muted">What SettleShort sends when a batch is approved</figcaption>
-              <pre tabIndex={0} aria-label="Example PayPal Payouts request" className="overflow-x-auto p-5 font-mono text-[12.5px] leading-[1.7] text-ink-2">
+          <Reveal className="min-w-0 lg:col-span-6" delay={0.1}>
+            <figure className="max-w-full overflow-hidden rounded-[12px] border border-line bg-panel shadow-soft">
+              <figcaption className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5 text-[13px] text-muted sm:px-5">
+                What SettleShort sends when a batch is approved
+                <CopyButton text={PAYLOAD} label="Copy example payload" />
+              </figcaption>
+              <pre tabIndex={0} aria-label="Example PayPal Payouts request" className="overflow-x-auto bg-sunken p-5 font-mono text-[12.5px] leading-[1.7] text-ink-2">
                 {PAYLOAD}
               </pre>
             </figure>
@@ -247,8 +250,8 @@ export default function Home() {
       </section>
 
       {/* FAQ */}
-      <section className={`${wrap} border-t border-line py-24`} aria-labelledby="faq">
-        <div className="grid gap-10 lg:grid-cols-12">
+      <section className={`${wrap} border-t border-line py-28 sm:py-32`} aria-labelledby="faq">
+        <div className="grid min-w-0 gap-10 lg:grid-cols-12">
           <div className="lg:col-span-4">
             <h2 id="faq" className={h2}>
               Questions
@@ -261,7 +264,7 @@ export default function Home() {
           <div className="divide-y divide-line border-y border-line lg:col-span-8">
             {FAQ.map(({ q, a }) => (
               <details key={q} className="group">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-[8px] py-5 text-[17px] font-medium text-ink [&::-webkit-details-marker]:hidden">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-[8px] py-5 text-[17px] font-medium tracking-[-0.015em] text-ink [&::-webkit-details-marker]:hidden">
                   {q}
                   <PlusIcon size={18} className="shrink-0 text-muted transition-transform duration-200 group-open:rotate-45" aria-hidden />
                 </summary>
@@ -273,17 +276,20 @@ export default function Home() {
       </section>
 
       {/* Final CTA */}
-      <section className={`${wrap} pb-24`}>
-        <div className="grid overflow-hidden rounded-[12px] border border-line bg-panel shadow-soft lg:grid-cols-12">
+      <section className={`${wrap} pb-28`}>
+        <div className="grid overflow-hidden rounded-[12px] border border-line bg-panel shadow-pop lg:grid-cols-12">
           <div className="flex flex-col justify-center p-8 sm:p-12 lg:col-span-5">
-            <h2 className={h2}>Try it on a real receipt.</h2>
+            <p className={eyebrow}>Demo workspace</p>
+            <h2 className={`${h2} mt-3`}>Try it on a real receipt.</h2>
             <p className="mt-4 max-w-[40ch] text-[17px] leading-relaxed text-ink-2">
               The demo opens a sandbox workspace for Northbeam Labs with sample claims. No signup.
             </p>
             <DemoLink className="mt-8 self-start" />
           </div>
-          <div className="relative min-h-[280px] border-t border-line lg:col-span-7 lg:min-h-[420px] lg:border-t-0 lg:border-l">
-            <DashboardPicture />
+          <div className="relative border-t border-line bg-sunken p-3 sm:p-4 lg:col-span-7 lg:border-t-0 lg:border-l">
+            <div className="relative min-h-[280px] overflow-hidden rounded-[8px] border border-line bg-panel shadow-soft lg:min-h-[420px]">
+              <DashboardPicture />
+            </div>
           </div>
         </div>
       </section>

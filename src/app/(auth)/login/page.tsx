@@ -7,8 +7,8 @@ export const metadata = { title: "Sign in" };
 export default function LoginPage() {
   return (
     <>
-      <h1 className="text-xl font-semibold tracking-tight">Sign in</h1>
-      <p className="mb-6 mt-1 text-sm text-muted">Welcome back to your settlement desk.</p>
+      <h1 className="text-[22px] font-semibold tracking-[-0.03em]">Sign in</h1>
+      <p className="mt-1.5 mb-6 text-sm leading-relaxed text-muted">Welcome back to your settlement desk.</p>
       <AuthForm
         action={login}
         submit="Sign in"

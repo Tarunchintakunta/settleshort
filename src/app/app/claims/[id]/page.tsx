@@ -37,28 +37,28 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
 
   return (
     <>
-      <Link href="/app/claims" className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-muted hover:text-ink">
+      <Link href="/app/claims" className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-muted transition-colors hover:text-ink">
         <ArrowLeftIcon className="size-3.5" aria-hidden /> Claims
       </Link>
 
       <header className="mb-8 flex flex-wrap items-end justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-2">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
             <StatusPill status={claim.status} />
             <span className="text-[13px] text-muted">
               <span className="font-mono">#{claim.number}</span> from {name(claim.submitterId)} via {SOURCE[claim.source]}
             </span>
           </div>
-          <h1 className="mt-3 text-[28px] font-semibold tracking-[-0.02em]">{claim.vendor || "Untitled claim"}</h1>
+          <h1 className="mt-3 break-words text-[26px] font-semibold tracking-[-0.03em] sm:text-[28px]">{claim.vendor || "Untitled claim"}</h1>
         </div>
-        <div className="text-right">
-          <Money cents={claim.amountCents} currency={claim.currency} className="text-[36px] font-semibold tracking-tight" />
-          <p className="text-[13px] text-muted">Reimburses {name(claim.payerUserId)}</p>
+        <div className="text-left sm:text-right">
+          <Money cents={claim.amountCents} currency={claim.currency} className="text-[40px] leading-none font-semibold sm:text-[44px]" />
+          <p className="mt-1 text-[13px] text-muted">Reimburses {name(claim.payerUserId)}</p>
         </div>
       </header>
 
       {claim.duplicateOfId && dupOf && (
-        <section className="rise mb-8 rounded-[12px] border border-warning/30 bg-warning-soft p-5">
+        <section className="rise mb-8 rounded-[12px] border border-warning/30 bg-warning-soft p-5 shadow-soft">
           <p className="flex items-center gap-2 text-sm font-medium text-warning">
             <WarningIcon className="size-4" weight="fill" aria-hidden /> Possible duplicate
           </p>
@@ -68,10 +68,10 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
               { label: "This claim", c: claim },
               { label: `Existing #${dupOf.number}`, c: dupOf },
             ].map(({ label, c }) => (
-              <div key={label} className="rounded-[10px] bg-panel p-4 text-sm">
+              <div key={label} className="rounded-[10px] border border-line bg-panel p-4 text-sm shadow-soft">
                 <p className="text-xs text-muted">{label}</p>
                 <p className="mt-1 font-medium">{c.vendor}</p>
-                <p className="mt-0.5 flex justify-between text-ink-2">
+                <p className="mt-0.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-ink-2">
                   <span>
                     {c.txnDate ?? "No date"} · {name(c.payerUserId)}
                   </span>
@@ -89,10 +89,10 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <div className="space-y-6 lg:sticky lg:top-6 lg:self-start">
           {receipt ? (
-            <div className="flex min-h-[320px] items-center justify-center overflow-hidden rounded-[12px] border border-line bg-sunken p-5">
+            <div className="flex min-h-[320px] items-center justify-center overflow-hidden rounded-[12px] border border-line bg-sunken p-5 shadow-[inset_0_1px_0_rgb(255_255_255/0.4)]">
               {receipt.mime.startsWith("image/") ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={receipt.src} alt={`Receipt ${receipt.filename}`} className="max-h-[560px] w-auto rounded-[6px] shadow-soft" />
+                <img src={receipt.src} alt={`Receipt ${receipt.filename}`} className="max-h-[560px] w-auto rounded-[8px] shadow-pop" />
               ) : (
                 <a href={receipt.src} target="_blank" className="flex flex-col items-center gap-3 text-muted hover:text-ink">
                   <FilePdfIcon className="size-14" weight="light" aria-hidden />
@@ -101,41 +101,43 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
               )}
             </div>
           ) : claim.rawText ? (
-            <div className="rounded-[12px] border border-line bg-sunken p-5">
-              <p className="text-xs text-muted">Original message</p>
-              <p className="mt-2 text-[15px] leading-relaxed">{claim.rawText}</p>
+            <div className="rounded-[12px] border border-line bg-panel p-5 shadow-soft">
+              <p className="text-[11px] font-medium tracking-[0.12em] text-muted uppercase">Original message</p>
+              <p className="mt-3 text-[15px] leading-relaxed">{claim.rawText}</p>
             </div>
           ) : null}
 
           {(evidence.length > 0 || ai) && (
             <section>
-              <div className="mb-2 flex items-center justify-between">
-                <h2 className="text-sm font-medium">What was read</h2>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-[15px] font-semibold tracking-[-0.015em]">What was read</h2>
                 <Confidence value={claim.aiConfidence} provider={ai?.provider} />
               </div>
               {evidence.length > 0 && (
-                <ul className="space-y-1.5">
+                <ul className="space-y-2">
                   {evidence.map(([k, v]) => (
-                    <li key={k} className="flex items-start gap-2 text-[13px]">
-                      <QuotesIcon className="mt-0.5 size-3 shrink-0 text-muted" weight="fill" aria-hidden />
-                      <span className="w-14 shrink-0 capitalize text-muted">{k}</span>
-                      <span className="font-mono text-ink-2">{v}</span>
+                    <li key={k} className="rounded-[8px] border border-line bg-sunken/70 px-3 py-2.5">
+                      <p className="text-[11px] font-medium tracking-[0.08em] text-muted uppercase">{k}</p>
+                      <p className="mt-1 flex items-start gap-1.5 font-mono text-[13px] leading-relaxed text-ink">
+                        <QuotesIcon className="mt-0.5 size-3 shrink-0 text-muted" weight="fill" aria-hidden />
+                        <span className="break-words">{v}</span>
+                      </p>
                     </li>
                   ))}
                 </ul>
               )}
               <details className="mt-3 text-[13px]">
                 <summary className="cursor-pointer text-muted hover:text-ink">Raw extraction JSON</summary>
-                <pre className="mt-2 max-h-72 overflow-auto rounded-[8px] bg-sunken p-3 font-mono text-[11.5px] leading-relaxed">{JSON.stringify({ ...ai, ocr_text: undefined, match }, null, 2)}</pre>
-                {ai?.ocr_text && <pre className="mt-2 max-h-48 overflow-auto rounded-[8px] bg-sunken p-3 font-mono text-[11.5px] leading-relaxed">{ai.ocr_text}</pre>}
+                <pre className="mt-2 max-h-72 overflow-auto rounded-[8px] border border-line bg-sunken p-3 font-mono text-[11.5px] leading-relaxed">{JSON.stringify({ ...ai, ocr_text: undefined, match }, null, 2)}</pre>
+                {ai?.ocr_text && <pre className="mt-2 max-h-48 overflow-auto rounded-[8px] border border-line bg-sunken p-3 font-mono text-[11.5px] leading-relaxed">{ai.ocr_text}</pre>}
               </details>
             </section>
           )}
         </div>
 
         <div className="space-y-8">
-          <section>
-            <h2 className="mb-4 text-sm font-medium">Details</h2>
+          <section className="rounded-[12px] border border-line p-5 shadow-soft sm:p-6">
+            <h2 className="mb-5 text-[15px] font-semibold tracking-[-0.015em]">Details</h2>
             <ClaimEditor
               claim={claim}
               members={members}
@@ -147,11 +149,11 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
 
           {(ai?.line_items?.length ?? 0) > 0 && (
             <section>
-              <h2 className="mb-2 text-sm font-medium">Line items</h2>
-              <ul className="divide-y divide-line border-y border-line text-sm">
+              <h2 className="mb-2 text-[15px] font-semibold tracking-[-0.015em]">Line items</h2>
+              <ul className="divide-y divide-line rounded-[12px] border border-line px-4 text-sm">
                 {ai!.line_items!.map((l, i) => (
-                  <li key={i} className="flex justify-between py-2">
-                    <span className="text-ink-2">{l.name}</span>
+                  <li key={i} className="flex items-baseline justify-between gap-3 py-2">
+                    <span className="min-w-0 text-ink-2">{l.name}</span>
                     <Money cents={l.amount_cents} currency={claim.currency} />
                   </li>
                 ))}
@@ -173,10 +175,10 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
 
           {splits.length > 0 && (
             <section>
-              <h2 className="mb-2 text-sm font-medium">Shared with</h2>
+              <h2 className="mb-2 text-[15px] font-semibold tracking-[-0.015em]">Shared with</h2>
               <ul className="flex flex-wrap gap-2">
                 {splits.map((s) => (
-                  <li key={s.id} className="flex items-center gap-2 rounded-full border border-line py-1 pl-1 pr-3 text-[13px]">
+                  <li key={s.id} className="flex items-center gap-2 rounded-full border border-line bg-panel py-1 pr-3 pl-1 text-[13px]">
                     <span className="flex size-6 items-center justify-center rounded-full bg-sunken text-[11px] font-semibold" aria-hidden>
                       {name(s.userId)[0]}
                     </span>
@@ -189,8 +191,8 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
 
           {batchRow && (
             <section>
-              <h2 className="mb-2 text-sm font-medium">Settlement</h2>
-              <Link href={`/app/batches/${batchRow.batch.id}`} className="flex items-center justify-between rounded-[10px] border border-line px-4 py-3 text-sm hover:bg-sunken">
+              <h2 className="mb-2 text-[15px] font-semibold tracking-[-0.015em]">Settlement</h2>
+              <Link href={`/app/batches/${batchRow.batch.id}`} className="flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-line px-4 py-3.5 text-sm transition-colors hover:bg-sunken">
                 <span>
                   <span className="font-medium">{batchRow.batch.name}</span>
                   {batchRow.item.transactionId && <span className="ml-2 font-mono text-xs text-muted">{batchRow.item.transactionId}</span>}

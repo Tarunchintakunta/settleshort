@@ -21,18 +21,18 @@ export default async function BatchesPage() {
     <>
       <PageHeader title="Settlement batches" sub="Group ready claims, review, then one human Approve sends them to PayPal Payouts." />
       {rows.length ? (
-        <div className="divide-y divide-line rounded-[12px] border border-line">
+        <div className="divide-y divide-line overflow-hidden rounded-[12px] border border-line shadow-soft">
           {rows.map(({ b, n }) => (
-            <Link key={b.id} href={`/app/batches/${b.id}`} className="flex flex-wrap items-center gap-4 px-5 py-4 transition-colors first:rounded-t-[12px] last:rounded-b-[12px] hover:bg-sunken">
+            <Link key={b.id} href={`/app/batches/${b.id}`} className="flex flex-wrap items-center gap-4 px-5 py-4 transition-colors hover:bg-sunken">
               <div className="min-w-0 flex-1">
-                <p className="font-medium">{b.name}</p>
-                <p className="text-xs text-muted">
+                <p className="font-medium tracking-[-0.015em]">{b.name}</p>
+                <p className="mt-0.5 text-xs text-muted">
                   {n} claims, created {b.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                   {b.paypalPayoutBatchId && <span className="ml-2 font-mono">{b.paypalPayoutBatchId}</span>}
                 </p>
               </div>
               <StatusPill status={b.status} />
-              <Money cents={b.totalCents} currency={b.currency} className="w-28 text-right font-medium" />
+              <Money cents={b.totalCents} currency={b.currency} className="shrink-0 text-right text-lg font-semibold" />
             </Link>
           ))}
         </div>

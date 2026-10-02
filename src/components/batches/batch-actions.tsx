@@ -57,7 +57,7 @@ export function BatchActions({ batch, recipients, isAdmin, blocked, mode }: Prop
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <a href={`/api/v1/batches/${batch.id}/export`} className="inline-flex h-10 items-center gap-2 rounded-[8px] border border-line bg-panel px-4 text-sm font-medium hover:bg-sunken">
+      <a href={`/api/v1/batches/${batch.id}/export`} className="inline-flex h-10 items-center gap-2 rounded-[8px] border border-line bg-panel px-4 text-sm font-medium tracking-[-0.011em] shadow-[0_1px_0_rgb(255_255_255/0.5)] transition-colors hover:border-line-strong hover:bg-sunken">
         <DownloadSimpleIcon className="size-4" aria-hidden /> Export CSV
       </a>
       {["submitted", "partial"].includes(batch.status) && (
@@ -99,35 +99,36 @@ export function BatchActions({ batch, recipients, isAdmin, blocked, mode }: Prop
         ref={dialog}
         onClose={() => setOpen(false)}
         aria-labelledby="approve-title"
-        className="m-auto w-[min(92vw,440px)] rounded-[16px] border border-line bg-panel p-0 text-ink shadow-pop backdrop:bg-black/45 backdrop:backdrop-blur-[3px] open:animate-[rise_220ms_cubic-bezier(0.16,1,0.3,1)]"
+        className="m-auto w-[min(92vw,460px)] max-w-full rounded-[16px] border border-line bg-panel p-0 text-ink shadow-pop backdrop:bg-[rgb(12_12_14/0.55)] backdrop:backdrop-blur-[6px] open:animate-[rise_280ms_cubic-bezier(0.16,1,0.3,1)]"
       >
         <form
           method="dialog"
-          className="p-7"
+          className="p-6 sm:p-8"
           onSubmit={(e) => {
             e.preventDefault();
             if (typed === "APPROVE") approve();
           }}
         >
-          <div className="mb-5 inline-flex rounded-full bg-success-soft p-2.5 text-success">
+          <div className="mb-5 inline-flex rounded-full bg-success-soft p-3 text-success">
             <ShieldCheckIcon className="size-6" weight="fill" aria-hidden />
           </div>
-          <h2 id="approve-title" className="text-xl font-semibold tracking-tight">
-            Pay {recipients} {recipients === 1 ? "person" : "people"} {total}?
+          <p className="text-[11px] font-medium tracking-[0.14em] text-muted uppercase">Confirm payout</p>
+          <h2 id="approve-title" className="mt-2 text-[26px] leading-tight font-semibold tracking-[-0.03em]">
+            Pay {recipients} {recipients === 1 ? "person" : "people"} <span className="tnum font-mono">{total}</span>?
           </h2>
-          <p className="mt-2 text-sm text-muted">
+          <p className="mt-4 rounded-[8px] border border-line bg-sunken px-3.5 py-3 text-sm leading-relaxed text-ink-2">
             This sends <b className="text-ink">{batch.name}</b> to PayPal Payouts{mode === "sandbox" ? " in sandbox" : " (simulator)"}. Once PayPal accepts it, it can&apos;t be undone.
           </p>
-          <label className="mt-5 block text-sm font-medium" htmlFor="confirm">
-            Type <span className="font-mono">APPROVE</span> to confirm
+          <label className="mt-6 block text-sm font-medium" htmlFor="confirm">
+            Type <span className="font-mono tracking-[0.14em]">APPROVE</span> to confirm
           </label>
-          <input id="confirm" autoFocus autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} className={cx(inputCls, "mt-1.5 h-11 font-mono tracking-[0.2em]")} />
+          <input id="confirm" autoFocus autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} className={cx(inputCls, "mt-2 h-12 text-center font-mono text-[15px] tracking-[0.28em]")} />
           {error && (
             <div className="mt-3">
               <Alert>{error}</Alert>
             </div>
           )}
-          <div className="mt-6 flex justify-end gap-2">
+          <div className="mt-6 flex flex-wrap justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancel
             </Button>

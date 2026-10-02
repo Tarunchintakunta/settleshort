@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { CopyButton } from "@/components/copy-button";
+import { DocsToc } from "@/components/marketing/DocsToc";
 import { DemoLink, wrap } from "@/components/marketing/Nav";
 
 export const metadata: Metadata = {
@@ -36,30 +38,28 @@ const API: [string, string, string][] = [
   ["GET", "/api/v1/health", "Health check"],
 ];
 
-const TOC = [
-  ["quickstart", "Judge quickstart"],
-  ["setup", "Local setup"],
-  ["env", "Environment variables"],
-  ["api", "API overview"],
-  ["zapier", "Zapier recipe"],
-];
-
 function Code({ children }: { children: ReactNode }) {
   return <code className="rounded-[6px] bg-sunken px-1.5 py-0.5 font-mono text-[0.88em] text-ink">{children}</code>;
 }
 
 function Pre({ children, label }: { children: string; label: string }) {
   return (
-    <pre aria-label={label} tabIndex={0} className="mt-4 overflow-x-auto rounded-[12px] border border-line bg-sunken p-4 font-mono text-[13px] leading-relaxed text-ink-2">
-      {children}
-    </pre>
+    <div className="mt-4 overflow-hidden rounded-[12px] border border-line bg-sunken">
+      <div className="flex items-center justify-between gap-3 border-b border-line px-3 py-1.5">
+        <span className="font-mono text-[11px] text-muted">{label}</span>
+        <CopyButton text={children} label={`Copy ${label}`} />
+      </div>
+      <pre aria-label={label} tabIndex={0} className="overflow-x-auto p-4 font-mono text-[13px] leading-relaxed text-ink-2">
+        {children}
+      </pre>
+    </div>
   );
 }
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
     <section id={id} className="scroll-mt-24 border-t border-line pt-10" aria-labelledby={`${id}-h`}>
-      <h2 id={`${id}-h`} className="text-2xl font-semibold tracking-tight text-ink">
+      <h2 id={`${id}-h`} className="text-[26px] font-semibold tracking-[-0.025em] text-ink">
         {title}
       </h2>
       <div className="mt-4 text-[15px] leading-relaxed text-ink-2">{children}</div>
@@ -67,11 +67,16 @@ function Section({ id, title, children }: { id: string; title: string; children:
   );
 }
 
-function Task({ title, children }: { title: string; children: ReactNode }) {
+function Task({ n, title, children }: { n: string; title: string; children: ReactNode }) {
   return (
-    <li className="border-l-2 border-line pl-5">
-      <h3 className="font-semibold text-ink">{title}</h3>
-      <div className="mt-1 text-muted">{children}</div>
+    <li className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-4">
+      <span className="tnum flex size-8 items-center justify-center rounded-full border border-line bg-panel font-mono text-[12px] text-ink" aria-hidden>
+        {n}
+      </span>
+      <div className="min-w-0">
+        <h3 className="pt-1 font-semibold tracking-[-0.015em] text-ink">{title}</h3>
+        <div className="mt-2 text-muted">{children}</div>
+      </div>
     </li>
   );
 }
@@ -79,33 +84,23 @@ function Task({ title, children }: { title: string; children: ReactNode }) {
 export default function DocsPage() {
   return (
     <div className={`${wrap} grid gap-12 py-16 sm:py-24 lg:grid-cols-[200px_1fr]`}>
-      <nav aria-label="On this page" className="hidden lg:block">
-        <ul className="sticky top-24 space-y-2.5 text-sm">
-          {TOC.map(([id, label]) => (
-            <li key={id}>
-              <a href={`#${id}`} className="text-muted hover:text-ink">
-                {label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <DocsToc />
       <div className="min-w-0 max-w-[760px] space-y-12">
         <header>
-          <h1 className="text-[40px] font-semibold leading-[1.04] tracking-[-0.03em] text-ink sm:text-[52px]">From receipt to payout.</h1>
+          <h1 className="text-[40px] font-semibold leading-[1.04] tracking-[-0.035em] text-ink sm:text-[52px]">From receipt to payout.</h1>
           <p className="mt-4 text-lg text-ink-2">Everything runs in the PayPal sandbox. No real money moves.</p>
         </header>
 
         <Section id="quickstart" title="Judge quickstart">
-          <ol className="space-y-8">
-            <Task title="Open the demo">
+          <ol className="mt-8 list-none space-y-8">
+            <Task n="01" title="Open the demo">
               You are signed in as <strong className="text-ink">Maya</strong>, owner of the <strong className="text-ink">Northbeam Labs</strong> workspace, with sample
               claims already loaded.
               <div className="mt-4">
                 <DemoLink />
               </div>
             </Task>
-            <Task title="Create a claim">
+            <Task n="02" title="Create a claim">
               Open <strong className="text-ink">Claims</strong>, click <strong className="text-ink">New claim</strong>, and upload a sample receipt:
               <ul className="mt-3 flex flex-wrap gap-2">
                 {SAMPLES.map((s) => (
@@ -119,11 +114,11 @@ export default function DocsPage() {
               <p className="mt-4">Or paste a message:</p>
               <Pre label="Example message">I paid $42.30 for Uber for @rita yesterday</Pre>
             </Task>
-            <Task title="Approve a batch">
+            <Task n="03" title="Approve a batch">
               Open <strong className="text-ink">Batches</strong>, then <strong className="text-ink">September offsites</strong>. Click{" "}
               <strong className="text-ink">Approve &amp; Pay</strong> and type <Code>APPROVE</Code> to confirm.
             </Task>
-            <Task title="Watch it settle">
+            <Task n="04" title="Watch it settle">
               Item statuses update as PayPal reports back (SUCCESS, UNCLAIMED, FAILED). <strong className="text-ink">Activity</strong> shows the full audit trail.
             </Task>
           </ol>
@@ -157,7 +152,7 @@ pnpm dev`}</Pre>
               <li key={m + p} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
                 <span className="flex items-center gap-3">
                   <span className="w-14 font-mono text-[11px] font-semibold text-accent">{m}</span>
-                  <span className="font-mono text-xs text-ink">{p}</span>
+                  <span className="font-mono text-xs break-all text-ink">{p}</span>
                 </span>
                 <span className="text-sm text-muted sm:ml-auto sm:text-right">{d}</span>
               </li>

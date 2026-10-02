@@ -7,8 +7,8 @@ export const metadata = { title: "Create account" };
 export default function SignupPage() {
   return (
     <>
-      <h1 className="text-xl font-semibold tracking-tight">Create your account</h1>
-      <p className="mb-6 mt-1 text-sm text-muted">Invited by a teammate? Use the same email to join their workspace.</p>
+      <h1 className="text-[22px] font-semibold tracking-[-0.03em]">Create your account</h1>
+      <p className="mt-1.5 mb-6 text-sm leading-relaxed text-muted">Invited by a teammate? Use the same email to join their workspace.</p>
       <AuthForm
         action={signup}
         submit="Create account"

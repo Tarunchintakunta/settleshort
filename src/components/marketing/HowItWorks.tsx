@@ -53,7 +53,7 @@ export function HowItWorks() {
   }
 
   return (
-    <div className="mt-12 grid gap-8 lg:grid-cols-12 lg:gap-12">
+    <div className="mt-12 grid min-w-0 gap-8 lg:grid-cols-12 lg:gap-12">
       <div role="tablist" aria-label="How SettleShort works" aria-orientation="vertical" onKeyDown={onKey} className="flex flex-col gap-1 lg:col-span-4">
         {STEPS.map(({ id, verb, icon: Icon, body }, i) => {
           const on = i === active;
@@ -71,13 +71,14 @@ export function HowItWorks() {
               tabIndex={on ? 0 : -1}
               onClick={() => setActive(i)}
               className={cx(
-                "group rounded-[12px] border px-4 py-4 text-left transition-colors duration-200",
-                on ? "border-line bg-bg" : "border-transparent hover:bg-bg/60",
+                "group relative rounded-[12px] border px-4 py-4 text-left transition-[background,border,box-shadow] duration-200",
+                on ? "border-line bg-bg shadow-soft" : "border-transparent hover:bg-bg/70",
               )}
             >
+              <span className={cx("absolute top-4 bottom-4 left-0 w-0.5 rounded-full", on ? "bg-accent" : "bg-transparent")} aria-hidden />
               <span className="flex items-center gap-3">
                 <Icon size={20} weight={on ? "fill" : "regular"} className={on ? "text-accent" : "text-muted"} aria-hidden />
-                <span className={cx("text-[17px] font-semibold tracking-tight", on ? "text-ink" : "text-ink-2")}>{verb}</span>
+                <span className={cx("text-[17px] font-semibold tracking-[-0.02em]", on ? "text-ink" : "text-ink-2")}>{verb}</span>
               </span>
               <span className={cx("mt-2 block pl-8 text-sm leading-relaxed", on ? "text-ink-2" : "text-muted")}>{body}</span>
             </button>
@@ -85,8 +86,8 @@ export function HowItWorks() {
         })}
       </div>
       <div className="lg:col-span-8">
-        <div className="rounded-[12px] border border-line bg-bg p-1.5 shadow-soft">
-          <div className="relative aspect-[16/10] overflow-hidden rounded-[8px]">
+        <div className="rounded-[12px] border border-line bg-sunken p-1.5 shadow-soft sm:p-2">
+          <div className="relative aspect-[16/10] overflow-hidden rounded-[8px] bg-panel">
             {STEPS.map(({ id, src, alt }, i) => (
               <div
                 key={id}
@@ -94,7 +95,10 @@ export function HowItWorks() {
                 role="tabpanel"
                 aria-labelledby={`tab-${id}`}
                 aria-hidden={i !== active}
-                className={cx("absolute inset-0 transition-opacity duration-300", i === active ? "opacity-100" : "opacity-0")}
+                className={cx(
+                  "absolute inset-0 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                  i === active ? "z-10 translate-y-0 opacity-100" : "pointer-events-none z-0 translate-y-2 opacity-0",
+                )}
               >
                 <Image src={src} alt={alt} fill sizes="(min-width: 1200px) 760px, (min-width: 1024px) 64vw, 100vw" className="object-cover object-left-top" />
               </div>

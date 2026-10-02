@@ -17,22 +17,27 @@ const NAV: { href: string; label: string; icon: Icon }[] = [
 export function SideNav({ counts }: { counts: Record<string, number> }) {
   const path = usePathname();
   return (
-    <nav aria-label="App" className="-mx-1 flex gap-0.5 overflow-x-auto md:mx-0 md:flex-col">
+    <nav aria-label="App" className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto md:mx-0 md:flex-col md:gap-0.5 md:overflow-visible">
       {NAV.map(({ href, label, icon: Icon }) => {
         const active = href === "/app" ? path === href : path.startsWith(href);
+        const count = counts[href];
         return (
           <Link
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
             className={cx(
-              "group flex h-9 shrink-0 items-center gap-2.5 rounded-[8px] px-2.5 text-[13.5px] transition-colors",
-              active ? "bg-panel font-medium text-ink shadow-soft ring-1 ring-line" : "text-ink-2 hover:bg-panel/60 hover:text-ink",
+              "group flex h-9 shrink-0 items-center gap-2.5 rounded-[8px] px-2.5 text-[13.5px] tracking-[-0.011em] transition-colors duration-200",
+              active ? "bg-accent-soft font-medium text-ink" : "text-ink-2 hover:bg-panel hover:text-ink",
             )}
           >
             <Icon className={cx("size-[18px]", active ? "text-accent" : "text-muted group-hover:text-ink-2")} weight={active ? "fill" : "regular"} aria-hidden />
             {label}
-            {counts[href] ? <span className="ml-auto rounded-full bg-warning-soft px-1.5 text-[11px] font-semibold text-warning tnum">{counts[href]}</span> : null}
+            {count ? (
+              <span className="tnum ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warning-soft px-1.5 font-mono text-[11px] font-semibold text-warning">
+                {count}
+              </span>
+            ) : null}
           </Link>
         );
       })}

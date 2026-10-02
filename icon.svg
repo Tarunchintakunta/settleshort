@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none" role="img" aria-label="SettleShort">
+  <defs>
+    <linearGradient id="ss-bg" x1="64" y1="40" x2="448" y2="472" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1B4DFF"/>
+      <stop offset="1" stop-color="#6D28D9"/>
+    </linearGradient>
+    <linearGradient id="ss-sheen" x1="120" y1="80" x2="360" y2="400" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded app icon -->
+  <rect x="32" y="32" width="448" height="448" rx="108" fill="url(#ss-bg)"/>
+  <rect x="32" y="32" width="448" height="448" rx="108" fill="url(#ss-sheen)"/>
+  <!-- Receipt card -->
+  <path d="M146 128h220c14 0 26 12 26 26v248c0 8-4 15-11 19-10 6-22-1-22-12v-10c0-7-6-12-12-12s-12 5-12 12v10c0 11-12 18-22 12-7-4-11-11-11-19v-10c0-7-6-12-12-12s-12 5-12 12v10c0 11-12 18-22 12-7-4-11-11-11-19V154c0-14 12-26 26-26Z" fill="#FFFFFF" fill-opacity="0.98"/>
+  <!-- Receipt corner fold -->
+  <path d="M334 128h32l-50 50v-32c0-10 8-18 18-18Z" fill="#E8E8E3"/>
+  <!-- Vendor line -->
+  <rect x="178" y="178" width="140" height="16" rx="8" fill="#0B0B0A" fill-opacity="0.88"/>
+  <!-- Amount lines -->
+  <rect x="178" y="214" width="96" height="12" rx="6" fill="#1B4DFF" fill-opacity="0.55"/>
+  <rect x="178" y="240" width="156" height="10" rx="5" fill="#0B0B0A" fill-opacity="0.18"/>
+  <rect x="178" y="262" width="128" height="10" rx="5" fill="#0B0B0A" fill-opacity="0.18"/>
+  <!-- Check badge -->
+  <circle cx="340" cy="340" r="54" fill="#0F7B4B"/>
+  <circle cx="340" cy="340" r="54" fill="#FFFFFF" fill-opacity="0.12"/>
+  <path d="M316 340l16 16 32-36" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
