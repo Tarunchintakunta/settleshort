@@ -8,6 +8,20 @@
       "when": 1790953544520,
       "tag": "0000_blue_purple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790956283432,
+      "tag": "0001_s3_receipt_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790956283967,
+      "tag": "0002_drop_db_receipts",
+      "breakpoints": true
     }
   ]
 }

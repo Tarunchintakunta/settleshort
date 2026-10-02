@@ -1,35 +1,37 @@
+import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { aiProvider, extractReceipt } from "@/lib/ai";
 import { fail, route } from "@/lib/api";
 import { audit } from "@/lib/audit";
 import { createClaim } from "@/lib/claims";
-import { aiJobs, db, receipts } from "@/lib/db";
+import { aiJobs, db } from "@/lib/db";
+import { MAX_RECEIPT_BYTES, putReceipt, RECEIPT_TYPES, receiptKey, s3Configured } from "@/lib/s3";
 
-const TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
-const MAX = 10 * 1024 * 1024; // ponytail: Vercel caps request bodies ~4.5MB; use direct-to-storage uploads for bigger files.
-
+// Server-side upload: validate, store the original in S3, extract with AI, create the claim.
 // Extraction runs inline (a few seconds) and is recorded as an ai_job so GET /claims/jobs/:id works.
 export const POST = route(async (req, ctx) => {
+  if (!s3Configured()) fail(503, "s3_not_configured", "S3 not configured");
   const form = await req.formData();
   const file = form.get("file");
   if (!(file instanceof File)) fail(400, "invalid_input", "Attach a file");
   const f = file as File;
-  if (!TYPES.includes(f.type)) fail(400, "invalid_type", "Use JPEG, PNG, WebP or PDF");
-  if (f.size > MAX) fail(400, "too_large", "Max 10MB");
+  if (!RECEIPT_TYPES[f.type]) fail(400, "invalid_type", "Use JPEG, PNG, WebP or PDF");
+  if (f.size > MAX_RECEIPT_BYTES) fail(400, "too_large", "Max 10MB");
 
   const buf = Buffer.from(await f.arrayBuffer());
-  const [receipt] = await db
-    .insert(receipts)
-    .values({ workspaceId: ctx.workspace.id, filename: f.name, mime: f.type, dataB64: buf.toString("base64") })
-    .returning({ id: receipts.id });
+  const claimId = randomUUID(); // known up front so the S3 key can include it
+  const key = receiptKey(ctx.workspace.id, claimId, f.type);
+  await putReceipt(key, buf, f.type);
+
   const [job] = await db
     .insert(aiJobs)
-    .values({ workspaceId: ctx.workspace.id, kind: "receipt", status: "running", provider: aiProvider(), inputJson: { filename: f.name, mime: f.type, size: f.size } })
+    .values({ workspaceId: ctx.workspace.id, kind: "receipt", status: "running", provider: aiProvider(), inputJson: { filename: f.name, mime: f.type, size: f.size, key } })
     .returning();
 
   try {
     const { extract: x, rawText } = await extractReceipt(buf, f.type);
     const claim = await createClaim(ctx.workspace.id, ctx.user.id, {
+      id: claimId,
       source: "upload",
       vendor: x.vendor,
       amountCents: x.amount_cents,
@@ -38,7 +40,9 @@ export const POST = route(async (req, ctx) => {
       tipCents: x.tip_cents,
       taxCents: x.tax_cents,
       note: x.notes,
-      receiptId: receipt.id,
+      receiptKey: key,
+      receiptMime: f.type,
+      receiptName: f.name.slice(0, 200),
       aiJson: { ...x, provider: aiProvider(), ocr_text: rawText?.slice(0, 4000) },
       aiConfidence: x.confidence,
       payerUserId: ctx.user.id,
