@@ -9,6 +9,7 @@ import { formatMoney, splitEven } from "./money";
 export const LOW_CONFIDENCE = 0.55;
 
 export type NewClaim = {
+  id?: string;
   source: "upload" | "slack" | "email" | "manual";
   vendor: string;
   amountCents: number;
@@ -18,7 +19,9 @@ export type NewClaim = {
   taxCents?: number;
   note?: string;
   rawText?: string | null;
-  receiptId?: string | null;
+  receiptKey?: string | null;
+  receiptMime?: string | null;
+  receiptName?: string | null;
   aiJson?: unknown;
   aiConfidence?: number | null;
   payerUserId: string;

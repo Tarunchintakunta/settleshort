@@ -45,16 +45,6 @@ export const memberships = pgTable(
   (t) => [uniqueIndex("memberships_ws_user").on(t.workspaceId, t.userId)],
 );
 
-// ponytail: receipts stored base64 in Postgres; move to S3/R2 when volume grows.
-export const receipts = pgTable("receipts", {
-  id: id(),
-  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
-  filename: text("filename").notNull(),
-  mime: text("mime").notNull(),
-  dataB64: text("data_b64").notNull(),
-  createdAt: createdAt(),
-});
-
 export const CLAIM_STATUSES = ["draft", "pending_review", "matched", "in_batch", "paid", "failed", "rejected"] as const;
 export type ClaimStatus = (typeof CLAIM_STATUSES)[number];
 
@@ -74,7 +64,10 @@ export const claims = pgTable(
     taxCents: integer("tax_cents").notNull().default(0),
     note: text("note").notNull().default(""),
     rawText: text("raw_text"),
-    receiptId: uuid("receipt_id").references(() => receipts.id),
+    // S3 object key only (receipts/{workspaceId}/{claimId}/{uuid}.{ext}); viewed via short-lived presigned GET URLs.
+    receiptKey: text("receipt_key"),
+    receiptMime: text("receipt_mime"),
+    receiptName: text("receipt_name"),
     aiJson: jsonb("ai_json"),
     aiConfidence: real("ai_confidence"),
     payerUserId: uuid("payer_user_id").notNull().references(() => users.id),
