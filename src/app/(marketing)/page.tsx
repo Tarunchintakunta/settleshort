@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getImageProps } from "next/image";
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowDownIcon, CpuIcon, GitMergeIcon, GaugeIcon, PlusIcon, QuotesIcon } from "@phosphor-icons/react/ssr";
 import { CopyButton } from "@/components/copy-button";
@@ -297,15 +297,14 @@ export default function Home() {
   );
 }
 
-/** Light or dark dashboard, following the same prefers-color-scheme switch as the design tokens. */
 function DashboardPicture() {
-  const common = { fill: true, sizes: "(min-width: 1024px) 680px, 100vw", alt: "SettleShort overview for Northbeam Labs with one batch awaiting approval, open claims, and recent activity." };
-  const { props: dark } = getImageProps({ ...common, src: "/marketing/dashboard-dark.png" });
-  const { props: light } = getImageProps({ ...common, src: "/marketing/dashboard.png" });
   return (
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcSet={dark.srcSet} sizes={dark.sizes} />
-      <img {...light} alt={common.alt} className="object-cover object-left-top" />
-    </picture>
+    <Image
+      src="/marketing/dashboard.png"
+      alt="SettleShort overview for Northbeam Labs with one batch awaiting approval, open claims, and recent activity."
+      fill
+      sizes="(min-width: 1024px) 680px, 100vw"
+      className="object-cover object-left-top"
+    />
   );
 }

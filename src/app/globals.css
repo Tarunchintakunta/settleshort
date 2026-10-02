@@ -51,6 +51,32 @@
   }
 }
 
+/* Marketing stays on the light stone palette, even when the system theme is dark. */
+.light-site {
+  --bg: #f4f3ef;
+  --panel: #ffffff;
+  --sunken: #eceae4;
+  --ink: #121214;
+  --ink-2: #3a3a40;
+  --muted: #6a6a70;
+  --line: #e3e1da;
+  --line-strong: #cbc9c1;
+  --accent: #1a45e8;
+  --accent-hover: #1438c4;
+  --accent-soft: #eef1fd;
+  --success: #0d7a4c;
+  --success-soft: #e7f6ee;
+  --warning: #9a5600;
+  --warning-soft: #fbf3e4;
+  --danger: #c23535;
+  --danger-soft: #fdeeee;
+  --shadow: 0 1px 1px rgb(18 18 20 / 4%), 0 12px 32px rgb(18 18 20 / 6%);
+  --shadow-pop: 0 1px 2px rgb(18 18 20 / 6%), 0 20px 50px rgb(18 18 20 / 12%), 0 48px 100px rgb(18 18 20 / 8%);
+  color-scheme: light;
+  background: var(--bg);
+  color: var(--ink);
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-panel: var(--panel);
