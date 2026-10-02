@@ -44,14 +44,48 @@ Without `PAYPAL_CLIENT_ID`/`SECRET` the app runs a payout simulator and says so 
 
 Receipt text is treated as untrusted data: model output is validated with Zod and can only fill fields. Nothing the model says can trigger a payout.
 
+## Receipt storage (AWS S3)
+
+Receipts are stored privately in S3 at `s3://$S3_BUCKET_NAME/receipts/{workspaceId}/{claimId}/{uuid}.{ext}` using AWS SDK v3.
+
+- **Upload strategy: server-side upload.** The browser posts the file to `POST /api/v1/claims/upload`. The server validates type (JPEG, PNG, WebP, PDF) and size (10MB), runs extraction on the same bytes, and `PutObject`s them with SSE-S3 encryption. One round trip, and AWS credentials never reach the browser. Note that Vercel caps request bodies near 4.5MB; for bigger files switch to presigned PUT URLs (CORS below).
+- **What is stored:** only the object key, MIME type and original filename on the claim. No credentials in the database or client.
+- **Viewing:** `GET /api/v1/claims/:id/receipt` checks workspace membership and redirects to a presigned GET URL that expires in 5 minutes.
+- **Not configured:** the upload API returns `503 { error: { code: "s3_not_configured", message: "S3 not configured" } }`.
+
+Minimal IAM policy for the app's access key:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    { "Effect": "Allow", "Action": ["s3:PutObject", "s3:GetObject"], "Resource": "arn:aws:s3:::YOUR_BUCKET/receipts/*" }
+  ]
+}
+```
+
+Keep Block Public Access on. Bucket CORS is only needed if you move to browser presigned PUT uploads:
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://settleshort.vercel.app", "http://localhost:3000"],
+    "AllowedMethods": ["PUT", "GET"],
+    "AllowedHeaders": ["Content-Type"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3000
+  }
+]
+```
+
 ## Stack
-Next.js 16 (App Router), TypeScript, Tailwind CSS 4, Drizzle ORM, Postgres (Neon), AG Grid Community, Motion, Phosphor icons, PayPal REST, Anthropic / OpenAI SDKs, tesseract.js, Vitest.
+Next.js 16 (App Router), TypeScript, Tailwind CSS 4, Drizzle ORM, Postgres (Neon), AWS S3 (SDK v3), AG Grid Community, Motion, Phosphor icons, PayPal REST, Anthropic / OpenAI SDKs, tesseract.js, Vitest.
 
 ## Run locally
 
 ```bash
 pnpm i
-cp .env.example .env.local   # set DATABASE_URL and SESSION_SECRET at minimum
+cp .env.example .env.local   # set DATABASE_URL, SESSION_SECRET and the four S3 vars
 pnpm db:migrate
 pnpm dev
 ```
@@ -73,11 +107,12 @@ All under `/api/v1`, JSON, session cookie auth, errors as `{ error: { code, mess
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| POST | `/claims/upload` | multipart `file`, returns `{ jobId, claim }` |
+| POST | `/claims/upload` | multipart `file` (JPEG/PNG/WebP/PDF, 10MB), stored in S3, returns `{ jobId, claim }`; 503 if S3 not configured |
 | GET | `/claims/jobs/:id` | extraction job |
 | POST | `/claims/from-text` | `{ text }` |
 | GET | `/claims?status=&q=` | |
 | GET / PATCH | `/claims/:id` | edit fields, `markReady` (admin) |
+| GET | `/claims/:id/receipt` | 302 to a 5 minute presigned S3 URL |
 | POST | `/claims/:id/reject` | admin |
 | POST | `/claims/merge` | `{ ids }`, keeps the first, admin |
 | GET / POST | `/batches` | create from ready claims, admin |
