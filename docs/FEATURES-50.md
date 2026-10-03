@@ -1,6 +1,17 @@
 # SettleShort — 50-feature gap analysis and build plan
 
-Branch: `feat/claims-engine-50`. Each feature lands as its own commit, in list order.
+Branch: `feat/claims-engine-50`. Each feature lands as its own commit.
+
+## Build order (focus: PayPal hackathon)
+
+The judges score PayPal money movement and trustworthy AI. Order follows that, not list order.
+
+1. **Tier 1, PayPal money path:** 33, 32, 31, 24, 28, 23, 30, 11, 12, 13, 14, 15, 38, 39, 40, 50, plus blueprint F3, F4, F5, F6, F7 (all on PayPal Payouts).
+2. **Tier 2, trustworthy AI:** 3, 6, 2, 5, 17, 16, 7, 49, 9, 10, 22, plus blueprint B2, B3, C1, C3, E4.
+3. **Tier 3, rest of the 50:** 4, 8, 18, 19, 20, 21, 25, 26, 27, 29, 34, 35, 36, 37, 41–48.
+4. **Roadmap only (not built for the hackathon):** see "Blueprint mapping" at the end.
+
+Done: 1.
 
 ## Where the code stands today
 
@@ -99,3 +110,46 @@ Status key: **Missing** = no code today. **Partial** = some behavior exists.
 | 48 | Privacy-preserving evidence | Missing. | `redactions` on evidence text (statement lines hidden, kept line visible). |
 | 49 | Challenge AI decisions | Missing. | `ai_feedback` table; correction with reason; suppress that suggestion for that subject. Policy untouched. |
 | 50 | Real metrics | Missing. | `/app/insights`: median approval time, employee money outstanding, unresolved claims, confirmed duplicates stopped. From real rows only. |
+
+## Blueprint mapping
+
+How the product blueprint maps onto this codebase. Rails stay **PayPal Payouts only** for the hackathon; the platform never holds funds (F8 holds today: money moves workspace PayPal → employee PayPal).
+
+| Blueprint item | Covered by | Status |
+| --- | --- | --- |
+| A3 email, A4 Slack capture | Zapier webhook, `claimFromText` | Partial (Slack via Zapier) |
+| A1, A2, A5, A6, A7 mobile, offline, WhatsApp, bulk, e-receipts | — | Roadmap |
+| B1 field extraction | `ai.ts` | Done |
+| B2 quoted evidence, B3 per-field safe-fail | #3 | Tier 2 |
+| B4 line items | #18, #19 | Tier 3 |
+| B5 stated FX | #20 | Tier 3 |
+| B6 Indic OCR, B7 GST | — | Roadmap |
+| B8 correction feedback loop | #49 | Tier 2 |
+| C1 duplicates incl. image hash | #16, #17 | Tier 2 |
+| C2 fraud signals | — | Roadmap |
+| C3 policy pre-checks | #26 + submission checks | Tier 2 |
+| D1, D2 policy defaults and rules | workspace caps, #26 | Partial |
+| D3 per-diem, mileage | — | Roadmap |
+| E1, L3 Slack approvals | — | Roadmap |
+| E2 maker-checker, multi-level | #24, #26 | Tier 1 / 3 |
+| E3 escalation, J2 nudges | #36, #37 | Tier 3 |
+| E4 adjust-and-approve | #22 | Tier 2 |
+| E5 delegation | #27 | Tier 3 |
+| F1, F2 RazorpayX / ACH / RTP | — | Roadmap (PayPal for now) |
+| F3 "where's my money" timeline | #31 | Tier 1 |
+| F4 idempotency, reconcile before resend | #32, #33 | Tier 1 |
+| F5 netting per person | one PayPal item per receiver per batch | Tier 1 |
+| F6 reversals and corrections | #15 | Tier 1 |
+| F7 payee verification | PayPal receiver verified after first successful payout or admin confirm | Tier 1 |
+| G1–G3 accounting sync, GL mapping | #10 categories, #47 export | Partial |
+| G4, G5 substantiation and audit packs | #40, #47 | Tier 1 / 3 |
+| H1 dashboards | #50 | Tier 1 |
+| H2, H3 anomalies, budgets | — | Roadmap |
+| I1 RBAC | owner/admin/member + release authority #28 | Partial |
+| I2 audit log | `audit_events` | Done (not tamper-evident) |
+| I3–I6 SSO, retention, SOC 2, multi-entity | — | Roadmap |
+| J1 employee status | #31, #38 | Tier 1 |
+| J3 finance digest | #39 | Tier 1 (in-app) |
+| K1, K2 mobile apps | — | Roadmap |
+| L1 API + webhooks | `/api/v1` | Partial |
+| L2 MCP, L4 HRIS | — | Roadmap |
