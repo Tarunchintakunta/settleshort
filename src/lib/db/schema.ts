@@ -157,6 +157,9 @@ export const batchItems = pgTable("batch_items", {
   receiverUserId: uuid("receiver_user_id").references(() => users.id),
   // PayPal sender_item_id shared by every item netted into one payout to the same receiver.
   payoutGroup: text("payout_group"),
+  // The receiver's own word: money arrived, or it didn't (opens an investigation).
+  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  notReceivedAt: timestamp("not_received_at", { withTimezone: true }),
   transactionId: text("transaction_id"),
   errorMessage: text("error_message"),
 });

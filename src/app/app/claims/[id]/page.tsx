@@ -10,6 +10,11 @@ import { LOW_CONFIDENCE, workspaceMembers } from "@/lib/claims";
 import { approvals, batches, batchItems, claimEvidence, claimPayments, claims, claimSplits, db, ledgerEntries } from "@/lib/db";
 import { obligationsFor } from "@/lib/ledger";
 import { SettlementCard } from "@/components/claims/settlement-card";
+import { MoneyTimeline } from "@/components/claims/money-timeline";
+import { ConfirmReceipt } from "@/components/claims/confirm-receipt";
+import { factsFor } from "@/lib/claim-facts";
+import { claimTimeline } from "@/lib/status";
+import { Pill } from "@/components/ui";
 import { payeesOf } from "@/lib/approvals";
 import { approvalBlocker } from "@/lib/policy";
 import { formatMoney } from "@/lib/money";
@@ -39,6 +44,11 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
     db.select().from(ledgerEntries).where(eq(ledgerEntries.claimId, id)).orderBy(ledgerEntries.createdAt),
     obligationsFor(claim),
   ]);
+  const { facts, truth } = (await factsFor([claim])).get(claim.id)!;
+  // The viewer's own completed payouts on this claim, so they can confirm receipt.
+  const myPaid = (
+    await db.select().from(batchItems).where(and(eq(batchItems.claimId, id), eq(batchItems.receiverUserId, ctx.user.id), eq(batchItems.status, "SUCCESS")))
+  ).filter((i) => !i.confirmedAt && !i.notReceivedAt);
   const activeApproval = approvalRows.find((a) => !a.invalidatedAt);
   const voided = !activeApproval ? approvalRows[0] : undefined;
   const blocker = approvalBlocker({ id: ctx.user.id, role: ctx.role! }, { submitterId: claim.submitterId, payeeIds: (await payeesOf(claim)).map((p) => p.userId) }, ctx.workspace.alternateApproverId);
@@ -57,7 +67,9 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
       <header className="mb-8 flex flex-wrap items-end justify-between gap-6">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusPill status={claim.status} />
+            <Pill tone={truth.tone} dot>
+              {truth.label}
+            </Pill>
             <span className="text-[13px] text-muted">
               <span className="font-mono">#{claim.number}</span> from {name(claim.submitterId)} via {SOURCE[claim.source]}
             </span>
@@ -197,6 +209,12 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
               </ul>
             </section>
           )}
+
+          <MoneyTimeline truth={truth} steps={claimTimeline(facts)}>
+            {myPaid.map((i) => (
+              <ConfirmReceipt key={i.id} itemId={i.id} amount={formatMoney(i.amountCents, i.currency)} />
+            ))}
+          </MoneyTimeline>
 
           <EvidencePanel
             claimId={claim.id}

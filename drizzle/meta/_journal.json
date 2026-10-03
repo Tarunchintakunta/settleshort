@@ -50,6 +50,13 @@
       "when": 1791017639034,
       "tag": "0006_payments_ledger",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791018106917,
+      "tag": "0007_receipt_confirmation",
+      "breakpoints": true
     }
   ]
 }

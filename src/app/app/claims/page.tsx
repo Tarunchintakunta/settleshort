@@ -3,6 +3,7 @@ import { PlusIcon, TrayIcon } from "@phosphor-icons/react/ssr";
 import { ClaimsGrid } from "@/components/claims/claims-grid";
 import { ButtonLink, Empty, PageHeader } from "@/components/ui";
 import { requirePageCtx } from "@/lib/auth";
+import { factsFor } from "@/lib/claim-facts";
 import { claims, db, users } from "@/lib/db";
 
 export const metadata = { title: "Claims" };
@@ -15,6 +16,7 @@ export default async function ClaimsPage() {
     .innerJoin(users, eq(users.id, claims.payerUserId))
     .where(eq(claims.workspaceId, ctx.workspace.id))
     .orderBy(desc(claims.number));
+  const facts = await factsFor(rows.map((r) => r.c));
 
   return (
     <>
@@ -43,6 +45,7 @@ export default async function ClaimsPage() {
             provider: (c.aiJson as { provider?: string } | null)?.provider,
             status: c.status,
             duplicate: !!c.duplicateOfId && c.status === "pending_review",
+            truth: { label: facts.get(c.id)!.truth.label, tone: facts.get(c.id)!.truth.tone },
           }))}
         />
       ) : (

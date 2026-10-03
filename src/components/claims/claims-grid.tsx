@@ -5,7 +5,7 @@ import { AllCommunityModule, ModuleRegistry, themeQuartz, type ColDef, type Grid
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { GitMergeIcon, MagnifyingGlassIcon, StackIcon } from "@phosphor-icons/react";
-import { Alert, Button, Confidence, cx, inputCls, Pill, PROVIDER_LABEL, StatusPill, tabBtn } from "@/components/ui";
+import { Alert, Button, Confidence, cx, inputCls, Pill, PROVIDER_LABEL, tabBtn } from "@/components/ui";
 import { api } from "@/lib/client";
 import { formatMoney } from "@/lib/money";
 
@@ -24,6 +24,8 @@ export type GridClaim = {
   provider?: string;
   status: string;
   duplicate: boolean;
+  /** Truthful status label (see lib/status.ts). */
+  truth: { label: string; tone: "neutral" | "accent" | "success" | "warning" | "danger" };
 };
 
 // Grid colors come from the app's CSS tokens, so light and dark mode both follow.
@@ -54,11 +56,11 @@ const theme = themeQuartz.withParams({
 const LOCKED_REASON: Record<string, string> = {
   in_batch: "Already in a settlement batch",
   paid: "Already paid",
-  failed: "Payout failed. Reopen it from the claim page",
+
   rejected: "Rejected claims can't be batched",
   draft: "Finish the draft before batching",
 };
-const selectable = (status?: string) => status === "pending_review" || status === "matched";
+const selectable = (status?: string) => ["pending_review", "matched", "partially_paid", "failed"].includes(status ?? "");
 
 const FILTERS = [
   { key: "", label: "All" },
@@ -114,13 +116,22 @@ export function ClaimsGrid({ rows, isAdmin }: { rows: GridClaim[]; isAdmin: bool
         tooltipValueGetter: (p) => (p.data?.aiConfidence == null ? undefined : `Extracted by ${PROVIDER_LABEL[p.data.provider ?? ""] ?? "AI"}`),
         cellRenderer: (p: CustomCellRendererProps<GridClaim>) => <Confidence value={p.value} />,
       },
-      { field: "status", width: 136, cellRenderer: (p: CustomCellRendererProps<GridClaim>) => <StatusPill status={p.value} /> },
+      {
+        field: "status",
+        width: 150,
+        cellRenderer: (p: CustomCellRendererProps<GridClaim>) =>
+          p.data ? (
+            <Pill tone={p.data.truth.tone} dot>
+              {p.data.truth.label}
+            </Pill>
+          ) : null,
+      },
     ],
     [],
   );
 
   const shown = useMemo(() => (status ? rows.filter((r) => r.status === status) : rows), [rows, status]);
-  const ready = selected.filter((s) => s.status === "matched");
+  const ready = selected.filter((s) => ["matched", "partially_paid", "failed"].includes(s.status));
 
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
