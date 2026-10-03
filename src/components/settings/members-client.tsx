@@ -6,7 +6,7 @@ import { UserPlusIcon } from "@phosphor-icons/react";
 import { Button, Field, inputCls } from "@/components/ui";
 import { api } from "@/lib/client";
 
-type Member = { id: string; name: string; email: string; role: string; paypalEmail: string | null; membershipId: string; canRelease: boolean; paypalVerifiedAt: Date | string | null; approvalLimitCents: number | null };
+type Member = { id: string; name: string; email: string; role: string; paypalEmail: string | null; membershipId: string; canRelease: boolean; paypalVerifiedAt: Date | string | null; approvalLimitCents: number | null; escalatesToUserId: string | null };
 
 export function InviteForm() {
   const router = useRouter();
@@ -254,5 +254,32 @@ export function DelegationPanel({ me, members, rows, canDelegate }: { me: string
         </form>
       )}
     </section>
+  );
+}
+
+/** Who an overdue approval escalates to after this person. */
+export function EscalatesTo({ m, members, canEdit }: { m: Member; members: { id: string; name: string }[]; canEdit: boolean }) {
+  const router = useRouter();
+  if (m.role === "member") return null;
+  return (
+    <select
+      aria-label={`Escalation after ${m.name}`}
+      disabled={!canEdit}
+      value={m.escalatesToUserId ?? ""}
+      onChange={async (e) => {
+        await api(`/members/${m.membershipId}`, { method: "PATCH", json: { escalatesToUserId: e.target.value || null } });
+        router.refresh();
+      }}
+      className={`${inputCls} mt-1 h-8 w-auto text-xs`}
+    >
+      <option value="">Escalates to: owner</option>
+      {members
+        .filter((x) => x.id !== m.id)
+        .map((x) => (
+          <option key={x.id} value={x.id}>
+            Escalates to: {x.name}
+          </option>
+        ))}
+    </select>
   );
 }

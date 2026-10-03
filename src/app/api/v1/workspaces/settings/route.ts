@@ -14,6 +14,7 @@ export const PATCH = route(
         maxBatchCents: z.number().int().positive().max(100_000_000).optional(),
         alternateApproverId: z.string().uuid().nullable().optional(),
         receiptRequiredCents: z.number().int().nonnegative().max(10_000_000).optional(),
+        escalationDays: z.number().int().min(1).max(30).optional(),
         secondApprovalAboveCents: z.number().int().positive().max(100_000_000).nullable().optional(),
       }),
     );

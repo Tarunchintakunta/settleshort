@@ -4,6 +4,7 @@ import { ArrowRightIcon, CheckCircleIcon } from "@phosphor-icons/react/ssr";
 import { Empty, PageHeader, Pill } from "@/components/ui";
 import { requirePageCtx } from "@/lib/auth";
 import { workspaceExceptions, type Exception } from "@/lib/exceptions";
+import { runEscalations } from "@/lib/escalations";
 
 export const metadata = { title: "Exceptions" };
 
@@ -18,6 +19,8 @@ const KIND: Record<Exception["kind"], { label: string; tone: "warning" | "danger
 export default async function Exceptions() {
   const ctx = await requirePageCtx();
   if (!ctx.isAdmin) redirect("/app/me");
+  // Opening the inbox also moves overdue approvals up the chain (idempotent; the daily cron does the same).
+  await runEscalations(ctx.workspace);
   const items = await workspaceExceptions(ctx.workspace);
   return (
     <>

@@ -32,6 +32,8 @@ export const workspaces = pgTable("workspaces", {
   isDemo: integer("is_demo").notNull().default(0),
   // Policy: claims at or above this need a receipt/invoice, or an honest missing-receipt declaration.
   receiptRequiredCents: integer("receipt_required_cents").notNull().default(2500),
+  // Overdue approvals move up the chain after this many days.
+  escalationDays: integer("escalation_days").notNull().default(2),
   // Above this, two different people must approve. Null = one approval is enough.
   secondApprovalAboveCents: integer("second_approval_above_cents"),
   // Approves claims submitted by, or paid to, admins (maker-checker for founders).
@@ -49,6 +51,8 @@ export const memberships = pgTable(
     paypalReceiverEmail: text("paypal_receiver_email"),
     // Release authority: may send approved money to PayPal. Separate from approving claims.
     canRelease: boolean("can_release").notNull().default(false),
+    // Who an overdue approval escalates to after this person (their manager). Null = the owner.
+    escalatesToUserId: uuid("escalates_to_user_id"),
     // Largest claim this person may approve alone. Null = no limit.
     approvalLimitCents: integer("approval_limit_cents"),
     // Set when an admin confirms the PayPal address belongs to this person, or after a successful payout.
@@ -91,6 +95,9 @@ export const claims = pgTable(
     fxRate: real("fx_rate"),
     fxSource: text("fx_source"),
     fxAt: timestamp("fx_at", { withTimezone: true }),
+    // Escalation: who the overdue approval is currently with, and since when.
+    escalatedToUserId: uuid("escalated_to_user_id"),
+    escalatedAt: timestamp("escalated_at", { withTimezone: true }),
     // The approved context the purpose was taken from, if any (see contexts).
     contextId: uuid("context_id"),
     // Adjust-and-approve: the approver approved this much less, for the stated reason (shown to the claimant).

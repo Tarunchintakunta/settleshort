@@ -8,7 +8,7 @@ export const PATCH = route<{ id: string }>(
   async (req, ctx, { id }) => {
     const input = await body(
       req,
-      z.object({ role: z.enum(["admin", "member"]).optional(), paypalReceiverEmail: z.string().trim().email().optional(), canRelease: z.boolean().optional(), verifyPaypal: z.literal(true).optional(), approvalLimitCents: z.number().int().positive().max(100_000_000).nullable().optional() }),
+      z.object({ role: z.enum(["admin", "member"]).optional(), paypalReceiverEmail: z.string().trim().email().optional(), canRelease: z.boolean().optional(), verifyPaypal: z.literal(true).optional(), approvalLimitCents: z.number().int().positive().max(100_000_000).nullable().optional(), escalatesToUserId: z.string().uuid().nullable().optional() }),
     );
     const [m] = await db.select().from(memberships).where(and(eq(memberships.id, id), eq(memberships.workspaceId, ctx.workspace.id)));
     if (!m) fail(404, "not_found", "Member not found");

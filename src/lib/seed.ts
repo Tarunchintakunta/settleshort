@@ -51,6 +51,8 @@ export async function createDemoWorkspace() {
     { key: "c6", vendor: "Chipotle", amountCents: 6400, txnDate: "2026-09-29", source: "slack", payerUserId: u.sam, status: "matched", aiConfidence: 0.84, rawText: "Chipotle $64 split me @sam @dev", purpose: "Lunch while shipping the launch" },
     { key: "c7", vendor: "Ace Hardware", amountCents: 2399, txnDate: null, source: "upload", payerUserId: u.dev, status: "pending_review", aiConfidence: 0.42, note: "Blurry photo, confirm amount" },
     { key: "c8", vendor: "Chipotle Mexican Grill", amountCents: 6400, txnDate: "2026-09-29", source: "slack", payerUserId: u.dev, status: "pending_review", aiConfidence: 0.8, rawText: "paid 64 bucks at chipotle for me @sam" },
+    { key: "c10", vendor: "Notion", amountCents: 2000, txnDate: "2026-09-28", source: "slack", payerUserId: u.rita, status: "pending_review", aiConfidence: 0.86, rawText: "Notion AI $20 on 2026-09-28 for offsite notes", purpose: "Shared notes for the September offsite", category: "Software" },
+    { key: "c11", vendor: "Figma", amountCents: 1500, txnDate: "2026-09-27", source: "manual", payerUserId: u.maya, status: "pending_review", aiConfidence: 0.9, rawText: "Figma seat $15 on 2026-09-27", purpose: "Design seat for the launch", category: "Software" },
     { key: "c9", vendor: "Netflix", amountCents: 1549, txnDate: "2026-09-15", source: "manual", payerUserId: u.jules, status: "rejected", note: "Personal subscription" },
   ];
 
@@ -65,6 +67,8 @@ export async function createDemoWorkspace() {
         number: i + 1,
         workspaceId: ws.id,
         submitterId: v.payerUserId!,
+        // Created the evening after the expense, so ages, overdue approvals and submit-to-paid times are real.
+        createdAt: v.txnDate ? new Date(`${v.txnDate}T18:00:00Z`) : new Date(Date.now() - 3 * 86_400_000),
         currency: "USD",
         aiJson: v.aiConfidence ? { vendor: v.vendor, amount_cents: v.amountCents, currency: "USD", txn_date: v.txnDate, confidence: v.aiConfidence, provider: "simulator", seeded: true } : null,
       })

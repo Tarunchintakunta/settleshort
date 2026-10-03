@@ -1,11 +1,12 @@
 import { and, desc, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
 import Link from "next/link";
 import { ArrowRightIcon, CheckCircleIcon, PlusIcon, ShieldCheckIcon } from "@phosphor-icons/react/ssr";
-import { ButtonLink, Confidence, Money, PageHeader, Pill } from "@/components/ui";
+import { ButtonLink, Money, PageHeader } from "@/components/ui";
 import { describe, recentActivity, timeAgo } from "@/lib/activity";
 import { requirePageCtx } from "@/lib/auth";
 import { batches, batchItems, claims, db } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
+import { waitingOn } from "@/lib/escalations";
 
 export const metadata = { title: "Overview" };
 
@@ -28,6 +29,7 @@ export default async function Dashboard() {
       .limit(3),
     recentActivity(ws.id, 7),
   ]);
+  const mine = await waitingOn(ws, user.id, isAdmin);
 
   // ponytail: metrics sum all currencies as USD; group by currency once INR workspaces are real.
   const metrics = [
@@ -94,40 +96,31 @@ export default async function Dashboard() {
       <div className="mt-10 grid min-w-0 gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
         <section className="min-w-0">
           <div className="mb-3 flex items-baseline justify-between">
-            <h2 className="text-[15px] font-semibold tracking-[-0.015em]">Needs review</h2>
+            <h2 className="text-[15px] font-semibold tracking-[-0.015em]">Waiting on you</h2>
             <Link href="/app/claims" className="text-[13px] text-muted hover:text-ink">
               All claims
             </Link>
           </div>
-          {review.length ? (
+          {mine.length ? (
             <ul className="divide-y divide-line overflow-hidden rounded-[12px] border border-line">
-              {review.map((c) => {
-                const duplicate = !!c.duplicateOfId;
-                const low = (c.aiConfidence ?? 1) < 0.55;
-                const reason = duplicate ? "Possible duplicate" : low ? "Low extraction confidence" : "Waiting for a reviewer";
-                return (
-                  <li key={c.id}>
-                    <Link href={`/app/claims/${c.id}`} className="flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-sunken">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">
-                          <span className="tnum text-muted">#{c.number}</span> {c.vendor?.trim() || "Unknown vendor"}
-                        </p>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                          <Pill tone={duplicate || low ? "warning" : "neutral"} dot>
-                            {reason}
-                          </Pill>
-                          <Confidence value={c.aiConfidence} />
-                        </div>
-                      </div>
-                      <Money cents={c.amountCents} currency={c.currency} className="shrink-0 self-start pt-0.5 text-right text-[15px] font-semibold" />
-                    </Link>
-                  </li>
-                );
-              })}
+              {mine.slice(0, 6).map(({ claim: c, blocker }) => (
+                <li key={c.id}>
+                  <Link href={`/app/claims/${c.id}`} className="flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-sunken">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        <span className="tnum text-muted">#{c.number}</span> {c.vendor?.trim() || "Unknown vendor"}
+                      </p>
+                      <p className="mt-0.5 text-[13px] text-ink-2">{blocker.why}</p>
+                      <p className="text-[13px] font-medium text-accent">{blocker.action}</p>
+                    </div>
+                    <Money cents={c.amountCents} currency={c.currency} className="shrink-0 self-start pt-0.5 text-right text-[15px] font-semibold" />
+                  </Link>
+                </li>
+              ))}
             </ul>
           ) : (
             <p className="flex items-center gap-2 rounded-[12px] border border-line bg-panel px-4 py-6 text-sm text-muted">
-              <CheckCircleIcon className="size-5 text-success" weight="fill" aria-hidden /> Every claim has been reviewed.
+              <CheckCircleIcon className="size-5 text-success" weight="fill" aria-hidden /> Nothing is waiting on you.
             </p>
           )}
         </section>

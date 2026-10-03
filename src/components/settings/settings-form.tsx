@@ -5,11 +5,11 @@ import { useState } from "react";
 import { Button, Field, inputCls } from "@/components/ui";
 import { api } from "@/lib/client";
 
-type Ws = { name: string; maxSingleCents: number; maxBatchCents: number; alternateApproverId: string | null; receiptRequiredCents: number; secondApprovalAboveCents: number | null };
+type Ws = { name: string; maxSingleCents: number; maxBatchCents: number; alternateApproverId: string | null; receiptRequiredCents: number; secondApprovalAboveCents: number | null; escalationDays: number };
 
 export function SettingsForm({ ws, isAdmin, members }: { ws: Ws; isAdmin: boolean; members: { id: string; name: string }[] }) {
   const router = useRouter();
-  const [f, setF] = useState({ name: ws.name, single: String(ws.maxSingleCents / 100), batch: String(ws.maxBatchCents / 100), alt: ws.alternateApproverId ?? "", receipt: String(ws.receiptRequiredCents / 100), second: ws.secondApprovalAboveCents != null ? String(ws.secondApprovalAboveCents / 100) : "" });
+  const [f, setF] = useState({ name: ws.name, single: String(ws.maxSingleCents / 100), batch: String(ws.maxBatchCents / 100), alt: ws.alternateApproverId ?? "", receipt: String(ws.receiptRequiredCents / 100), esc: String(ws.escalationDays), second: ws.secondApprovalAboveCents != null ? String(ws.secondApprovalAboveCents / 100) : "" });
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   return (
     <form
@@ -20,7 +20,7 @@ export function SettingsForm({ ws, isAdmin, members }: { ws: Ws; isAdmin: boolea
         try {
           await api("/workspaces/settings", {
             method: "PATCH",
-            json: { name: f.name, maxSingleCents: Math.round(Number(f.single) * 100), maxBatchCents: Math.round(Number(f.batch) * 100), alternateApproverId: f.alt || null, receiptRequiredCents: Math.round(Number(f.receipt) * 100), secondApprovalAboveCents: f.second ? Math.round(Number(f.second) * 100) : null },
+            json: { name: f.name, maxSingleCents: Math.round(Number(f.single) * 100), maxBatchCents: Math.round(Number(f.batch) * 100), alternateApproverId: f.alt || null, receiptRequiredCents: Math.round(Number(f.receipt) * 100), secondApprovalAboveCents: f.second ? Math.round(Number(f.second) * 100) : null, escalationDays: Number(f.esc) },
           });
           setMsg({ ok: true, text: "Saved" });
           router.refresh();
@@ -46,6 +46,9 @@ export function SettingsForm({ ws, isAdmin, members }: { ws: Ws; isAdmin: boolea
         </Field>
         <Field label="Two approvers above" hint="Claims above this need sign-off from two different people. Leave empty for one.">
           <input inputMode="decimal" value={f.second} onChange={(e) => setF({ ...f, second: e.target.value })} placeholder="No second approval" className={`${inputCls} money`} />
+        </Field>
+        <Field label="Escalate overdue approvals after (days)" hint="Then the claim moves to the approver's manager (set on Members), or the owner.">
+          <input inputMode="numeric" value={f.esc} onChange={(e) => setF({ ...f, esc: e.target.value })} className={inputCls} />
         </Field>
         <Field label="Alternate approver" hint="Approves claims that admins submit or are reimbursed for. Nobody can approve their own claim.">
           <select value={f.alt} onChange={(e) => setF({ ...f, alt: e.target.value })} className={inputCls}>

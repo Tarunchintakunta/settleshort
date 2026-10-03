@@ -12,6 +12,8 @@ import { linesFor, obligationsFor } from "@/lib/ledger";
 import { LinesCard } from "@/components/claims/lines-card";
 import { CurrencyCard } from "@/components/claims/currency-card";
 import { FixRequests } from "@/components/claims/fix-requests";
+import { RemindButton } from "@/components/claims/remind-button";
+import { blockerFor } from "@/lib/reminders";
 import { SettlementCard } from "@/components/claims/settlement-card";
 import { MoneyTimeline } from "@/components/claims/money-timeline";
 import { ConfirmReceipt } from "@/components/claims/confirm-receipt";
@@ -80,6 +82,12 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
   });
 
   const approvableNow = claim.status === "pending_review" && !blocker;
+  const waiting = blockerFor(truth, {
+    missing: missingQuestions(claim, { kinds: evidence_.map((e) => e.kind), receiptRequiredCents: ctx.workspace.receiptRequiredCents }).map((q) => q.question),
+    contradictions: conflicts.map((c) => c.message),
+    duplicate: !!claim.duplicateOfId,
+    batchName: batchRow?.batch.name,
+  });
   const payerHistory = approvableNow
     ? await db.select().from(claims).where(and(eq(claims.workspaceId, ctx.workspace.id), eq(claims.payerUserId, claim.payerUserId), ne(claims.id, claim.id)))
     : [];
@@ -306,6 +314,20 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
           />
 
           <MoneyTimeline truth={truth} steps={claimTimeline(facts)}>
+            {waiting && (
+              <div className="mt-4 border-t border-line pt-4 text-[13px]">
+                <p>
+                  <span className="text-muted">Waiting on the {waiting.waitingOn}:</span> {waiting.why}
+                </p>
+                <p className="font-medium text-accent">{waiting.action}</p>
+                {claim.escalatedToUserId && (
+                  <p className="mt-1 text-xs text-warning">
+                    Escalated to {name(claim.escalatedToUserId)} on {claim.escalatedAt?.toLocaleDateString("en-US", { dateStyle: "medium" })}
+                  </p>
+                )}
+                <RemindButton claimId={claim.id} />
+              </div>
+            )}
             {myPaid.map((i) => (
               <ConfirmReceipt key={i.id} itemId={i.id} amount={formatMoney(i.amountCents, i.currency)} />
             ))}

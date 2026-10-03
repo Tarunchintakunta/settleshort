@@ -1,5 +1,5 @@
 import { PageHeader, Pill } from "@/components/ui";
-import { DelegationPanel, InviteForm, LimitCell, PaypalEmailCell, ReleaseToggle, VerifyPaypal } from "@/components/settings/members-client";
+import { DelegationPanel, EscalatesTo, InviteForm, LimitCell, PaypalEmailCell, ReleaseToggle, VerifyPaypal } from "@/components/settings/members-client";
 import { requirePageCtx } from "@/lib/auth";
 import { workspaceMembers } from "@/lib/claims";
 import { db, delegations } from "@/lib/db";
@@ -61,6 +61,7 @@ export default async function MembersPage({ searchParams }: PageProps<"/app/memb
                 </td>
                 <td className="px-5 py-3.5">
                   <LimitCell m={m} canEdit={ctx.isAdmin && m.id !== ctx.user.id} />
+                  <EscalatesTo m={m} members={members} canEdit={ctx.isAdmin} />
                 </td>
                 <td className="px-5 py-3.5">
                   <ReleaseToggle m={m} canEdit={canGrant} />
