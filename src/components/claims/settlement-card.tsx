@@ -28,13 +28,17 @@ type Props = {
   entries: Entry[];
   members: { id: string; name: string }[];
   participants: string[];
+  participantIds: string[];
+  budgetOwnerId: string | null;
+  canEditPeople: boolean;
   approvedBy: string | null;
   canEditFunding: boolean;
   canRecord: boolean;
 };
 
 /** The obligation breakdown: who paid, who benefits, who approved, who is owed what. */
-export function SettlementCard({ claimId, currency, totalCents, o, payments, entries, members, participants, approvedBy, canEditFunding, canRecord }: Props) {
+export function SettlementCard({ claimId, currency, totalCents, o, payments, entries, members, participants, participantIds, budgetOwnerId, canEditPeople, approvedBy, canEditFunding, canRecord }: Props) {
+  const [people, setPeople] = useState<{ ids: string[]; budget: string } | null>(null);
   const router = useRouter();
   const name = (id: string | null) => (id ? members.find((m) => m.id === id)?.name ?? "Unknown" : "Company");
   const [editing, setEditing] = useState(false);
@@ -77,8 +81,58 @@ export function SettlementCard({ claimId, currency, totalCents, o, payments, ent
           </dd>
         </div>
         <div className="bg-panel px-4 py-3">
-          <dt className="text-xs text-muted">Benefits</dt>
-          <dd className="mt-1">{participants.length ? participants.join(", ") : <span className="text-muted">Not recorded</span>}</dd>
+          <dt className="flex justify-between text-xs text-muted">
+            Attended or benefited
+            {canEditPeople && !people && (
+              <button type="button" className="font-medium text-accent hover:underline" onClick={() => setPeople({ ids: participantIds, budget: budgetOwnerId ?? "" })}>
+                Edit
+              </button>
+            )}
+          </dt>
+          {!people ? (
+            <>
+              <dd className="mt-1">{participants.length ? participants.join(", ") : <span className="text-muted">Not recorded</span>}</dd>
+              <dt className="mt-3 text-xs text-muted">Whose budget</dt>
+              <dd className="mt-1">{budgetOwnerId ? name(budgetOwnerId) : <span className="text-muted">Not set</span>}</dd>
+            </>
+          ) : (
+            <dd className="mt-1 space-y-2">
+              <div className="flex flex-wrap gap-x-3 gap-y-1">
+                {members.map((m) => (
+                  <label key={m.id} className="flex items-center gap-1.5 text-xs">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-[var(--accent)]"
+                      checked={people.ids.includes(m.id)}
+                      onChange={(e) => setPeople({ ...people, ids: e.target.checked ? [...people.ids, m.id] : people.ids.filter((x) => x !== m.id) })}
+                    />
+                    {m.name}
+                  </label>
+                ))}
+              </div>
+              <select aria-label="Whose budget" value={people.budget} onChange={(e) => setPeople({ ...people, budget: e.target.value })} className={`${inputCls} h-9`}>
+                <option value="">Budget owner: not set</option>
+                {members.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    Budget: {m.name}
+                  </option>
+                ))}
+              </select>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => run(() => api(`/claims/${claimId}/participants`, { method: "PUT", json: { participantIds: people.ids, budgetOwnerUserId: people.budget || null } }), () => setPeople(null))}
+                >
+                  Save
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setPeople(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </dd>
+          )}
           <dt className="mt-3 text-xs text-muted">Approved by</dt>
           <dd className="mt-1">{approvedBy ?? <span className="text-muted">Not approved yet</span>}</dd>
         </div>

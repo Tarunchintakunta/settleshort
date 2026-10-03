@@ -76,6 +76,8 @@ export const claims = pgTable(
     // Business purpose: why the company should pay. Required before approval; never invented by AI.
     purpose: text("purpose").notNull().default(""),
     category: text("category"),
+    // Whose budget covers it (a team lead or cost owner), separate from who paid and who attended.
+    budgetOwnerUserId: uuid("budget_owner_user_id").references(() => users.id),
     // Adjust-and-approve: the approver approved this much less, for the stated reason (shown to the claimant).
     adjustmentCents: integer("adjustment_cents").notNull().default(0),
     adjustmentReason: text("adjustment_reason"),

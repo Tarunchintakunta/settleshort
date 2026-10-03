@@ -258,6 +258,9 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
               entries={ledger.map((e) => ({ id: e.id, kind: e.kind, userId: e.userId, amountCents: e.amountCents, reference: e.reference, createdAt: e.createdAt.toISOString() }))}
               members={members}
               participants={splits.map((x) => name(x.userId))}
+              participantIds={splits.map((x) => x.userId)}
+              budgetOwnerId={claim.budgetOwnerUserId}
+              canEditPeople={(ctx.isAdmin || claim.submitterId === ctx.user.id) && !["paid", "rejected"].includes(claim.status)}
               approvedBy={activeApproval ? name(activeApproval.approverId) : null}
               canEditFunding={(ctx.isAdmin || claim.submitterId === ctx.user.id) && ["draft", "pending_review", "matched"].includes(claim.status)}
               canRecord={ctx.isAdmin && ["matched", "partially_paid", "paid", "failed"].includes(claim.status)}
