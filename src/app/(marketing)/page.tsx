@@ -98,7 +98,7 @@ export default function Home() {
   return (
     <>
       {/* Hero */}
-      <section className={`${wrap} pt-16 sm:pt-24`}>
+      <section className={`${wrap} pt-14 sm:pt-20`}>
         <div className="max-w-[880px]">
           <h1 className="rise text-[42px] font-semibold leading-[1.02] tracking-[-0.035em] text-ink sm:text-[60px] lg:text-[68px]">
             Receipt in. Settled out. <span className="text-accent sm:block">One approve.</span>
@@ -116,7 +116,7 @@ export default function Home() {
             </a>
           </div>
         </div>
-        <div className="rise mt-14 sm:mt-16" style={{ animationDelay: "180ms" }}>
+        <div className="rise mt-10 sm:mt-12" style={{ animationDelay: "180ms" }}>
           <Shot
             src="/marketing/extraction.png"
             alt="SettleShort reading a $186.50 Nopa receipt: each extracted field (vendor, total, date, tax, tip, card) sits beside the receipt with the quoted text it came from, and a warning says it is likely a duplicate of claim #3."
@@ -127,7 +127,7 @@ export default function Home() {
       </section>
 
       {/* Problem */}
-      <section className={`${wrap} py-28 sm:py-36`} aria-labelledby="problem">
+      <section className={`${wrap} py-20 sm:py-28`} aria-labelledby="problem">
         <h2 id="problem" className="sr-only">
           Why paying people back is slow
         </h2>
