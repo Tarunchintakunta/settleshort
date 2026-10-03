@@ -46,6 +46,8 @@ const VERBS: Record<string, string> = {
   "batch.failed": "batch failed",
   "member.invited": "invited a member",
   "member.updated": "updated a member",
+  "member.paypal_verified": "verified a member's PayPal address",
+  "batch.receiver_updated": "updated a receiver to their verified PayPal address",
 };
 
 export function describe(action: string) {

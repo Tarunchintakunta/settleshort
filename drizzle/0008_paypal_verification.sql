@@ -1,0 +1,2 @@
+ALTER TABLE "memberships" ADD COLUMN "paypal_verified_at" timestamp with time zone;--> statement-breakpoint
+UPDATE "memberships" m SET "paypal_verified_at" = now() WHERE EXISTS (SELECT 1 FROM "batch_items" bi JOIN "batches" b ON b."id" = bi."batch_id" WHERE b."workspace_id" = m."workspace_id" AND bi."receiver_email" = m."paypal_receiver_email" AND bi."status" = 'SUCCESS') OR EXISTS (SELECT 1 FROM "workspaces" w WHERE w."id" = m."workspace_id" AND w."is_demo" = 1);

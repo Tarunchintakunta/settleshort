@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { fail } from "./api";
 import { releaseProblems } from "./approvals";
 import { audit } from "./audit";
@@ -81,6 +81,29 @@ export async function createBatch(workspaceId: string, actorId: string, claimIds
   return batch;
 }
 
+const receivers = async (workspaceId: string, items: (typeof batchItems.$inferSelect)[]) => {
+  const userIds = [...new Set(items.flatMap((i) => (i.receiverUserId ? [i.receiverUserId] : [])))];
+  return userIds.length ? db.select().from(memberships).where(and(eq(memberships.workspaceId, workspaceId), inArray(memberships.userId, userIds))) : [];
+};
+
+/** Receivers whose current PayPal address isn't verified. */
+export async function unverifiedReceivers(workspaceId: string, items: (typeof batchItems.$inferSelect)[]) {
+  const ms = await receivers(workspaceId, items);
+  return [...new Set(items.filter((i) => !ms.find((m) => m.userId === i.receiverUserId)?.paypalVerifiedAt).map((i) => i.receiverName))];
+}
+
+/** Pays each person at their current verified PayPal address, even if it changed after batching. */
+async function syncReceiverEmails(workspaceId: string, actorId: string, batchId: string, items: (typeof batchItems.$inferSelect)[]) {
+  const ms = await receivers(workspaceId, items);
+  for (const i of items) {
+    const m = ms.find((x) => x.userId === i.receiverUserId);
+    if (!m?.paypalVerifiedAt || !m.paypalReceiverEmail || m.paypalReceiverEmail === i.receiverEmail) continue;
+    await db.update(batchItems).set({ receiverEmail: m.paypalReceiverEmail }).where(eq(batchItems.id, i.id));
+    await audit(workspaceId, actorId, "batch.receiver_updated", "batch", batchId, { receiver: i.receiverName, from: i.receiverEmail, to: m.paypalReceiverEmail });
+    i.receiverEmail = m.paypalReceiverEmail;
+  }
+}
+
 /** PayPal items after netting: one per payout group. */
 export function payoutGroups(items: (typeof batchItems.$inferSelect)[]) {
   const by = new Map<string, (typeof batchItems.$inferSelect)[]>();
@@ -104,6 +127,11 @@ export async function approveBatch(workspaceId: string, actorId: string, batchId
   // Final change check: anything that changed since each claim was approved blocks the release.
   const problems = await releaseProblems(workspaceId, items.map((i) => i.claimId));
   if (problems.length) fail(409, "changed_since_approval", `Re-approve before paying: ${problems.map((p) => `#${p.number} ${p.problems.join("; ")}`).join(" · ")}`);
+
+  // Payee verification: never send money to a PayPal address nobody has confirmed.
+  const unverified = await unverifiedReceivers(workspaceId, items);
+  if (!unverified.length) await syncReceiverEmails(workspaceId, actorId, batchId, items);
+  if (unverified.length) fail(409, "unverified_receiver", `Verify the PayPal address of ${unverified.join(", ")} on the Members page first`);
 
   const overSingle = payoutGroups(items).filter((g) => g.amountCents > ws.maxSingleCents);
   if (overSingle.length) fail(400, "cap_single", `Item over single-payout cap of ${formatMoney(ws.maxSingleCents, batch.currency)}`);
@@ -197,6 +225,11 @@ export async function applyItemStatuses(batchId: string, statuses: PayoutItemSta
       item.status = s.status;
       const kind = PAID.has(s.status) ? "payout" : wasPaid && FAILED.has(s.status) ? "payout_reversal" : null;
       const userId = item.receiverUserId ?? (await db.select({ u: claims.payerUserId }).from(claims).where(eq(claims.id, item.claimId)))[0].u;
+      if (kind === "payout")
+        await db
+          .update(memberships)
+          .set({ paypalVerifiedAt: new Date() })
+          .where(and(eq(memberships.workspaceId, batch.workspaceId), eq(memberships.userId, userId), eq(memberships.paypalReceiverEmail, item.receiverEmail), isNull(memberships.paypalVerifiedAt)));
       if (kind) await recordLedger(batch.workspaceId, actorId, [{ claimId: item.claimId, userId, kind, amountCents: item.amountCents, currency: item.currency, reference: s.transactionId ?? s.payoutItemId, batchItemId: item.id }]);
       else if (FAILED.has(s.status)) await db.update(claims).set({ status: "failed", updatedAt: new Date() }).where(eq(claims.id, item.claimId));
       await audit(batch.workspaceId, actorId, `payout.item.${s.status.toLowerCase()}`, "batch_item", item.id, {

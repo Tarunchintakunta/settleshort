@@ -8,6 +8,7 @@ import { requirePageCtx } from "@/lib/auth";
 import { LOW_CONFIDENCE } from "@/lib/claims";
 import { auditEvents, batches, batchItems, claims, db, memberships } from "@/lib/db";
 import { releaseProblems } from "@/lib/approvals";
+import { unverifiedReceivers } from "@/lib/batches";
 import { formatMoney } from "@/lib/money";
 import { paypalMode } from "@/lib/paypal";
 
@@ -26,9 +27,10 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
 
   const ws = ctx.workspace;
   const pending = batch.status === "awaiting_approval";
-  const [changes, [me]] = await Promise.all([
+  const [changes, [me], unverified] = await Promise.all([
     pending ? releaseProblems(ws.id, items.map((i) => i.claim.id)) : Promise.resolve([]),
     db.select().from(memberships).where(and(eq(memberships.workspaceId, ws.id), eq(memberships.userId, ctx.user.id))),
+    pending ? unverifiedReceivers(ws.id, items.map((i) => i.item)) : Promise.resolve([] as string[]),
   ]);
   const warnings: string[] = [];
   const low = items.filter((i) => i.claim.aiConfidence != null && i.claim.aiConfidence < LOW_CONFIDENCE);
@@ -38,6 +40,8 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
   if (batch.totalCents > ws.maxBatchCents) warnings.push(`Batch total exceeds the cap of ${formatMoney(ws.maxBatchCents, batch.currency)}`);
   const blocked = changes.length
     ? "Some claims changed since they were approved. Re-approve them first."
+    : unverified.length
+      ? `Verify the PayPal address of ${unverified.join(", ")} on the Members page first.`
     : !me?.canRelease
       ? "You can approve claims but not release money. Someone with release authority must."
       : overSingle.length || batch.totalCents > ws.maxBatchCents
@@ -86,7 +90,7 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
       {pending && (
         <section
           aria-labelledby="final-check-h"
-          className={cx("mb-6 rounded-[12px] border p-4 shadow-soft", changes.length ? "border-danger/25 bg-danger-soft" : "border-success/25 bg-success-soft")}
+          className={cx("mb-6 rounded-[12px] border p-4 shadow-soft", changes.length || unverified.length ? "border-danger/25 bg-danger-soft" : "border-success/25 bg-success-soft")}
         >
           <h2 id="final-check-h" className={cx("text-sm font-semibold", changes.length ? "text-danger" : "text-success")}>
             Final change check: {changes.length ? `${changes.length} claim${changes.length === 1 ? "" : "s"} changed since approval` : "nothing changed since approval"}
@@ -102,6 +106,14 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
                 </li>
               ))}
             </ul>
+          )}
+          {unverified.length > 0 && (
+            <p className="mt-1 text-sm text-danger">
+              Unverified PayPal receiver{unverified.length === 1 ? "" : "s"}: {unverified.join(", ")}.{" "}
+              <Link href="/app/members" className="font-medium underline">
+                Verify on Members
+              </Link>
+            </p>
           )}
           {!me?.canRelease && <p className="mt-1 text-xs text-ink-2">You don&apos;t have release authority, so the payout button is locked for you.</p>}
         </section>

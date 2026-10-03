@@ -1,5 +1,5 @@
 import { PageHeader, Pill } from "@/components/ui";
-import { InviteForm, PaypalEmailCell, ReleaseToggle } from "@/components/settings/members-client";
+import { InviteForm, PaypalEmailCell, ReleaseToggle, VerifyPaypal } from "@/components/settings/members-client";
 import { requirePageCtx } from "@/lib/auth";
 import { workspaceMembers } from "@/lib/claims";
 
@@ -49,6 +49,9 @@ export default async function MembersPage({ searchParams }: PageProps<"/app/memb
                 </td>
                 <td className="px-5 py-3.5">
                   <PaypalEmailCell m={m} canEdit={ctx.isAdmin} />
+                  <div className="mt-1">
+                    <VerifyPaypal m={m} canVerify={ctx.isAdmin && m.id !== ctx.user.id} />
+                  </div>
                 </td>
                 <td className="px-5 py-3.5">
                   <ReleaseToggle m={m} canEdit={canGrant} />

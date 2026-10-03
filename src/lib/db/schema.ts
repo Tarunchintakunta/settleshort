@@ -45,6 +45,9 @@ export const memberships = pgTable(
     paypalReceiverEmail: text("paypal_receiver_email"),
     // Release authority: may send approved money to PayPal. Separate from approving claims.
     canRelease: boolean("can_release").notNull().default(false),
+    // Set when an admin confirms the PayPal address belongs to this person, or after a successful payout.
+    // Changing the address clears it; unverified receivers can't be paid.
+    paypalVerifiedAt: timestamp("paypal_verified_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("memberships_ws_user").on(t.workspaceId, t.userId)],

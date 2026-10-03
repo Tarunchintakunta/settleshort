@@ -38,7 +38,7 @@ export async function createDemoWorkspace() {
   for (const p of PEOPLE) {
     const [row] = await db.insert(users).values({ email: `${p.key}+${tag}@demo.settleshort.app`, name: p.name }).returning();
     u[p.key] = row.id;
-    await db.insert(memberships).values({ workspaceId: ws.id, userId: row.id, role: p.role, paypalReceiverEmail: pp[p.key], canRelease: p.role === "owner" });
+    await db.insert(memberships).values({ workspaceId: ws.id, userId: row.id, role: p.role, paypalReceiverEmail: pp[p.key], canRelease: p.role === "owner", paypalVerifiedAt: new Date() });
   }
 
   type C = Partial<typeof claims.$inferInsert> & { key: string };

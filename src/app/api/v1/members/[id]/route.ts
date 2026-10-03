@@ -8,7 +8,7 @@ export const PATCH = route<{ id: string }>(
   async (req, ctx, { id }) => {
     const input = await body(
       req,
-      z.object({ role: z.enum(["admin", "member"]).optional(), paypalReceiverEmail: z.string().trim().email().optional(), canRelease: z.boolean().optional() }),
+      z.object({ role: z.enum(["admin", "member"]).optional(), paypalReceiverEmail: z.string().trim().email().optional(), canRelease: z.boolean().optional(), verifyPaypal: z.literal(true).optional() }),
     );
     const [m] = await db.select().from(memberships).where(and(eq(memberships.id, id), eq(memberships.workspaceId, ctx.workspace.id)));
     if (!m) fail(404, "not_found", "Member not found");
@@ -18,7 +18,15 @@ export const PATCH = route<{ id: string }>(
       if (!me?.canRelease) fail(403, "forbidden", "Only people with release authority can grant or remove it");
       if (m.userId === ctx.user.id && !input.canRelease) fail(400, "last_releaser", "You can't remove your own release authority");
     }
-    const [updated] = await db.update(memberships).set(input).where(eq(memberships.id, id)).returning();
+    const { verifyPaypal, ...fields } = input;
+    if (verifyPaypal && m!.userId === ctx.user.id) fail(403, "self_verify", "Someone else has to verify your PayPal address");
+    const emailChanged = fields.paypalReceiverEmail !== undefined && fields.paypalReceiverEmail !== m!.paypalReceiverEmail;
+    const [updated] = await db
+      .update(memberships)
+      .set({ ...fields, ...(emailChanged ? { paypalVerifiedAt: null } : {}), ...(verifyPaypal ? { paypalVerifiedAt: new Date() } : {}) })
+      .where(eq(memberships.id, id))
+      .returning();
+    if (verifyPaypal) await audit(ctx.workspace.id, ctx.user.id, "member.paypal_verified", "membership", id, { email: updated.paypalReceiverEmail });
     await audit(ctx.workspace.id, ctx.user.id, "member.updated", "membership", id, input);
     return updated;
   },

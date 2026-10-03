@@ -6,7 +6,7 @@ import { UserPlusIcon } from "@phosphor-icons/react";
 import { Button, Field, inputCls } from "@/components/ui";
 import { api } from "@/lib/client";
 
-type Member = { id: string; name: string; email: string; role: string; paypalEmail: string | null; membershipId: string; canRelease: boolean };
+type Member = { id: string; name: string; email: string; role: string; paypalEmail: string | null; membershipId: string; canRelease: boolean; paypalVerifiedAt: Date | string | null };
 
 export function InviteForm() {
   const router = useRouter();
@@ -121,5 +121,37 @@ export function ReleaseToggle({ m, canEdit }: { m: Member; canEdit: boolean }) {
       <span className={m.canRelease ? "text-ink" : "text-muted"}>{m.canRelease ? "Can release" : "No"}</span>
       {err && <span className="text-danger">{err}</span>}
     </label>
+  );
+}
+
+/** Payee verification: an admin (never the person themselves) confirms the PayPal address is theirs. */
+export function VerifyPaypal({ m, canVerify }: { m: Member; canVerify: boolean }) {
+  const router = useRouter();
+  const [err, setErr] = useState<string | null>(null);
+  if (m.paypalVerifiedAt) return <span className="text-xs font-medium text-success">Verified</span>;
+  if (!m.paypalEmail) return <span className="text-xs text-muted">No address</span>;
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className="text-xs font-medium text-warning">Unverified</span>
+      {canVerify && (
+        <Button
+          size="sm"
+          variant="secondary"
+          title="Confirm this PayPal address belongs to them. Payouts are blocked until then."
+          onClick={async () => {
+            setErr(null);
+            try {
+              await api(`/members/${m.membershipId}`, { method: "PATCH", json: { verifyPaypal: true } });
+              router.refresh();
+            } catch (x) {
+              setErr((x as Error).message);
+            }
+          }}
+        >
+          Verify
+        </Button>
+      )}
+      {err && <span className="text-xs text-danger">{err}</span>}
+    </span>
   );
 }
