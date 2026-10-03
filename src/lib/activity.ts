@@ -29,6 +29,8 @@ const VERBS: Record<string, string> = {
   "batch.approved": "approved a batch for payout",
   "payout.created": "sent the batch to PayPal",
   "payout.failed": "PayPal rejected the payout",
+  "payout.uncertain": "got no answer from PayPal; holding claims until verified",
+  "payout.verified": "verified the payout with PayPal (no resend)",
   "batch.completed": "batch fully paid",
   "batch.partial": "batch partially paid",
   "batch.failed": "batch failed",

@@ -9,6 +9,18 @@ const BASE = () => process.env.PAYPAL_API_BASE ?? "https://api-m.sandbox.paypal.
 
 if (BASE().includes("api-m.paypal.com")) throw new Error("Live PayPal endpoint refused: SettleShort is sandbox-only.");
 
+/**
+ * `uncertain` = we don't know whether PayPal acted (timeout, network drop, 5xx).
+ * Never resend on an uncertain error; replay the same request id to learn the outcome.
+ */
+export class PayPalError extends Error {
+  constructor(message: string, public uncertain: boolean) {
+    super(message);
+  }
+}
+
+const TIMEOUT_MS = 20_000;
+
 let cached: { token: string; exp: number } | null = null;
 
 async function token() {
@@ -28,12 +40,19 @@ async function token() {
 }
 
 async function pp(path: string, init: RequestInit = {}) {
-  const res = await fetch(`${BASE()}${path}`, {
-    ...init,
-    headers: { Authorization: `Bearer ${await token()}`, "Content-Type": "application/json", ...init.headers },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE()}${path}`, {
+      ...init,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      headers: { Authorization: `Bearer ${await token()}`, "Content-Type": "application/json", ...init.headers },
+    });
+  } catch (e) {
+    throw new PayPalError(`No response from PayPal (${e instanceof Error ? e.name : "network error"})`, true);
+  }
   const j = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(`PayPal ${res.status}: ${j.message ?? j.name ?? "request failed"}${j.details ? ", " + JSON.stringify(j.details) : ""}`);
+  if (!res.ok)
+    throw new PayPalError(`PayPal ${res.status}: ${j.message ?? j.name ?? "request failed"}${j.details ? ", " + JSON.stringify(j.details) : ""}`, res.status >= 500 || res.status === 408);
   return j;
 }
 
@@ -49,9 +68,15 @@ type PaypalItem = {
 
 export type PayoutStatus = { payoutBatchId: string; batchStatus: string; items: PayoutItemStatus[]; raw: unknown };
 
-export async function createPayout(senderBatchId: string, items: PayoutItemInput[]): Promise<{ payoutBatchId: string; raw: unknown }> {
+/**
+ * `replay` re-sends the identical request with the same PayPal-Request-Id: PayPal returns the original
+ * result instead of paying again, which is how an uncertain outcome is verified.
+ */
+export async function createPayout(senderBatchId: string, items: PayoutItemInput[], replay = false): Promise<{ payoutBatchId: string; raw: unknown }> {
   if (paypalMode() === "simulated") {
-    return { payoutBatchId: `SIM-${senderBatchId.slice(0, 8).toUpperCase()}`, raw: { simulated: true, items: items.length } };
+    // Simulator: a receiver containing "timeout" loses the first response, but the payout went through.
+    if (!replay && items.some((i) => /timeout/i.test(i.email))) throw new PayPalError("No response from PayPal (TimeoutError, simulated)", true);
+    return { payoutBatchId: `SIM-${senderBatchId.slice(0, 8).toUpperCase()}`, raw: { simulated: true, items: items.length, replayed: replay } };
   }
   const j = await pp("/v1/payments/payouts", {
     method: "POST",

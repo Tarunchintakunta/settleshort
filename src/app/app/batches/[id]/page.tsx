@@ -38,7 +38,8 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
   const timeline = [
     { label: "Batch created", at: batch.createdAt, done: true },
     { label: "Approved by a human", at: batch.approvedAt, done: !!batch.approvedAt },
-    { label: "Sent to PayPal Payouts", at: at("payout.created"), done: !!batch.paypalPayoutBatchId },
+    ...(at("payout.uncertain") ? [{ label: "PayPal outcome unknown, held", at: at("payout.uncertain"), done: true }] : []),
+    { label: at("payout.verified") ? "Verified with PayPal, not resent" : "Sent to PayPal Payouts", at: at("payout.verified") ?? at("payout.created"), done: !!batch.paypalPayoutBatchId },
     { label: batch.status === "failed" ? "Failed" : batch.status === "partial" ? "Partially paid" : "Paid", at: at(`batch.${batch.status}`), done },
   ];
 
@@ -70,10 +71,17 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
           ))}
         </div>
       )}
-      {batch.errorMessage && (
-        <div role="alert" className="mb-6 rounded-[12px] border border-danger/25 bg-danger-soft p-4 text-sm text-danger">
-          <b>PayPal error:</b> {batch.errorMessage}. The claims were released, so you can batch them again.
+      {batch.status === "unknown" ? (
+        <div role="status" className="mb-6 rounded-[12px] border border-warning/40 bg-warning-soft p-4 text-sm text-warning">
+          <b>PayPal didn&apos;t answer in time.</b> The payout may already be on its way, so nothing will be resent and these claims stay locked.
+          Verifying replays the same request id, which PayPal answers with the original result instead of paying twice.
         </div>
+      ) : (
+        batch.errorMessage && batch.status === "failed" && (
+          <div role="alert" className="mb-6 rounded-[12px] border border-danger/25 bg-danger-soft p-4 text-sm text-danger">
+            <b>PayPal error:</b> {batch.errorMessage}. Nothing was paid and the claims were released, so you can batch them again.
+          </div>
+        )
       )}
 
       <div className="grid gap-8 lg:grid-cols-[1fr_260px]">

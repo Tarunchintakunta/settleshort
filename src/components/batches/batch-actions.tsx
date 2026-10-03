@@ -60,7 +60,7 @@ export function BatchActions({ batch, recipients, isAdmin, blocked, mode }: Prop
       <a href={`/api/v1/batches/${batch.id}/export`} className="inline-flex h-10 items-center gap-2 rounded-[8px] border border-line bg-panel px-4 text-sm font-medium tracking-[-0.011em] shadow-[0_1px_0_rgb(255_255_255/0.5)] transition-colors hover:border-line-strong hover:bg-sunken">
         <DownloadSimpleIcon className="size-4" aria-hidden /> Export CSV
       </a>
-      {["submitted", "partial"].includes(batch.status) && (
+      {["submitted", "partial", "unknown"].includes(batch.status) && (
         <Button
           variant="secondary"
           disabled={busy}
@@ -71,7 +71,7 @@ export function BatchActions({ batch, recipients, isAdmin, blocked, mode }: Prop
             router.refresh();
           }}
         >
-          <ArrowsClockwiseIcon className={cx("size-4", busy && "animate-spin")} aria-hidden /> Refresh status
+          <ArrowsClockwiseIcon className={cx("size-4", busy && "animate-spin")} aria-hidden /> {batch.status === "unknown" ? "Verify with PayPal" : "Refresh status"}
         </Button>
       )}
       {batch.status === "awaiting_approval" && (

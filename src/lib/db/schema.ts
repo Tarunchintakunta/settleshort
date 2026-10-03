@@ -114,7 +114,8 @@ export const claimSplits = pgTable("claim_splits", {
   shareBps: integer("share_bps").notNull(),
 });
 
-export const BATCH_STATUSES = ["draft", "awaiting_approval", "submitting", "submitted", "completed", "partial", "failed"] as const;
+// unknown = PayPal may or may not have accepted the payout; claims stay locked until verified.
+export const BATCH_STATUSES = ["draft", "awaiting_approval", "submitting", "unknown", "submitted", "completed", "partial", "failed"] as const;
 export type BatchStatus = (typeof BATCH_STATUSES)[number];
 
 export const batches = pgTable(

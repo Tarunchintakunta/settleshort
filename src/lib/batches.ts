@@ -4,7 +4,7 @@ import { fail } from "./api";
 import { audit } from "./audit";
 import { batches, batchItems, claims, db, memberships, users, workspaces } from "./db";
 import { formatMoney } from "./money";
-import { createPayout, getPayout, paypalMode, PayoutItemStatus } from "./paypal";
+import { createPayout, getPayout, PayPalError, paypalMode, PayoutItemStatus } from "./paypal";
 
 export async function createBatch(workspaceId: string, actorId: string, claimIds: string[], name?: string) {
   const rows = await db
@@ -71,18 +71,33 @@ export async function approveBatch(workspaceId: string, actorId: string, batchId
 
   await audit(workspaceId, actorId, "batch.approved", "batch", batchId, { total: formatMoney(batch.totalCents, batch.currency), items: items.length });
 
+  return sendPayout(workspaceId, actorId, batch.id, items, false);
+}
+
+type Batch = typeof batches.$inferSelect;
+
+const payoutItems = (items: (typeof batchItems.$inferSelect)[]) =>
+  items.map((i) => ({ senderItemId: i.claimId, email: i.receiverEmail, amountCents: i.amountCents, currency: i.currency, note: `SettleShort claim ${i.claimId.slice(0, 8)}` }));
+
+/**
+ * Sends (or, with replay, verifies) the payout. Three outcomes:
+ * accepted -> submitted; definitive rejection -> failed + claims released; no answer -> unknown, claims stay locked.
+ */
+async function sendPayout(workspaceId: string, actorId: string | null, batchId: string, items: (typeof batchItems.$inferSelect)[], replay: boolean): Promise<Batch> {
   try {
-    const { payoutBatchId, raw } = await createPayout(
-      batch.id,
-      items.map((i) => ({ senderItemId: i.claimId, email: i.receiverEmail, amountCents: i.amountCents, currency: i.currency, note: `SettleShort claim ${i.claimId.slice(0, 8)}` })),
-    );
-    await db.update(batches).set({ status: "submitted", paypalPayoutBatchId: payoutBatchId, paypalMode: paypalMode(), paypalResponse: raw }).where(eq(batches.id, batchId));
+    const { payoutBatchId, raw } = await createPayout(batchId, payoutItems(items), replay);
+    await db.update(batches).set({ status: "submitted", errorMessage: null, paypalPayoutBatchId: payoutBatchId, paypalMode: paypalMode(), paypalResponse: raw }).where(eq(batches.id, batchId));
     await db.update(batchItems).set({ status: "PENDING" }).where(eq(batchItems.batchId, batchId));
-    await audit(workspaceId, actorId, "payout.created", "batch", batchId, { paypal_payout_batch_id: payoutBatchId, mode: paypalMode() });
+    await audit(workspaceId, actorId, replay ? "payout.verified" : "payout.created", "batch", batchId, { paypal_payout_batch_id: payoutBatchId, mode: paypalMode() });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
+    if (e instanceof PayPalError && e.uncertain) {
+      const [b] = await db.update(batches).set({ status: "unknown", errorMessage: message, paypalMode: paypalMode() }).where(eq(batches.id, batchId)).returning();
+      await audit(workspaceId, actorId, "payout.uncertain", "batch", batchId, { error: message });
+      return b;
+    }
     await db.update(batches).set({ status: "failed", errorMessage: message, paypalMode: paypalMode() }).where(eq(batches.id, batchId));
-    // Release claims so they can go into a fresh batch (new sender_batch_id).
+    // Definitive rejection: nothing was paid, so release claims for a fresh batch (new sender_batch_id).
     await db.update(claims).set({ status: "matched", updatedAt: new Date() }).where(inArray(claims.id, items.map((i) => i.claimId)));
     await audit(workspaceId, actorId, "payout.failed", "batch", batchId, { error: message });
     fail(502, "paypal_error", message);
@@ -94,9 +109,14 @@ const PAID = new Set(["SUCCESS"]);
 const FAILED = new Set(["FAILED", "RETURNED", "BLOCKED", "REFUNDED", "REVERSED", "DENIED"]);
 const TERMINAL = new Set([...PAID, ...FAILED, "UNCLAIMED"]);
 
-export async function refreshBatch(workspaceId: string, batchId: string, actorId: string | null) {
+export async function refreshBatch(workspaceId: string, batchId: string, actorId: string | null): Promise<Batch> {
   const [batch] = await db.select().from(batches).where(and(eq(batches.id, batchId), eq(batches.workspaceId, workspaceId)));
   if (!batch) fail(404, "not_found", "Batch not found");
+  if (batch.status === "unknown") {
+    // Verify before anything else: replaying the same request id can never pay twice.
+    const unsure = await db.select().from(batchItems).where(eq(batchItems.batchId, batchId));
+    return sendPayout(workspaceId, actorId, batchId, unsure, true);
+  }
   if (!batch.paypalPayoutBatchId) return batch;
   const items = await db.select().from(batchItems).where(eq(batchItems.batchId, batchId));
   const status = await getPayout(batch.paypalPayoutBatchId, items.map((i) => ({ senderItemId: i.claimId, email: i.receiverEmail })));

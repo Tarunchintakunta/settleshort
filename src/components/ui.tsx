@@ -57,6 +57,7 @@ const STATUS: Record<string, [Tone, string]> = {
   rejected: ["neutral", "Rejected"],
   awaiting_approval: ["warning", "Awaiting approval"],
   submitting: ["accent", "Submitting"],
+  unknown: ["warning", "Verifying with PayPal"],
   submitted: ["accent", "Processing"],
   completed: ["success", "Paid"],
   partial: ["warning", "Partially paid"],
