@@ -264,11 +264,11 @@ export default function Home() {
           <div className="divide-y divide-line border-y border-line lg:col-span-8">
             {FAQ.map(({ q, a }) => (
               <details key={q} className="group">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-[8px] py-5 text-[17px] font-medium tracking-[-0.015em] text-ink [&::-webkit-details-marker]:hidden">
+                <summary className="my-1 flex cursor-pointer list-none items-center justify-between gap-4 rounded-[8px] px-4 py-4 text-[17px] font-medium tracking-[-0.015em] text-ink transition-colors hover:bg-sunken hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden">
                   {q}
-                  <PlusIcon size={18} className="shrink-0 text-muted transition-transform duration-200 group-open:rotate-45" aria-hidden />
+                  <PlusIcon size={18} className="shrink-0 text-muted transition-transform duration-200 group-open:rotate-45 group-hover:text-accent" aria-hidden />
                 </summary>
-                <p className="max-w-[62ch] pb-6 text-[15px] leading-relaxed text-ink-2">{a}</p>
+                <p className="max-w-[62ch] px-4 pb-6 text-[15px] leading-relaxed text-ink-2">{a}</p>
               </details>
             ))}
           </div>
