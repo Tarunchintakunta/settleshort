@@ -37,7 +37,7 @@ export default function PricingPage() {
             </h2>
             <span className="text-sm text-muted">Hackathon demo</span>
           </div>
-          <p className="tnum mt-8 font-mono text-[64px] font-semibold leading-none tracking-[-0.04em] text-ink sm:text-[72px]">$0</p>
+          <p className="money mt-8 text-[64px] font-semibold leading-none text-ink sm:text-[72px]">$0</p>
           <p className="mt-4 max-w-[48ch] text-[15px] leading-relaxed text-ink-2">The whole product, running against the PayPal sandbox. No card, and no signup for the demo.</p>
           <Points items={FREE} />
           <DemoLink className="mt-10 self-start" />

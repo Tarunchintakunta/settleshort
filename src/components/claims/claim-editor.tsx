@@ -72,7 +72,7 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence }:
           </Field>
         </div>
         <Field label="Amount">
-          <input value={f.amount} onChange={set("amount")} inputMode="decimal" pattern="\d+(\.\d{1,2})?" className={`${inputCls} tnum font-mono`} required />
+          <input value={f.amount} onChange={set("amount")} inputMode="decimal" pattern="\d+(\.\d{1,2})?" className={`${inputCls} money`} required />
         </Field>
         <Field label="Currency">
           <select value={f.currency} onChange={set("currency")} className={inputCls}>

@@ -218,13 +218,13 @@ function Extraction({ source, claim, error, provider, claimCount, onReset }: { s
     `Checking ${claimCount} existing claims for duplicates`,
   ];
   const ev = claim?.aiJson?.evidence ?? {};
-  const fields: { k: string; v: string; q?: string; big?: boolean }[] = claim
+  const fields: { k: string; v: string; q?: string; big?: boolean; m?: boolean }[] = claim
     ? [
         { k: "Vendor", v: claim.vendor || "Not found", q: ev.vendor },
-        { k: "Total", v: formatMoney(claim.amountCents, claim.currency), q: ev.total, big: true },
+        { k: "Total", v: formatMoney(claim.amountCents, claim.currency), q: ev.total, big: true, m: true },
         { k: "Date", v: claim.txnDate ? new Date(claim.txnDate + "T00:00:00").toLocaleDateString("en-US", { dateStyle: "medium" }) : "Not found", q: ev.date },
-        ...(claim.taxCents ? [{ k: "Tax", v: formatMoney(claim.taxCents, claim.currency) }] : []),
-        ...(claim.tipCents ? [{ k: "Tip", v: formatMoney(claim.tipCents, claim.currency) }] : []),
+        ...(claim.taxCents ? [{ k: "Tax", v: formatMoney(claim.taxCents, claim.currency), m: true }] : []),
+        ...(claim.tipCents ? [{ k: "Tip", v: formatMoney(claim.tipCents, claim.currency), m: true }] : []),
         ...(claim.aiJson?.payment_last4 ? [{ k: "Card", v: `ending ${claim.aiJson.payment_last4}` }] : []),
         ...(claim.aiJson?.payee_names?.length ? [{ k: "For", v: claim.aiJson.payee_names.join(", ") }] : []),
       ]
@@ -319,7 +319,7 @@ function Extraction({ source, claim, error, provider, claimCount, onReset }: { s
                   >
                     <dt className="text-[12px] font-medium tracking-[0.04em] text-muted uppercase">{f.k}</dt>
                     <dd className="min-w-0">
-                      <span className={cx(f.big ? "text-[28px] leading-none font-semibold" : "text-sm font-medium", "tnum font-mono tracking-[-0.03em]")}>{f.v}</span>
+                      <span className={cx(f.big ? "text-[28px] leading-none font-semibold" : "text-sm font-medium", f.m ? "money" : "break-words")}>{f.v}</span>
                       {f.q && (
                         <span className="mt-1.5 flex items-start gap-1.5 rounded-[6px] bg-sunken px-2 py-1 text-[11.5px] text-ink-2">
                           <QuotesIcon className="mt-0.5 size-3 shrink-0 text-muted" weight="fill" aria-hidden />

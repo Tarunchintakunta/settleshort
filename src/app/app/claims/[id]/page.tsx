@@ -160,13 +160,13 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
                 {claim.taxCents > 0 && (
                   <li className="flex justify-between py-2 text-muted">
                     <span>Tax</span>
-                    <span className="tnum">{formatMoney(claim.taxCents, claim.currency)}</span>
+                    <span className="money">{formatMoney(claim.taxCents, claim.currency)}</span>
                   </li>
                 )}
                 {claim.tipCents > 0 && (
                   <li className="flex justify-between py-2 text-muted">
                     <span>Tip</span>
-                    <span className="tnum">{formatMoney(claim.tipCents, claim.currency)}</span>
+                    <span className="money">{formatMoney(claim.tipCents, claim.currency)}</span>
                   </li>
                 )}
               </ul>

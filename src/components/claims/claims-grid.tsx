@@ -92,7 +92,7 @@ export function ClaimsGrid({ rows, isAdmin }: { rows: GridClaim[]; isAdmin: bool
         headerName: "Amount",
         width: 140,
         type: "rightAligned",
-        cellClass: "tnum font-mono font-medium",
+        cellClass: "money font-medium",
         valueFormatter: (p) => formatMoney(p.value, p.data!.currency),
       },
       { field: "payer", headerName: "Paid by", flex: 1, minWidth: 130 },

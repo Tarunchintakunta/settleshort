@@ -79,7 +79,7 @@ export default async function Dashboard() {
         {metrics.map((m) => (
           <div key={m.label} className="rounded-[12px] border border-line bg-panel px-5 py-5 shadow-soft">
             <dt className="text-[13px] text-muted">{m.label}</dt>
-            <dd className="tnum mt-2 font-mono text-[28px] leading-none font-semibold tracking-[-0.03em]">{m.value}</dd>
+            <dd className="money mt-2 text-[28px] leading-none font-semibold">{m.value}</dd>
             <dd className="mt-2 text-xs text-muted">{m.sub}</dd>
           </div>
         ))}
