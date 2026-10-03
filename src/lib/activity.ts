@@ -19,6 +19,8 @@ const VERBS: Record<string, string> = {
   "claim.edited": "edited a claim",
   "claim.marked_ready": "marked a claim ready",
   "claim.approved": "approved a claim",
+  "claim.fix_requested": "asked for a specific fix",
+  "claim.fix_resolved": "answered a fix request",
   "claim.endorsed": "signed off on a claim that still needs another approver",
   "delegation.created": "handed approval cover to a teammate",
   "delegation.ended": "ended approval cover",

@@ -371,3 +371,21 @@ export const delegations = pgTable(
   },
   (t) => [index("delegations_ws_to").on(t.workspaceId, t.toUserId)],
 );
+
+/** An approver asks for one specific fix (an attendee, a receipt page) instead of rejecting the claim. */
+export const fixRequests = pgTable(
+  "fix_requests",
+  {
+    id: id(),
+    workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+    claimId: uuid("claim_id").notNull().references(() => claims.id, { onDelete: "cascade" }),
+    field: text("field", { enum: ["attendees", "receipt", "purpose", "amount", "date", "merchant", "other"] }).notNull(),
+    message: text("message").notNull(),
+    requestedBy: uuid("requested_by").notNull().references(() => users.id),
+    reply: text("reply"),
+    resolvedBy: uuid("resolved_by").references(() => users.id),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("fix_requests_claim").on(t.claimId)],
+);

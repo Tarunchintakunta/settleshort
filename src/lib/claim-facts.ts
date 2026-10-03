@@ -1,7 +1,7 @@
 import "server-only";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { LOW_CONFIDENCE } from "./claims";
-import { approvals, batches, batchItems, claimEvidence, claims, db, ledgerEntries } from "./db";
+import { approvals, batches, batchItems, claimEvidence, claims, db, fixRequests, ledgerEntries } from "./db";
 import { obligationsForMany } from "./ledger";
 import { moneyStatus } from "./settlement";
 import { findContradictions, uncertainFields, type EvidenceFacts } from "./evidence";
@@ -13,12 +13,13 @@ type Claim = typeof claims.$inferSelect;
 export async function factsFor(rows: Claim[]) {
   const ids = rows.map((r) => r.id);
   if (!ids.length) return new Map<string, { facts: ClaimFacts; truth: ReturnType<typeof truthfulStatus> }>();
-  const [owed, appr, items, payouts, evidence] = await Promise.all([
+  const [owed, appr, items, payouts, evidence, fixes] = await Promise.all([
     obligationsForMany(rows),
     db.select().from(approvals).where(and(inArray(approvals.claimId, ids), isNull(approvals.invalidatedAt))),
     db.select({ item: batchItems, batch: batches }).from(batchItems).innerJoin(batches, eq(batches.id, batchItems.batchId)).where(inArray(batchItems.claimId, ids)).orderBy(desc(batches.createdAt)),
     db.select().from(ledgerEntries).where(and(inArray(ledgerEntries.claimId, ids), eq(ledgerEntries.kind, "payout"))).orderBy(desc(ledgerEntries.createdAt)),
     db.select().from(claimEvidence).where(inArray(claimEvidence.claimId, ids)).orderBy(claimEvidence.createdAt),
+    db.select().from(fixRequests).where(and(inArray(fixRequests.claimId, ids), isNull(fixRequests.resolvedAt))),
   ]);
   return new Map(
     rows.map((c) => {
@@ -42,6 +43,7 @@ export async function factsFor(rows: Claim[]) {
         confirmedAt: latestItems.length && latestItems.every((i) => i.confirmedAt) ? latestItems[0].confirmedAt : null,
         notReceivedAt: latestItems.find((i) => i.notReceivedAt)?.notReceivedAt ?? null,
         money: moneyStatus(owed.get(c.id)!),
+        openFixes: fixes.filter((x) => x.claimId === c.id).map((x) => x.message),
       };
       return [c.id, { facts, truth: truthfulStatus(facts) }];
     }),

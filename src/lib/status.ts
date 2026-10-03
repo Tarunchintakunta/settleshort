@@ -16,6 +16,8 @@ export type ClaimFacts = {
   confirmedAt: Date | null;
   notReceivedAt: Date | null;
   money: MoneyState;
+  /** Open fix requests from an approver (what the claimant must do). */
+  openFixes?: string[];
 };
 
 export type Truth = { key: string; label: string; detail: string; tone: Tone };
@@ -24,6 +26,8 @@ export type Truth = { key: string; label: string; detail: string; tone: Tone };
 export function truthfulStatus(f: ClaimFacts): Truth {
   if (f.status === "rejected") return { key: "rejected", label: "Rejected", detail: "This claim won't be paid.", tone: "neutral" };
   if (f.status === "draft") return { key: "draft", label: "Draft", detail: "Not submitted yet.", tone: "neutral" };
+  if (f.status === "pending_review" && f.openFixes?.length)
+    return { key: "fix_requested", label: "Fix requested", detail: `Waiting on the claimant: ${f.openFixes.join("; ")}`, tone: "warning" };
   if (f.status === "pending_review")
     return f.flagged
       ? { key: "needs_review", label: "Needs review", detail: "Something needs a human look before it can be approved.", tone: "warning" }

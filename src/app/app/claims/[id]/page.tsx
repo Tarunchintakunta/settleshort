@@ -7,10 +7,11 @@ import { EvidencePanel, type EvidenceRow } from "@/components/claims/evidence-pa
 import { Confidence, cx, Money, StatusPill } from "@/components/ui";
 import { requirePageCtx } from "@/lib/auth";
 import { LOW_CONFIDENCE, workspaceMembers } from "@/lib/claims";
-import { approvals, batches, batchItems, claimEvidence, claimPayments, claims, claimSplits, contexts, db, ledgerEntries } from "@/lib/db";
+import { approvals, batches, batchItems, claimEvidence, claimPayments, claims, claimSplits, contexts, db, fixRequests, ledgerEntries } from "@/lib/db";
 import { linesFor, obligationsFor } from "@/lib/ledger";
 import { LinesCard } from "@/components/claims/lines-card";
 import { CurrencyCard } from "@/components/claims/currency-card";
+import { FixRequests } from "@/components/claims/fix-requests";
 import { SettlementCard } from "@/components/claims/settlement-card";
 import { MoneyTimeline } from "@/components/claims/money-timeline";
 import { ConfirmReceipt } from "@/components/claims/confirm-receipt";
@@ -54,7 +55,10 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
   const { facts, truth } = (await factsFor([claim])).get(claim.id)!;
   const conflicts = await openContradictions(claim);
   const lineInfo = await linesFor(claim);
-  const ctxRows = await db.select().from(contexts).where(eq(contexts.workspaceId, ctx.workspace.id));
+  const [ctxRows, fixRows] = await Promise.all([
+    db.select().from(contexts).where(eq(contexts.workspaceId, ctx.workspace.id)),
+    db.select().from(fixRequests).where(eq(fixRequests.claimId, id)),
+  ]);
   // The viewer's own completed payouts on this claim, so they can confirm receipt.
   const myPaid = (
     await db.select().from(batchItems).where(and(eq(batchItems.claimId, id), eq(batchItems.receiverUserId, ctx.user.id), eq(batchItems.status, "SUCCESS")))
@@ -174,6 +178,12 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
           suggestions={suggestPurposes(claim.txnDate, ctxRows)}
         />
       )}
+      <FixRequests
+        claimId={claim.id}
+        rows={fixRows.map((r) => ({ id: r.id, field: r.field, message: r.message, by: name(r.requestedBy), reply: r.reply, resolved: !!r.resolvedAt }))}
+        canRequest={claim.status === "pending_review" && !blocker}
+        canReply={[claim.submitterId, claim.payerUserId].includes(ctx.user.id)}
+      />
       <ConflictsPanel claimId={claim.id} conflicts={conflicts} canResolve={ctx.isAdmin} />
 
       {claim.duplicateOfId && dupCandidates.length > 0 && (

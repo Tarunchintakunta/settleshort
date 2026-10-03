@@ -2,7 +2,7 @@ import "server-only";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { fail } from "./api";
 import { audit } from "./audit";
-import { approvals, batches, batchItems, claimEvidence, claims, db, delegations, memberships, users } from "./db";
+import { approvals, batches, batchItems, claimEvidence, claims, db, delegations, fixRequests, memberships, users } from "./db";
 import { findContradictions, missingQuestions, type EvidenceFacts } from "./evidence";
 import { obligationsFor } from "./ledger";
 import { activeDelegations, approvalBlocker, approvalOutcome, diffSnapshots, hashSnapshot, type Approver, type Snapshot } from "./policy";
@@ -75,6 +75,8 @@ export async function approveClaim(ws: WsPolicy, approver: Approver, claimId: st
   const kinds = (await db.select({ k: claimEvidence.kind }).from(claimEvidence).where(eq(claimEvidence.claimId, claimId))).map((r) => r.k);
   const missing = missingQuestions(claim, { kinds, receiptRequiredCents: ws.receiptRequiredCents });
   if (missing.length) fail(409, "missing_info", `Still needed before approval: ${missing.map((m) => m.question).join(" ")}`);
+  const fixes = await db.select().from(fixRequests).where(and(eq(fixRequests.claimId, claimId), isNull(fixRequests.resolvedAt)));
+  if (fixes.length) fail(409, "fix_requested", `Waiting on a requested fix: ${fixes.map((f) => f.message).join("; ")}`);
   const open = await openContradictions(claim);
   if (open.length) fail(409, "contradiction", `Resolve conflicting evidence first: ${open.map((c) => c.message).join("; ")}`);
 

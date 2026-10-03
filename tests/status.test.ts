@@ -8,6 +8,7 @@ describe("truthful status", () => {
   it("separates every stage", () => {
     expect(truthfulStatus(base).key).toBe("submitted");
     expect(truthfulStatus({ ...base, flagged: true }).key).toBe("needs_review");
+    expect(truthfulStatus({ ...base, openFixes: ["Add the attendee list"] })).toMatchObject({ key: "fix_requested", detail: "Waiting on the claimant: Add the attendee list" });
     expect(truthfulStatus({ ...base, status: "matched", approvedAt: t0 }).key).toBe("approved");
     const batch = { status: "awaiting_approval", createdAt: t0, sentAt: null };
     expect(truthfulStatus({ ...base, status: "in_batch", batch }).key).toBe("scheduled");
