@@ -119,7 +119,7 @@ export function Confidence({ value, provider, className }: { value: number | nul
 }
 
 export function Money({ cents, currency, className }: { cents: number; currency: string; className?: string }) {
-  return <span className={cx("tnum whitespace-nowrap font-mono tracking-[-0.03em]", className)}>{formatMoney(cents, currency)}</span>;
+  return <span className={cx("money", className)}>{formatMoney(cents, currency)}</span>;
 }
 
 export function Logo({ className }: { className?: string }) {
