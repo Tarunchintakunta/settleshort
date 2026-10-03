@@ -73,7 +73,7 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
                 <p className="mt-1 font-medium">{c.vendor}</p>
                 <p className="mt-0.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-ink-2">
                   <span>
-                    {c.txnDate ?? "No date"} · {name(c.payerUserId)}
+                    {c.txnDate ? new Date(c.txnDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "No date"} · {name(c.payerUserId)}
                   </span>
                   <Money cents={c.amountCents} currency={c.currency} />
                 </p>
@@ -173,34 +173,61 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
             </section>
           )}
 
-          {splits.length > 0 && (
-            <section>
-              <h2 className="mb-2 text-[15px] font-semibold tracking-[-0.015em]">Shared with</h2>
-              <ul className="flex flex-wrap gap-2">
-                {splits.map((s) => (
-                  <li key={s.id} className="flex items-center gap-2 rounded-full border border-line bg-panel py-1 pr-3 pl-1 text-[13px]">
-                    <span className="flex size-6 items-center justify-center rounded-full bg-sunken text-[11px] font-semibold" aria-hidden>
-                      {name(s.userId)[0]}
-                    </span>
-                    {name(s.userId)} <Money cents={s.amountCents} currency={claim.currency} className="text-muted" />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {batchRow && (
-            <section>
-              <h2 className="mb-2 text-[15px] font-semibold tracking-[-0.015em]">Settlement</h2>
-              <Link href={`/app/batches/${batchRow.batch.id}`} className="flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-line px-4 py-3.5 text-sm transition-colors hover:bg-sunken">
-                <span>
-                  <span className="font-medium">{batchRow.batch.name}</span>
-                  {batchRow.item.transactionId && <span className="ml-2 font-mono text-xs text-muted">{batchRow.item.transactionId}</span>}
-                </span>
-                <StatusPill status={batchRow.item.status} />
-              </Link>
-            </section>
-          )}
+          <section aria-labelledby="settlement-h">
+            <h2 id="settlement-h" className="mb-2 text-[15px] font-semibold tracking-[-0.015em]">
+              Settlement
+            </h2>
+            <div className="overflow-hidden rounded-[12px] border border-line bg-panel shadow-soft">
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-success-soft text-[12px] font-semibold text-success" aria-hidden>
+                    {name(claim.payerUserId)[0]}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted">Reimburse to</p>
+                    <p className="truncate text-sm font-medium">{name(claim.payerUserId)}</p>
+                  </div>
+                </div>
+                <Money cents={claim.amountCents} currency={claim.currency} className="text-[17px] font-semibold" />
+              </div>
+              {splits.length > 0 && (
+                <div className="border-t border-line bg-sunken/40 px-4 py-3">
+                  <p className="mb-2 text-xs text-muted">Split between {splits.length} people</p>
+                  <ul className="space-y-1.5 text-sm">
+                    {splits.map((s) => (
+                      <li key={s.id} className="flex items-center justify-between gap-3">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-panel text-[10px] font-semibold ring-1 ring-line" aria-hidden>
+                            {name(s.userId)[0]}
+                          </span>
+                          <span className="truncate text-ink-2">{name(s.userId)}</span>
+                          <span className="tnum text-xs text-muted">{Math.round(s.shareBps / 100)}%</span>
+                        </span>
+                        <Money cents={s.amountCents} currency={claim.currency} className="text-ink" />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {batchRow ? (
+                <Link
+                  href={`/app/batches/${batchRow.batch.id}`}
+                  className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 text-sm transition-colors hover:bg-sunken"
+                >
+                  <span className="min-w-0">
+                    <span className="text-muted">Batch </span>
+                    <span className="font-medium">{batchRow.batch.name}</span>
+                    {batchRow.item.transactionId && <span className="ml-2 font-mono text-xs break-all text-muted">{batchRow.item.transactionId}</span>}
+                  </span>
+                  <StatusPill status={batchRow.item.status} />
+                </Link>
+              ) : (
+                <p className="border-t border-line px-4 py-3 text-xs text-muted">
+                  {claim.status === "matched" ? "Ready to go into the next settlement batch." : claim.status === "rejected" ? "Rejected, so it won't be paid." : "Not in a settlement batch yet."}
+                </p>
+              )}
+            </div>
+          </section>
         </div>
       </div>
     </>
