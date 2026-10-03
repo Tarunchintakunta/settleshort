@@ -63,6 +63,9 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
       <Link href="/app/claims" className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-muted transition-colors hover:text-ink">
         <ArrowLeftIcon className="size-3.5" aria-hidden /> Claims
       </Link>
+      <Link href={`/app/claims/${claim.id}/record`} className="mb-6 ml-4 inline-flex text-[13px] text-muted transition-colors hover:text-ink">
+        Closure record
+      </Link>
 
       <header className="mb-8 flex flex-wrap items-end justify-between gap-6">
         <div className="min-w-0">
