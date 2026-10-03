@@ -2,12 +2,14 @@ import "server-only";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { releaseProblems } from "./approvals";
 import { factsFor } from "./claim-facts";
-import { batches, batchItems, claimEvidence, claims, db, workspaces } from "./db";
+import { batches, batchItems, claimEvidence, claims, db, memberships, users, workspaces } from "./db";
+import { obligationsForMany } from "./ledger";
+import { overlappingSaas, personallyFundedSaas } from "./saas";
 import { formatMoney } from "./money";
 
 export type Exception = {
   key: string;
-  kind: "stuck" | "conflict" | "large" | "payout";
+  kind: "stuck" | "conflict" | "large" | "payout" | "spend";
   title: string;
   why: string;
   action: string;
@@ -19,6 +21,19 @@ const DAY = 86_400_000;
 export const STUCK_AFTER_DAYS = 2;
 
 /** Only what needs a decision: stuck, conflicting, unusually large or uncertain. Routine updates stay out. */
+const nameOf = async (workspaceId: string) => {
+  const rows = await db.select({ id: users.id, name: users.name }).from(users).innerJoin(memberships, eq(memberships.userId, users.id)).where(eq(memberships.workspaceId, workspaceId));
+  return (id: string) => rows.find((r) => r.id === id)?.name ?? "Someone";
+};
+
+/** SaaS spend findings across the workspace (#43, #44). */
+export async function saasFindings(workspaceId: string) {
+  const rows = await db.select().from(claims).where(eq(claims.workspaceId, workspaceId));
+  const owed = await obligationsForMany(rows);
+  const input = rows.map((c) => ({ ...c, employeeFunded: owed.get(c.id)!.employeeFundedCents > 0 }));
+  return { personal: personallyFundedSaas(input), overlap: overlappingSaas(input) };
+}
+
 export async function workspaceExceptions(ws: typeof workspaces.$inferSelect): Promise<Exception[]> {
   const stuckBefore = new Date(Date.now() - STUCK_AFTER_DAYS * DAY);
   const [open, batchRows, missing, declared] = await Promise.all([
@@ -54,6 +69,29 @@ export async function workspaceExceptions(ws: typeof workspaces.$inferSelect): P
     if (f.truth.key === "owes_back") out.push({ key: `back-${c.id}`, kind: "conflict", title: label(c), why: "A refund arrived after reimbursement.", action: "Record the money returned", href: claimLink(c), at: c.updatedAt });
     if (f.truth.key === "unclaimed") out.push({ key: `unclaimed-${c.id}`, kind: "payout", title: label(c), why: "The receiver hasn't accepted the PayPal payout.", action: "Ask them to accept it in PayPal", href: claimLink(c), at: c.updatedAt });
   }
+
+  const { personal, overlap } = await saasFindings(ws.id);
+  const who = await nameOf(ws.id);
+  for (const p of personal)
+    out.push({
+      key: `saas-${p.payerUserId}-${p.tool}`,
+      kind: "spend",
+      title: `${who(p.payerUserId)} keeps paying for ${p.vendor} personally`,
+      why: `Claimed in ${p.months.join(", ")} (${formatMoney(p.totalCents, "USD")} so far).`,
+      action: "Move it to the company card or a company account",
+      href: `/app/claims/${p.claimIds.at(-1)}`,
+      at: new Date(),
+    });
+  for (const o of overlap)
+    out.push({
+      key: `overlap-${o.tool}-${o.month}`,
+      kind: "spend",
+      title: `${o.vendor} bought by ${o.payerUserIds.map(who).join(" and ")}`,
+      why: `Two or more people claimed ${o.vendor} in ${o.month}.`,
+      action: "Check whether one seat or plan covers the team",
+      href: `/app/claims/${o.claimIds.at(-1)}`,
+      at: new Date(),
+    });
 
   const inBatch = open.filter((c) => c.status === "in_batch");
   for (const p of await releaseProblems(ws.id, inBatch.map((c) => c.id))) {

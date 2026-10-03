@@ -16,6 +16,7 @@ import { FixRequests } from "@/components/claims/fix-requests";
 import { RemindButton } from "@/components/claims/remind-button";
 import { InvestigationPanel } from "@/components/claims/investigation-panel";
 import { blockerFor } from "@/lib/reminders";
+import { saasFindings } from "@/lib/exceptions";
 import { SettlementCard } from "@/components/claims/settlement-card";
 import { MoneyTimeline } from "@/components/claims/money-timeline";
 import { ConfirmReceipt } from "@/components/claims/confirm-receipt";
@@ -59,11 +60,16 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
   const { facts, truth } = (await factsFor([claim])).get(claim.id)!;
   const conflicts = await openContradictions(claim);
   const lineInfo = await linesFor(claim);
-  const [ctxRows, fixRows, invRows] = await Promise.all([
+  const [ctxRows, fixRows, invRows, saas] = await Promise.all([
     db.select().from(contexts).where(eq(contexts.workspaceId, ctx.workspace.id)),
     db.select().from(fixRequests).where(eq(fixRequests.claimId, id)),
     db.select().from(investigations).where(eq(investigations.claimId, id)).orderBy(desc(investigations.createdAt)),
+    saasFindings(ctx.workspace.id),
   ]);
+  const saasNotes = [
+    ...saas.personal.filter((p) => p.claimIds.includes(id)).map((p) => `${name(p.payerUserId)} has paid for ${p.vendor} personally in ${p.months.join(", ")}. Move it to the company card or a company account.`),
+    ...saas.overlap.filter((o) => o.claimIds.includes(id)).map((o) => `${o.payerUserIds.map(name).join(" and ")} both bought ${o.vendor} in ${o.month}. Check whether one seat covers the team.`),
+  ];
   // The viewer's own completed payouts on this claim, so they can confirm receipt.
   const myPaid = (
     await db.select().from(batchItems).where(and(eq(batchItems.claimId, id), eq(batchItems.receiverUserId, ctx.user.id), eq(batchItems.status, "SUCCESS")))
@@ -189,6 +195,11 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
           suggestions={suggestPurposes(claim.txnDate, ctxRows)}
         />
       )}
+      {saasNotes.map((n) => (
+        <p key={n} className="mb-4 rounded-[10px] border border-accent/25 bg-accent-soft px-4 py-3 text-[13px] text-ink-2">
+          {n}
+        </p>
+      ))}
       <InvestigationPanel
         canAct={ctx.isAdmin}
         rows={invRows.map((r) => ({ id: r.id, reason: r.reason, openedBy: name(r.openedBy), notes: r.notes.map((n) => ({ ...n, by: name(n.by) })), status: r.status, outcome: r.outcome }))}

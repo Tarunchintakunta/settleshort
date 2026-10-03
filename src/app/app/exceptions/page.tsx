@@ -13,6 +13,7 @@ const KIND: Record<Exception["kind"], { label: string; tone: "warning" | "danger
   payout: { label: "Payout", tone: "danger" },
   stuck: { label: "Stuck", tone: "warning" },
   large: { label: "Large", tone: "accent" },
+  spend: { label: "SaaS spend", tone: "accent" },
 };
 
 /** Founder inbox: only what needs a decision. Routine claims and payouts never show up here. */

@@ -52,7 +52,9 @@ export async function createDemoWorkspace() {
     { key: "c7", vendor: "Ace Hardware", amountCents: 2399, txnDate: null, source: "upload", payerUserId: u.dev, status: "pending_review", aiConfidence: 0.42, note: "Blurry photo, confirm amount" },
     { key: "c8", vendor: "Chipotle Mexican Grill", amountCents: 6400, txnDate: "2026-09-29", source: "slack", payerUserId: u.dev, status: "pending_review", aiConfidence: 0.8, rawText: "paid 64 bucks at chipotle for me @sam" },
     { key: "c10", vendor: "Notion", amountCents: 2000, txnDate: "2026-09-28", source: "slack", payerUserId: u.rita, status: "pending_review", aiConfidence: 0.86, rawText: "Notion AI $20 on 2026-09-28 for offsite notes", purpose: "Shared notes for the September offsite", category: "Software" },
-    { key: "c11", vendor: "Figma", amountCents: 1500, txnDate: "2026-09-27", source: "manual", payerUserId: u.maya, status: "pending_review", aiConfidence: 0.9, rawText: "Figma seat $15 on 2026-09-27", purpose: "Design seat for the launch", category: "Software" },
+    { key: "c11", vendor: "Notion", amountCents: 1000, txnDate: "2026-09-27", source: "manual", payerUserId: u.maya, status: "pending_review", aiConfidence: 0.9, rawText: "Notion Plus $10 on 2026-09-27", purpose: "Founder workspace", category: "Software" },
+    { key: "c12", vendor: "Figma", amountCents: 1500, txnDate: "2026-08-27", source: "slack", payerUserId: u.sam, status: "matched", aiConfidence: 0.9, rawText: "Figma pro $15 on 2026-08-27", purpose: "Design seat", category: "Software" },
+    { key: "c13", vendor: "Figma", amountCents: 1500, txnDate: "2026-09-27", source: "slack", payerUserId: u.sam, status: "pending_review", aiConfidence: 0.9, rawText: "Figma pro $15 on 2026-09-27", purpose: "Design seat", category: "Software" },
     { key: "c9", vendor: "Netflix", amountCents: 1549, txnDate: "2026-09-15", source: "manual", payerUserId: u.jules, status: "rejected", note: "Personal subscription" },
   ];
 
