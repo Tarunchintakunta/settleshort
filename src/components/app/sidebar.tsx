@@ -34,7 +34,10 @@ export function SideNav({ counts }: { counts: Record<string, number> }) {
             <Icon className={cx("size-[18px]", active ? "text-accent" : "text-muted group-hover:text-ink-2")} weight={active ? "fill" : "regular"} aria-hidden />
             {label}
             {count ? (
-              <span className="tnum ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warning-soft px-1.5 font-mono text-[11px] font-semibold text-warning">
+              <span
+                className="tnum ml-auto inline-flex h-5 min-w-[22px] items-center justify-center rounded-full bg-warning px-1.5 text-[11.5px] leading-none font-semibold text-on-accent"
+                aria-label={`${count} need attention`}
+              >
                 {count}
               </span>
             ) : null}
