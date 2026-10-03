@@ -43,7 +43,7 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
               width={2880}
               height={1800}
               sizes="(min-width: 1280px) 560px, 45vw"
-              className="h-auto w-full rounded-[8px] border border-line dark:brightness-[0.9]"
+              className="h-auto w-full rounded-[8px] border border-line"
             />
           </figure>
         </div>
