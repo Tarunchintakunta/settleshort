@@ -12,7 +12,7 @@ describe("allocate", () => {
 describe("obligations", () => {
   it("defaults to the single payer for the whole amount", () => {
     const o = computeObligations({ totalCents: 6400, payerUserId: "sam" });
-    expect(o.payees).toEqual([{ userId: "sam", paidCents: 6400, owedCents: 6400, settledCents: 0, outstandingCents: 6400 }]);
+    expect(o.payees).toEqual([{ userId: "sam", paidCents: 6400, owedCents: 6400, settledCents: 0, outstandingCents: 6400, payableNowCents: 6400 }]);
     expect(moneyStatus(o)).toBe("unpaid");
   });
 
@@ -92,5 +92,27 @@ describe("obligations", () => {
     expect(paymentsProblem(100, [{ userId: "a", source: "employee", amountCents: 60 }])).toMatch(/add up/);
     expect(paymentsProblem(100, [{ userId: null, source: "employee", amountCents: 100 }])).toMatch(/person/);
     expect(paymentsProblem(100, [{ userId: null, source: "company_card", amountCents: 100 }])).toBeNull();
+  });
+});
+
+import { lineBreakdown, type Line } from "../src/lib/settlement";
+describe("line items", () => {
+  const l = (id: string, amountCents: number, extra: Partial<Line> = {}): Line => ({ id, name: id, amountCents, excluded: false, state: "pending", ...extra });
+  it("spreads tax and tip over lines and excludes a personal item with its share (#18 #19)", () => {
+    // $60 food + $20 wine, $8 tax, $12 tip = $100
+    const b = lineBreakdown(10000, [l("food", 6000), l("wine", 2000, { excluded: true })], 800, 1200);
+    expect(b.rows.map((r) => [r.id, r.extraCents])).toEqual([["food", 1500], ["wine", 500]]);
+    expect(b.excludedCents).toBe(2500);
+    expect(b.rows.reduce((a, r) => a + r.totalCents, 0)).toBe(10000);
+  });
+  it("adds an unitemized row so the total always adds up", () => {
+    const b = lineBreakdown(10000, [l("a", 5000)], 0, 0);
+    expect(b.rows.at(-1)).toMatchObject({ id: "unitemized", amountCents: 5000 });
+  });
+  it("holds disputed lines without erasing them (#22 #35)", () => {
+    const b = lineBreakdown(10000, [l("ok", 7000, { state: "approved" }), l("taxi", 3000, { state: "disputed" })], 0, 0);
+    expect(b.heldCents).toBe(3000);
+    const o = computeObligations({ totalCents: 10000, payerUserId: "sam", heldCents: b.heldCents });
+    expect(o.payees[0]).toMatchObject({ owedCents: 10000, outstandingCents: 10000, payableNowCents: 7000 });
   });
 });

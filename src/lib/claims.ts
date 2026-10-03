@@ -3,7 +3,7 @@ import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { aiProvider, explainMatch, parseClaimText, PROMPT_VERSION } from "./ai";
 import { openContradictions, revalidateApproval } from "./approvals";
 import { audit } from "./audit";
-import { claimEvidence, claims, claimSplits, db, memberships, merchantMappings, users, type EvidenceKind } from "./db";
+import { claimEvidence, claimLines, claims, claimSplits, db, memberships, merchantMappings, users, type EvidenceKind } from "./db";
 import { DUPLICATE_THRESHOLD, findMapping, findMatches, isAmbiguous } from "./matching";
 import { contentKey } from "./evidence";
 import { formatMoney, splitEven } from "./money";
@@ -83,6 +83,10 @@ export async function createClaim(workspaceId: string, actorId: string, c: NewCl
       addedBy: actorId,
     });
   }
+
+  const items = (c.aiJson as { line_items?: { name: string; amount_cents: number }[] } | null)?.line_items ?? [];
+  if (items.length)
+    await db.insert(claimLines).values(items.map((l, i) => ({ claimId: claim.id, position: i, name: l.name.slice(0, 200), amountCents: l.amount_cents })));
 
   if (c.splitUserIds?.length) {
     const parts = splitEven(c.amountCents, c.splitUserIds.length);

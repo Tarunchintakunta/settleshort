@@ -8,7 +8,8 @@ import { Confidence, cx, Money, StatusPill } from "@/components/ui";
 import { requirePageCtx } from "@/lib/auth";
 import { LOW_CONFIDENCE, workspaceMembers } from "@/lib/claims";
 import { approvals, batches, batchItems, claimEvidence, claimPayments, claims, claimSplits, db, ledgerEntries } from "@/lib/db";
-import { obligationsFor } from "@/lib/ledger";
+import { linesFor, obligationsFor } from "@/lib/ledger";
+import { LinesCard } from "@/components/claims/lines-card";
 import { SettlementCard } from "@/components/claims/settlement-card";
 import { MoneyTimeline } from "@/components/claims/money-timeline";
 import { ConfirmReceipt } from "@/components/claims/confirm-receipt";
@@ -49,6 +50,7 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
   ]);
   const { facts, truth } = (await factsFor([claim])).get(claim.id)!;
   const conflicts = await openContradictions(claim);
+  const lineInfo = await linesFor(claim);
   // The viewer's own completed payouts on this claim, so they can confirm receipt.
   const myPaid = (
     await db.select().from(batchItems).where(and(eq(batchItems.claimId, id), eq(batchItems.receiverUserId, ctx.user.id), eq(batchItems.status, "SUCCESS")))
@@ -197,30 +199,18 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
             ) : null}
           </section>
 
-          {(ai?.line_items?.length ?? 0) > 0 && (
-            <section>
-              <h2 className="mb-2 text-[15px] font-semibold tracking-[-0.015em]">Line items</h2>
-              <ul className="divide-y divide-line rounded-[12px] border border-line px-4 text-sm">
-                {ai!.line_items!.map((l, i) => (
-                  <li key={i} className="flex items-baseline justify-between gap-3 py-2">
-                    <span className="min-w-0 text-ink-2">{l.name}</span>
-                    <Money cents={l.amount_cents} currency={claim.currency} />
-                  </li>
-                ))}
-                {claim.taxCents > 0 && (
-                  <li className="flex justify-between py-2 text-muted">
-                    <span>Tax</span>
-                    <span className="money">{formatMoney(claim.taxCents, claim.currency)}</span>
-                  </li>
-                )}
-                {claim.tipCents > 0 && (
-                  <li className="flex justify-between py-2 text-muted">
-                    <span>Tip</span>
-                    <span className="money">{formatMoney(claim.tipCents, claim.currency)}</span>
-                  </li>
-                )}
-              </ul>
-            </section>
+          <LinesCard
+            claimId={claim.id}
+            currency={claim.currency}
+            rows={lineInfo.rows.map((r) => ({ ...r, excludeReason: "excludeReason" in r ? (r.excludeReason as string | null) : null, decisionNote: "decisionNote" in r ? (r.decisionNote as string | null) : null }))}
+            extrasCents={lineInfo.extrasCents}
+            canEdit={(ctx.isAdmin || claim.submitterId === ctx.user.id) && ["draft", "pending_review", "matched"].includes(claim.status)}
+            canDecide={!blocker && ["pending_review", "matched", "partially_paid", "failed"].includes(claim.status)}
+          />
+          {claim.adjustmentCents > 0 && (
+            <p className="rounded-[8px] border border-warning/30 bg-warning-soft px-3 py-2 text-[13px] text-warning">
+              Approved <Money cents={claim.amountCents - claim.adjustmentCents} currency={claim.currency} /> of <Money cents={claim.amountCents} currency={claim.currency} />. {claim.adjustmentReason}
+            </p>
           )}
 
           <MoneyTimeline truth={truth} steps={claimTimeline(facts)}>

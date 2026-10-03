@@ -36,6 +36,7 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence, a
     payerUserId: claim.payerUserId,
   });
   const [always, setAlways] = useState(false);
+  const [adjust, setAdjust] = useState<{ amount: string; reason: string; note: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const editable = canEdit && ["draft", "pending_review", "matched"].includes(claim.status);
@@ -138,6 +139,38 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence, a
         </div>
       </fieldset>
 
+      {adjust && (
+        <div className="rounded-[10px] border border-line bg-sunken/60 p-3">
+          <p className="text-[13px] font-medium">Approve a lower amount. The claimant sees the reason.</p>
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            <input aria-label="Approved amount" inputMode="decimal" placeholder="Approved amount" value={adjust.amount} onChange={(e) => setAdjust({ ...adjust, amount: e.target.value })} className={`${inputCls} money w-36`} />
+            <select aria-label="Reason" value={adjust.reason} onChange={(e) => setAdjust({ ...adjust, reason: e.target.value })} className={`${inputCls} w-auto`}>
+              <option value="over_policy">Over policy</option>
+              <option value="personal">Personal item</option>
+              <option value="missing_receipt">No receipt for part of it</option>
+              <option value="duplicate_item">Already claimed</option>
+              <option value="other">Other</option>
+            </select>
+            <input aria-label="Note for the claimant" placeholder="Note for the claimant" value={adjust.note} onChange={(e) => setAdjust({ ...adjust, note: e.target.value })} className={`${inputCls} min-w-[200px] flex-1`} />
+            <Button
+              type="button"
+              size="sm"
+              disabled={busy || !adjust.amount || adjust.note.trim().length < 3}
+              onClick={() =>
+                run(
+                  () => api(`/claims/${claim.id}/adjust`, { json: { approvedCents: Math.round(Number(adjust.amount) * 100), reasonCode: adjust.reason, note: adjust.note.trim() } }),
+                  "Approved the adjusted amount",
+                ).then(() => setAdjust(null))
+              }
+            >
+              Approve adjusted
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setAdjust(null)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
       {approveBlocked && approvable && isAdmin && <p className="text-xs text-muted">{approveBlocked}</p>}
       {lowConfidence && editable && <Alert tone="warning">Extraction confidence is low. Check each field against the receipt before approving.</Alert>}
       {msg && <Alert tone={msg.ok ? "success" : "danger"}>{msg.text}</Alert>}
@@ -158,6 +191,11 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence, a
                 onClick={() => run(() => api(`/claims/${claim.id}`, { method: "PATCH", json: { markReady: true } }), "Approved")}
               >
                 <CheckIcon className="size-4" weight="bold" aria-hidden /> Approve
+              </Button>
+            )}
+            {approvable && !approveBlocked && claim.status === "pending_review" && !adjust && (
+              <Button type="button" variant="ghost" disabled={busy} onClick={() => setAdjust({ amount: "", reason: "over_policy", note: "" })}>
+                Approve less…
               </Button>
             )}
           </div>

@@ -33,12 +33,22 @@ export function allocate(total: number, weights: number[]): number[] {
   return out;
 }
 
-export type PayeeLine = { userId: string; paidCents: number; owedCents: number; settledCents: number; outstandingCents: number };
+export type PayeeLine = {
+  userId: string;
+  paidCents: number;
+  owedCents: number;
+  settledCents: number;
+  outstandingCents: number;
+  /** Outstanding minus this person's share of held or disputed lines: what can be paid today. */
+  payableNowCents: number;
+};
 
 export type Obligations = {
   totalCents: number;
   /** Excluded as personal (line items). Nobody is reimbursed for it. */
   excludedCents: number;
+  /** Held or disputed lines: still owed, but not paid until resolved. */
+  heldCents: number;
   companyFundedCents: number;
   advanceFundedCents: number;
   employeeFundedCents: number;
@@ -55,7 +65,14 @@ export type Obligations = {
  * reduce each employee payer's share in proportion to what they paid.
  * With no payment rows, the single payer is assumed to have paid the whole amount.
  */
-export function computeObligations(input: { totalCents: number; payerUserId: string; payments?: Payment[]; excludedCents?: number; ledger?: LedgerEntry[] }): Obligations {
+export function computeObligations(input: {
+  totalCents: number;
+  payerUserId: string;
+  payments?: Payment[];
+  excludedCents?: number;
+  heldCents?: number;
+  ledger?: LedgerEntry[];
+}): Obligations {
   const { totalCents } = input;
   const payments = input.payments?.length ? input.payments : [{ userId: input.payerUserId, source: "employee" as const, amountCents: totalCents }];
   const by = (s: FundingSource) => payments.filter((p) => p.source === s).reduce((a, p) => a + p.amountCents, 0);
@@ -77,14 +94,18 @@ export function computeObligations(input: { totalCents: number; payerUserId: str
     owed.push(0);
     paidBy.set(e.userId, 0);
   }
+  // Held lines are carved out of each person's share in proportion to what they're owed.
+  const held = allocate(Math.min(input.heldCents ?? 0, reimbursableCents), owed);
   const payees = ids.map((userId, i) => {
     const settledCents = ledger.filter((e) => e.userId === userId).reduce((a, e) => a - EFFECT[e.kind] * e.amountCents, 0);
-    return { userId, paidCents: paidBy.get(userId)!, owedCents: owed[i], settledCents, outstandingCents: owed[i] - settledCents };
+    const outstandingCents = owed[i] - settledCents;
+    return { userId, paidCents: paidBy.get(userId)!, owedCents: owed[i], settledCents, outstandingCents, payableNowCents: Math.max(0, outstandingCents - (held[i] ?? 0)) };
   });
 
   return {
     totalCents,
     excludedCents,
+    heldCents: Math.min(input.heldCents ?? 0, reimbursableCents),
     companyFundedCents: by("company_card"),
     advanceFundedCents: by("advance"),
     employeeFundedCents,
@@ -111,4 +132,31 @@ export function moneyStatus(o: Obligations): "unpaid" | "partially_paid" | "paid
   if (o.reimbursableCents === 0) return "nothing_owed";
   if (o.outstandingCents === 0) return "paid";
   return o.payees.some((p) => p.settledCents > 0) ? "partially_paid" : "unpaid";
+}
+
+export const LINE_STATES = ["pending", "approved", "held", "disputed"] as const;
+export type LineState = (typeof LINE_STATES)[number];
+export type Line = { id: string; name: string; amountCents: number; excluded: boolean; state: LineState };
+export type LineRow = Line & { extraCents: number; totalCents: number };
+
+/**
+ * Spreads tax and tip over every line in proportion to its price, so excluding a personal item also
+ * excludes its share of tax and tip. Anything the receipt total has beyond the lines becomes an
+ * "Unitemized" row, so the breakdown always adds up to the claim total.
+ */
+export function lineBreakdown(totalCents: number, lines: Line[], taxCents: number, tipCents: number) {
+  if (!lines.length) return { rows: [] as LineRow[], excludedCents: 0, heldCents: 0, extrasCents: 0 };
+  const base = lines.reduce((a, l) => a + l.amountCents, 0);
+  const extras = Math.max(0, Math.min(taxCents + tipCents, totalCents - base));
+  const unitemized = totalCents - base - extras;
+  const all: Line[] = unitemized !== 0 ? [...lines, { id: "unitemized", name: "Unitemized", amountCents: unitemized, excluded: false, state: "pending" }] : lines;
+  const shares = allocate(extras, all.map((l) => Math.max(0, l.amountCents)));
+  const rows = all.map((l, i) => ({ ...l, extraCents: shares[i], totalCents: l.amountCents + shares[i] }));
+  const sum = (f: (r: LineRow) => boolean) => rows.filter(f).reduce((a, r) => a + r.totalCents, 0);
+  return {
+    rows,
+    excludedCents: sum((r) => r.excluded),
+    heldCents: sum((r) => !r.excluded && (r.state === "held" || r.state === "disputed")),
+    extrasCents: extras,
+  };
 }

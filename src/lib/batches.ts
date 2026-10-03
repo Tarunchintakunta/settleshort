@@ -25,8 +25,9 @@ export async function createBatch(workspaceId: string, actorId: string, claimIds
 
   // One line per claim and person still owed money (multiple payers, partial repayments, company-funded parts).
   const owed = await obligationsForMany(rows);
-  const lines = rows.flatMap((c) => owed.get(c.id)!.payees.filter((p) => p.outstandingCents > 0).map((p) => ({ claim: c, userId: p.userId, amountCents: p.outstandingCents })));
-  if (!lines.length) fail(400, "nothing_owed", "Nothing is owed on these claims");
+  // Payable now: outstanding minus held or disputed lines, which stay owed until resolved.
+  const lines = rows.flatMap((c) => owed.get(c.id)!.payees.filter((p) => p.payableNowCents > 0).map((p) => ({ claim: c, userId: p.userId, amountCents: p.payableNowCents })));
+  if (!lines.length) fail(400, "nothing_owed", "Nothing can be paid on these claims right now (nothing owed, or every line is held)");
   const people = await db
     .select({ id: users.id, name: users.name, paypalEmail: memberships.paypalReceiverEmail })
     .from(users)

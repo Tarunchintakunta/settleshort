@@ -43,6 +43,7 @@ export async function approveClaim(ws: { id: string; alternateApproverId: string
   const blocked = approvalBlocker(approver, { submitterId: claim.submitterId, payeeIds: (await payeesOf(claim)).map((p) => p.userId) }, ws.alternateApproverId);
   if (blocked) fail(403, blocked.code, blocked.message);
 
+  if (claim.duplicateOfId) fail(409, "possible_duplicate", "This looks like a duplicate. Merge it or mark it a different expense before approving.");
   const kinds = (await db.select({ k: claimEvidence.kind }).from(claimEvidence).where(eq(claimEvidence.claimId, claimId))).map((r) => r.k);
   const missing = missingQuestions(claim, { kinds, receiptRequiredCents: ws.receiptRequiredCents });
   if (missing.length) fail(409, "missing_info", `Still needed before approval: ${missing.map((m) => m.question).join(" ")}`);
@@ -58,7 +59,7 @@ export async function approveClaim(ws: { id: string; alternateApproverId: string
   await db.insert(approvals).values({ workspaceId: ws.id, claimId, approverId: approver.id, snapshotHash: hash, snapshotJson: snap });
   const [updated] = await db
     .update(claims)
-    .set({ status: claim.status === "in_batch" ? "in_batch" : "matched", duplicateOfId: null, updatedAt: new Date() })
+    .set({ status: claim.status === "in_batch" ? "in_batch" : "matched", updatedAt: new Date() })
     .where(eq(claims.id, claimId))
     .returning();
   await audit(ws.id, approver.id, "claim.approved", "claim", claimId, { amount: snap.amountCents, currency: snap.currency });

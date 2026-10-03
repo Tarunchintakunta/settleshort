@@ -76,6 +76,9 @@ export const claims = pgTable(
     // Business purpose: why the company should pay. Required before approval; never invented by AI.
     purpose: text("purpose").notNull().default(""),
     category: text("category"),
+    // Adjust-and-approve: the approver approved this much less, for the stated reason (shown to the claimant).
+    adjustmentCents: integer("adjustment_cents").notNull().default(0),
+    adjustmentReason: text("adjustment_reason"),
     // "mapping" = filled from a confirmed merchant rule; "human" = set by a person on this claim.
     categorySource: text("category_source"),
     rawText: text("raw_text"),
@@ -296,4 +299,24 @@ export const aiFeedback = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("ai_feedback_ws").on(t.workspaceId, t.kind)],
+);
+
+/** Receipt line items: exclude personal ones, approve or hold each one (tax and tip are spread over them). */
+export const claimLines = pgTable(
+  "claim_lines",
+  {
+    id: id(),
+    claimId: uuid("claim_id").notNull().references(() => claims.id, { onDelete: "cascade" }),
+    position: integer("position").notNull().default(0),
+    name: text("name").notNull(),
+    amountCents: integer("amount_cents").notNull(),
+    excluded: boolean("excluded").notNull().default(false),
+    // Shown to the claimant: why this line isn't reimbursed (personal, over_policy, missing_receipt, duplicate_item, other).
+    excludeReason: text("exclude_reason"),
+    state: text("state", { enum: ["pending", "approved", "held", "disputed"] }).notNull().default("pending"),
+    decisionNote: text("decision_note"),
+    decidedBy: uuid("decided_by").references(() => users.id),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+  },
+  (t) => [index("claim_lines_claim").on(t.claimId)],
 );

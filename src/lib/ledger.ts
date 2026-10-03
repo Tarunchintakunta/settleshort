@@ -1,19 +1,21 @@
 import "server-only";
 import { and, eq, inArray, ne, notInArray } from "drizzle-orm";
 import { audit } from "./audit";
-import { batches, batchItems, claimPayments, claims, db, ledgerEntries } from "./db";
+import { batches, batchItems, claimLines, claimPayments, claims, db, ledgerEntries } from "./db";
 import { TERMINAL } from "./payout-status";
 import { formatMoney } from "./money";
-import { computeObligations, moneyStatus, type LedgerKind, type Obligations } from "./settlement";
+import { computeObligations, lineBreakdown, moneyStatus, type LedgerKind, type Obligations } from "./settlement";
 
 type Claim = typeof claims.$inferSelect;
 
 export async function obligationsFor(claim: Claim): Promise<Obligations> {
-  const [payments, ledger] = await Promise.all([
-    db.select().from(claimPayments).where(eq(claimPayments.claimId, claim.id)),
-    db.select().from(ledgerEntries).where(eq(ledgerEntries.claimId, claim.id)),
-  ]);
-  return computeObligations({ totalCents: claim.amountCents, payerUserId: claim.payerUserId, payments, ledger });
+  return (await obligationsForMany([claim])).get(claim.id)!;
+}
+
+/** Line items with tax and tip spread over them, for one claim. */
+export async function linesFor(claim: Claim) {
+  const lines = await db.select().from(claimLines).where(eq(claimLines.claimId, claim.id)).orderBy(claimLines.position);
+  return { lines, ...lineBreakdown(claim.amountCents, lines, claim.taxCents, claim.tipCents) };
 }
 
 /** Statuses whose money state follows the ledger (after approval and batching). */
@@ -57,19 +59,25 @@ export async function recordLedger(
 export async function obligationsForMany(rows: Claim[]) {
   if (!rows.length) return new Map<string, Obligations>();
   const ids = rows.map((r) => r.id);
-  const [payments, ledger] = await Promise.all([
+  const [payments, ledger, lines] = await Promise.all([
     db.select().from(claimPayments).where(inArray(claimPayments.claimId, ids)),
-    db.select().from(ledgerEntries).where(and(inArray(ledgerEntries.claimId, ids))),
+    db.select().from(ledgerEntries).where(inArray(ledgerEntries.claimId, ids)),
+    db.select().from(claimLines).where(inArray(claimLines.claimId, ids)).orderBy(claimLines.position),
   ]);
   return new Map(
-    rows.map((c) => [
-      c.id,
-      computeObligations({
-        totalCents: c.amountCents,
-        payerUserId: c.payerUserId,
-        payments: payments.filter((p) => p.claimId === c.id),
-        ledger: ledger.filter((l) => l.claimId === c.id),
-      }),
-    ]),
+    rows.map((c) => {
+      const b = lineBreakdown(c.amountCents, lines.filter((l) => l.claimId === c.id), c.taxCents, c.tipCents);
+      return [
+        c.id,
+        computeObligations({
+          totalCents: c.amountCents,
+          payerUserId: c.payerUserId,
+          payments: payments.filter((p) => p.claimId === c.id),
+          ledger: ledger.filter((l) => l.claimId === c.id),
+          excludedCents: b.excludedCents + c.adjustmentCents,
+          heldCents: b.heldCents,
+        }),
+      ];
+    }),
   );
 }
