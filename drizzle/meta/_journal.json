@@ -71,6 +71,13 @@
       "when": 1791018744198,
       "tag": "0009_conflicts_ack",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791018893767,
+      "tag": "0010_claim_purpose",
+      "breakpoints": true
     }
   ]
 }

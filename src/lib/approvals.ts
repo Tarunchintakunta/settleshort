@@ -3,7 +3,7 @@ import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { fail } from "./api";
 import { audit } from "./audit";
 import { approvals, batches, batchItems, claimEvidence, claims, db, users } from "./db";
-import { findContradictions, type EvidenceFacts } from "./evidence";
+import { findContradictions, missingQuestions, type EvidenceFacts } from "./evidence";
 import { obligationsFor } from "./ledger";
 import { approvalBlocker, diffSnapshots, hashSnapshot, type Approver, type Snapshot } from "./policy";
 
@@ -43,6 +43,8 @@ export async function approveClaim(ws: { id: string; alternateApproverId: string
   const blocked = approvalBlocker(approver, { submitterId: claim.submitterId, payeeIds: (await payeesOf(claim)).map((p) => p.userId) }, ws.alternateApproverId);
   if (blocked) fail(403, blocked.code, blocked.message);
 
+  const missing = missingQuestions(claim);
+  if (missing.length) fail(409, "missing_info", `Still needed before approval: ${missing.map((m) => m.question).join(" ")}`);
   const open = await openContradictions(claim);
   if (open.length) fail(409, "contradiction", `Resolve conflicting evidence first: ${open.map((c) => c.message).join("; ")}`);
 

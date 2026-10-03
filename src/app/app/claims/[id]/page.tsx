@@ -17,8 +17,9 @@ import { claimTimeline } from "@/lib/status";
 import { Pill } from "@/components/ui";
 import { openContradictions, payeesOf } from "@/lib/approvals";
 import { ConflictsPanel } from "@/components/claims/conflicts-panel";
+import { MissingQuestionCard } from "@/components/claims/missing-question";
 import { approvalBlocker } from "@/lib/policy";
-import { FIELD_UNSURE, uncertainFields } from "@/lib/evidence";
+import { FIELD_UNSURE, missingQuestions, uncertainFields } from "@/lib/evidence";
 import { formatMoney } from "@/lib/money";
 
 export const metadata = { title: "Claim" };
@@ -88,6 +89,9 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
         </div>
       </header>
 
+      {(ctx.isAdmin || claim.submitterId === ctx.user.id) && ["draft", "pending_review", "matched"].includes(claim.status) && (
+        <MissingQuestionCard claimId={claim.id} questions={missingQuestions(claim)} />
+      )}
       <ConflictsPanel claimId={claim.id} conflicts={conflicts} canResolve={ctx.isAdmin} />
 
       {claim.duplicateOfId && dupOf && (

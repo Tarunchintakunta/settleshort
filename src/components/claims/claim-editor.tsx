@@ -7,7 +7,7 @@ import { Alert, Button, Field, inputCls } from "@/components/ui";
 import { api } from "@/lib/client";
 
 type Props = {
-  claim: { id: string; vendor: string; amountCents: number; currency: string; txnDate: string | null; note: string; payerUserId: string; status: string; duplicateOfId: string | null };
+  claim: { id: string; vendor: string; amountCents: number; currency: string; txnDate: string | null; note: string; purpose: string; payerUserId: string; status: string; duplicateOfId: string | null };
   members: { id: string; name: string }[];
   isAdmin: boolean;
   canEdit: boolean;
@@ -30,6 +30,7 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence, a
     currency: claim.currency,
     txnDate: claim.txnDate ?? "",
     note: claim.note,
+    purpose: claim.purpose,
     payerUserId: claim.payerUserId,
   });
   const [busy, setBusy] = useState(false);
@@ -60,6 +61,7 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence, a
         currency: f.currency,
         txnDate: f.txnDate || null,
         note: f.note,
+        purpose: f.purpose,
         ...(isAdmin ? { payerUserId: f.payerUserId } : {}),
         ...extra,
       },
@@ -101,6 +103,11 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence, a
             ))}
           </select>
         </Field>
+        <div className="sm:col-span-2">
+          <Field label="Business purpose" hint="Why the company should pay. Required before approval.">
+            <input value={f.purpose} onChange={set("purpose")} className={inputCls} placeholder="Client lunch with Acme" />
+          </Field>
+        </div>
         <div className="sm:col-span-2">
           <Field label="Note">
             <input value={f.note} onChange={set("note")} className={inputCls} />

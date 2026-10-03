@@ -73,3 +73,12 @@ describe("contradictions ignore guesses", () => {
     expect(findContradictions([a, b])[0].message).toBe("The original message says $64.00 but the added message says $72.40");
   });
 });
+
+import { missingQuestions } from "../src/lib/evidence";
+describe("missing questions", () => {
+  it("asks only for what is missing", () => {
+    const q = missingQuestions({ amountCents: 4230, vendor: "Uber", txnDate: "2026-09-25", purpose: "" });
+    expect(q.map((x) => x.field)).toEqual(["purpose"]);
+    expect(missingQuestions({ amountCents: 0, vendor: "", txnDate: null, purpose: "x" }).map((x) => x.field)).toEqual(["amount", "vendor", "txnDate"]);
+  });
+});

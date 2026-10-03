@@ -75,3 +75,18 @@ export function findContradictions(evidence: EvidenceFacts[]): Contradiction[] {
   return out;
 }
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
+
+export type MissingQuestion = { field: "amount" | "vendor" | "txnDate" | "purpose"; question: string; placeholder: string };
+
+/**
+ * What a claim still needs before anyone can approve it, as one plain question per gap. Only real gaps
+ * are asked: a clear amount is never asked again just because the purpose is missing.
+ */
+export function missingQuestions(c: { amountCents: number; vendor: string; txnDate: string | null; purpose: string }): MissingQuestion[] {
+  const out: MissingQuestion[] = [];
+  if (!c.amountCents) out.push({ field: "amount", question: "How much was it?", placeholder: "42.30" });
+  if (!c.vendor.trim()) out.push({ field: "vendor", question: "Where did you buy it?", placeholder: "Uber, Chipotle, Figma…" });
+  if (!c.txnDate) out.push({ field: "txnDate", question: "What day was it?", placeholder: "YYYY-MM-DD" });
+  if (!c.purpose.trim()) out.push({ field: "purpose", question: "What was it for? (the business reason)", placeholder: "Client lunch with Acme, onboarding offsite…" });
+  return out;
+}

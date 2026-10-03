@@ -20,6 +20,7 @@ const Patch = z.object({
   currency: z.string().length(3).toUpperCase().optional(),
   txnDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   note: z.string().max(1000).optional(),
+  purpose: z.string().trim().max(500).optional(),
   payerUserId: z.string().uuid().optional(),
   markReady: z.boolean().optional(), // human approval -> matched (see approveClaim)
 });

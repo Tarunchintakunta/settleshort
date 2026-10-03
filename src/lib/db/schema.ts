@@ -71,6 +71,8 @@ export const claims = pgTable(
     tipCents: integer("tip_cents").notNull().default(0),
     taxCents: integer("tax_cents").notNull().default(0),
     note: text("note").notNull().default(""),
+    // Business purpose: why the company should pay. Required before approval; never invented by AI.
+    purpose: text("purpose").notNull().default(""),
     rawText: text("raw_text"),
     // S3 object key only (receipts/{workspaceId}/{claimId}/{uuid}.{ext}); viewed via short-lived presigned GET URLs.
     receiptKey: text("receipt_key"),

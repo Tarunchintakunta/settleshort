@@ -43,12 +43,12 @@ export async function createDemoWorkspace() {
 
   type C = Partial<typeof claims.$inferInsert> & { key: string };
   const defs: C[] = [
-    { key: "c1", vendor: "Lyft", amountCents: 3210, txnDate: "2026-08-28", source: "slack", payerUserId: u.sam, status: "paid", aiConfidence: 0.86, rawText: "Lyft to the offsite $32.10", note: "Airport → venue" },
-    { key: "c2", vendor: "WeWork day pass", amountCents: 4500, txnDate: "2026-08-29", source: "upload", payerUserId: u.rita, status: "paid", aiConfidence: 0.93 },
-    { key: "c3", vendor: "Nopa", amountCents: 18650, txnDate: "2026-09-26", source: "upload", payerUserId: u.dev, status: "in_batch", aiConfidence: 0.88, tipCents: 3000, taxCents: 1450, note: "Team dinner, party of 5" },
-    { key: "c4", vendor: "Uber", amountCents: 4230, txnDate: "2026-09-25", source: "slack", payerUserId: u.rita, status: "in_batch", aiConfidence: 0.82, rawText: "I paid $42.30 for Uber for @rita yesterday" },
-    { key: "c5", vendor: "Costco", amountCents: 5875, txnDate: "2026-09-24", source: "manual", payerUserId: u.jules, status: "in_batch", note: "Offsite snacks" },
-    { key: "c6", vendor: "Chipotle", amountCents: 6400, txnDate: "2026-09-29", source: "slack", payerUserId: u.sam, status: "matched", aiConfidence: 0.84, rawText: "Chipotle $64 split me @sam @dev" },
+    { key: "c1", vendor: "Lyft", amountCents: 3210, txnDate: "2026-08-28", source: "slack", payerUserId: u.sam, status: "paid", aiConfidence: 0.86, rawText: "Lyft to the offsite $32.10", note: "Airport → venue", purpose: "Travel to the August offsite" },
+    { key: "c2", vendor: "WeWork day pass", amountCents: 4500, txnDate: "2026-08-29", source: "upload", payerUserId: u.rita, status: "paid", aiConfidence: 0.93, purpose: "Workspace for the August offsite" },
+    { key: "c3", vendor: "Nopa", amountCents: 18650, txnDate: "2026-09-26", source: "upload", payerUserId: u.dev, status: "in_batch", aiConfidence: 0.88, tipCents: 3000, taxCents: 1450, note: "Team dinner, party of 5", purpose: "September offsite team dinner" },
+    { key: "c4", vendor: "Uber", amountCents: 4230, txnDate: "2026-09-25", source: "slack", payerUserId: u.rita, status: "in_batch", aiConfidence: 0.82, rawText: "I paid $42.30 for Uber for @rita yesterday", purpose: "Ride to the September offsite" },
+    { key: "c5", vendor: "Costco", amountCents: 5875, txnDate: "2026-09-24", source: "manual", payerUserId: u.jules, status: "in_batch", note: "Offsite snacks", purpose: "Snacks for the September offsite" },
+    { key: "c6", vendor: "Chipotle", amountCents: 6400, txnDate: "2026-09-29", source: "slack", payerUserId: u.sam, status: "matched", aiConfidence: 0.84, rawText: "Chipotle $64 split me @sam @dev", purpose: "Lunch while shipping the launch" },
     { key: "c7", vendor: "Ace Hardware", amountCents: 2399, txnDate: null, source: "upload", payerUserId: u.dev, status: "pending_review", aiConfidence: 0.42, note: "Blurry photo, confirm amount" },
     { key: "c8", vendor: "Chipotle Mexican Grill", amountCents: 6400, txnDate: "2026-09-29", source: "slack", payerUserId: u.dev, status: "pending_review", aiConfidence: 0.8, rawText: "paid 64 bucks at chipotle for me @sam" },
     { key: "c9", vendor: "Netflix", amountCents: 1549, txnDate: "2026-09-15", source: "manual", payerUserId: u.jules, status: "rejected", note: "Personal subscription" },
