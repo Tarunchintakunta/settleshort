@@ -141,7 +141,7 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
                 <span
                   className={cx(
                     "relative z-10 mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border",
-                    t.done ? "border-success bg-success text-white" : "border-line-strong bg-panel text-transparent",
+                    t.done ? "border-success bg-success text-on-success" : "border-line-strong bg-panel text-transparent",
                   )}
                   aria-hidden
                 >
