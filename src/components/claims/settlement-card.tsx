@@ -7,7 +7,7 @@ import { Alert, Button, inputCls, Money } from "@/components/ui";
 import { api } from "@/lib/client";
 import type { Obligations } from "@/lib/settlement";
 
-type Payment = { userId: string | null; source: "employee" | "company_card" | "advance"; amountCents: number };
+type Payment = { userId: string | null; source: "employee" | "company_card" | "advance"; amountCents: number; advanceId?: string | null };
 type Entry = { id: string; kind: string; userId: string; amountCents: number; reference: string | null; createdAt: string };
 
 const SOURCE: Record<string, string> = { employee: "Personal money", company_card: "Company card", advance: "Advance" };
@@ -34,10 +34,12 @@ type Props = {
   approvedBy: string | null;
   canEditFunding: boolean;
   canRecord: boolean;
+  /** Open advances in this claim's currency, for "paid from an advance". */
+  advanceOptions?: { id: string; label: string }[];
 };
 
 /** The obligation breakdown: who paid, who benefits, who approved, who is owed what. */
-export function SettlementCard({ claimId, currency, totalCents, o, payments, entries, members, participants, participantIds, budgetOwnerId, canEditPeople, approvedBy, canEditFunding, canRecord }: Props) {
+export function SettlementCard({ claimId, currency, totalCents, o, payments, entries, members, participants, participantIds, budgetOwnerId, canEditPeople, approvedBy, canEditFunding, canRecord, advanceOptions = [] }: Props) {
   const [people, setPeople] = useState<{ ids: string[]; budget: string } | null>(null);
   const router = useRouter();
   const name = (id: string | null) => (id ? members.find((m) => m.id === id)?.name ?? "Unknown" : "Company");
@@ -201,6 +203,16 @@ export function SettlementCard({ claimId, currency, totalCents, o, payments, ent
                       </option>
                     ))}
                   </select>
+                  {r.source === "advance" && (
+                    <select aria-label="Which advance" value={r.advanceId ?? ""} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, advanceId: e.target.value || null } : x)))} className={`${inputCls} w-auto`}>
+                      <option value="">Which advance?</option>
+                      {advanceOptions.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                   {r.source === "employee" && (
                     <select aria-label="Who paid" value={r.userId ?? ""} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, userId: e.target.value } : x)))} className={`${inputCls} w-auto`}>
                       {members.map((m) => (
@@ -229,7 +241,7 @@ export function SettlementCard({ claimId, currency, totalCents, o, payments, ent
                       () =>
                         api(`/claims/${claimId}/payments`, {
                           method: "PUT",
-                          json: { payments: rows.map((r) => ({ userId: r.source === "employee" ? r.userId : null, source: r.source, amountCents: Math.round(Number(r.amount) * 100) })) },
+                          json: { payments: rows.map((r) => ({ userId: r.source === "employee" ? r.userId : null, source: r.source, amountCents: Math.round(Number(r.amount) * 100), advanceId: r.source === "advance" ? r.advanceId : null })) },
                         }),
                       () => setEditing(false),
                     )

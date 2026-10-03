@@ -277,6 +277,8 @@ export const claimPayments = pgTable("claim_payments", {
   userId: uuid("user_id").references(() => users.id),
   source: text("source", { enum: ["employee", "company_card", "advance"] }).notNull(),
   amountCents: integer("amount_cents").notNull(),
+  // Which advance paid for it, when source = advance.
+  advanceId: uuid("advance_id"),
 });
 
 /** Append-only money movements per claim and person: payouts, repayments, refunds, clawbacks. */
@@ -425,4 +427,24 @@ export const investigations = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("investigations_ws").on(t.workspaceId, t.status)],
+);
+
+/** Money advanced to someone for travel or an event, reconciled against the claims it paid for. */
+export const advances = pgTable(
+  "advances",
+  {
+    id: id(),
+    workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    amountCents: integer("amount_cents").notNull(),
+    currency: text("currency").notNull(),
+    purpose: text("purpose").notNull(),
+    reference: text("reference"),
+    issuedBy: uuid("issued_by").notNull().references(() => users.id),
+    status: text("status", { enum: ["open", "settled"] }).notNull().default("open"),
+    settlement: text("settlement"),
+    settledAt: timestamp("settled_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("advances_ws").on(t.workspaceId)],
 );

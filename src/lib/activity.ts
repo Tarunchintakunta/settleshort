@@ -22,6 +22,8 @@ const VERBS: Record<string, string> = {
   "claim.fix_requested": "asked for a specific fix",
   "investigation.resolved": "resolved a missing-payout investigation",
   "claim.tracking_updated": "updated deposit or client-billing tracking",
+  "advance.issued": "recorded an advance",
+  "advance.settled": "settled an advance",
   "claim.escalated": "escalated an overdue approval to the next person",
   "claim.reminded": "sent a reminder explaining what's blocking a claim",
   "claim.fix_resolved": "answered a fix request",

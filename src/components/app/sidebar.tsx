@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChartLineUpIcon, GearSixIcon, SirenIcon, PulseIcon, SquaresFourIcon, StackIcon, TrayIcon, UsersThreeIcon, WalletIcon, type Icon } from "@phosphor-icons/react";
+import { ChartLineUpIcon, HandCoinsIcon, GearSixIcon, SirenIcon, PulseIcon, SquaresFourIcon, StackIcon, TrayIcon, UsersThreeIcon, WalletIcon, type Icon } from "@phosphor-icons/react";
 import { cx } from "@/components/ui";
 
 const NAV: { href: string; label: string; icon: Icon }[] = [
@@ -11,6 +11,7 @@ const NAV: { href: string; label: string; icon: Icon }[] = [
   { href: "/app/claims", label: "Claims", icon: TrayIcon },
   { href: "/app/me", label: "My money", icon: WalletIcon },
   { href: "/app/batches", label: "Batches", icon: StackIcon },
+  { href: "/app/advances", label: "Advances", icon: HandCoinsIcon },
   { href: "/app/insights", label: "Insights", icon: ChartLineUpIcon },
   { href: "/app/activity", label: "Activity", icon: PulseIcon },
   { href: "/app/members", label: "Members", icon: UsersThreeIcon },

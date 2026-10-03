@@ -165,3 +165,8 @@ export function lineBreakdown(totalCents: number, lines: Line[], taxCents: numbe
 export function impliedRate(fromCents: number, toCents: number) {
   return fromCents > 0 ? Number((toCents / fromCents).toFixed(6)) : null;
 }
+
+/** An advance against what it actually paid for: what's left to return, or what the person spent beyond it. */
+export function reconcileAdvance(advancedCents: number, spentCents: number) {
+  return { advancedCents, spentCents, leftCents: Math.max(0, advancedCents - spentCents), overspentCents: Math.max(0, spentCents - advancedCents) };
+}

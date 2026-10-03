@@ -124,3 +124,11 @@ describe("fx", () => {
     expect(impliedRate(0, 100)).toBeNull();
   });
 });
+
+import { reconcileAdvance } from "../src/lib/settlement";
+describe("advances (#46)", () => {
+  it("shows what is left or overspent", () => {
+    expect(reconcileAdvance(50000, 41250)).toEqual({ advancedCents: 50000, spentCents: 41250, leftCents: 8750, overspentCents: 0 });
+    expect(reconcileAdvance(50000, 52000)).toMatchObject({ leftCents: 0, overspentCents: 2000 });
+  });
+});

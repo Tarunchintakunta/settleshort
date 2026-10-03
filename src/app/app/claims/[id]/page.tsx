@@ -16,6 +16,7 @@ import { FixRequests } from "@/components/claims/fix-requests";
 import { RemindButton } from "@/components/claims/remind-button";
 import { InvestigationPanel } from "@/components/claims/investigation-panel";
 import { blockerFor } from "@/lib/reminders";
+import { advancesWithSpend } from "@/lib/advances";
 import { saasFindings } from "@/lib/exceptions";
 import { SettlementCard } from "@/components/claims/settlement-card";
 import { MoneyTimeline } from "@/components/claims/money-timeline";
@@ -408,6 +409,9 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
               approvedBy={activeApproval ? name(activeApproval.approverId) : null}
               canEditFunding={(ctx.isAdmin || claim.submitterId === ctx.user.id) && ["draft", "pending_review", "matched"].includes(claim.status)}
               canRecord={ctx.isAdmin && ["matched", "partially_paid", "paid", "failed"].includes(claim.status)}
+              advanceOptions={(await advancesWithSpend(ctx.workspace.id))
+                .filter((a) => a.status === "open" && a.currency === claim.currency)
+                .map((a) => ({ id: a.id, label: `${name(a.userId)}: ${a.purpose} (${formatMoney(a.leftCents, a.currency)} left)` }))}
             />
             <div className="mt-3 overflow-hidden rounded-[12px] border border-line bg-panel shadow-soft">
               {batchRow ? (
