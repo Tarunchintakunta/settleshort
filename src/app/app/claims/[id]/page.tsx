@@ -226,6 +226,16 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
 
           <EvidencePanel
             claimId={claim.id}
+            describeChange={Object.fromEntries(
+              evidence_.flatMap((e) => {
+                const x = e.extractJson as { correction?: boolean; from?: Record<string, unknown>; to?: Record<string, unknown> } | null;
+                if (!x?.correction || !x.to) return [];
+                const show = (k: string, v: unknown) =>
+                  k === "payerUserId" ? name(String(v)) : k === "amountCents" ? formatMoney(Number(v), String(x.to?.currency ?? claim.currency)) : String(v ?? "none");
+                const LABEL: Record<string, string> = { payerUserId: "Paid by", amountCents: "Amount", vendor: "Merchant", txnDate: "Date", currency: "Currency" };
+                return [[e.id, Object.keys(x.to).map((k) => `${LABEL[k] ?? k}: ${show(k, x.from?.[k])} → ${show(k, x.to![k])}`).join(" · ")]];
+              }),
+            )}
             canAdd={(ctx.isAdmin || claim.submitterId === ctx.user.id) && !["paid", "rejected"].includes(claim.status)}
             rows={evidence_.map((e) => ({
               id: e.id,

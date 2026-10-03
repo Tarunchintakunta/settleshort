@@ -13,14 +13,23 @@ export type EvidenceRow = {
   fileName: string | null;
   fileMime: string | null;
   rawText: string | null;
-  extract: { vendor?: string | null; amount_cents?: number; currency?: string; txn_date?: string | null } | null;
+  extract: {
+    vendor?: string | null;
+    amount_cents?: number;
+    currency?: string;
+    txn_date?: string | null;
+    correction?: boolean;
+    from?: Record<string, unknown>;
+    to?: Record<string, unknown>;
+  } | null;
   addedBy: string;
   createdAt: string;
 };
 
 const KIND: Record<string, string> = { receipt: "Receipt", invoice: "Invoice", message: "Message", declaration: "Missing-receipt declaration", statement: "Statement" };
 
-export function EvidencePanel({ claimId, rows, canAdd }: { claimId: string; rows: EvidenceRow[]; canAdd: boolean }) {
+export function EvidencePanel({ claimId, rows, canAdd, describeChange }: { claimId: string; rows: EvidenceRow[]; canAdd: boolean; describeChange?: Record<string, string> }) {
+  const [fix, setFix] = useState("");
   const router = useRouter();
   const file = useRef<HTMLInputElement>(null);
   const [text, setText] = useState("");
@@ -54,8 +63,9 @@ export function EvidencePanel({ claimId, rows, canAdd }: { claimId: string; rows
               {r.fileName ? <FileIcon className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /> : <ChatTextIcon className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />}
               <div className="min-w-0">
                 <p className="font-medium">
-                  {KIND[r.kind] ?? r.kind} <span className="font-normal text-muted">· {r.addedBy}</span>
+                  {r.extract?.correction ? "Correction" : (KIND[r.kind] ?? r.kind)} <span className="font-normal text-muted">· {r.addedBy}</span>
                 </p>
+                {r.extract?.correction && describeChange?.[r.id] && <p className="text-[12px] text-accent">{describeChange[r.id]}</p>}
                 {r.fileName ? (
                   <a href={`/api/v1/claims/${claimId}/evidence/${r.id}`} target="_blank" className="text-[13px] break-all text-accent hover:underline">
                     {r.fileName}
@@ -65,11 +75,36 @@ export function EvidencePanel({ claimId, rows, canAdd }: { claimId: string; rows
                 )}
               </div>
             </div>
-            {r.extract?.amount_cents ? <Money cents={r.extract.amount_cents} currency={r.extract.currency ?? "USD"} className="shrink-0 text-ink-2" /> : null}
+            {r.extract?.amount_cents && !r.extract.correction ? <Money cents={r.extract.amount_cents} currency={r.extract.currency ?? "USD"} className="shrink-0 text-ink-2" /> : null}
           </li>
         ))}
         {rows.length === 0 && <li className="px-4 py-3 text-muted">No evidence yet.</li>}
       </ul>
+
+      {canAdd && (
+        <form
+          className="mt-3 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            run(async () => {
+              await api(`/claims/${claimId}/corrections`, { json: { text: fix.trim() } });
+              setFix("");
+            });
+          }}
+        >
+          <input
+            value={fix}
+            onChange={(e) => setFix(e.target.value)}
+            placeholder="Something wrong? Say it plainly: “Actually, Maya paid”"
+            className={inputCls}
+            aria-label="Correction"
+            autoComplete="off"
+          />
+          <Button type="submit" variant="secondary" disabled={busy || fix.trim().length < 3}>
+            Correct
+          </Button>
+        </form>
+      )}
 
       {canAdd && (
         <div className="mt-3 space-y-2">
