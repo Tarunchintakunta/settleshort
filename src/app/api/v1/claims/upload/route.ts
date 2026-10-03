@@ -5,12 +5,13 @@ import { fail, route } from "@/lib/api";
 import { audit } from "@/lib/audit";
 import { createClaim } from "@/lib/claims";
 import { aiJobs, db } from "@/lib/db";
-import { readFileField, storeAndExtract } from "@/lib/intake";
+import { readFileField, rejectSameFile, storeAndExtract } from "@/lib/intake";
 
 // Server-side upload: validate, store the original in S3, extract with AI, create the claim.
 // Extraction runs inline (a few seconds) and is recorded as an ai_job so GET /claims/jobs/:id works.
 export const POST = route(async (req, ctx) => {
-  const { file: f, buf } = await readFileField(await req.formData());
+  const { file: f, buf, hash } = await readFileField(await req.formData());
+  await rejectSameFile(ctx.workspace.id, hash);
   const claimId = randomUUID(); // known up front so the S3 key can include it
 
   const [job] = await db
@@ -33,6 +34,7 @@ export const POST = route(async (req, ctx) => {
       receiptKey: key,
       receiptMime: f.type,
       receiptName: f.name.slice(0, 200),
+      fileHash: hash,
       aiJson: { ...x, provider: aiProvider(), ocr_text: rawText?.slice(0, 4000) },
       aiConfidence: x.confidence,
       payerUserId: ctx.user.id,

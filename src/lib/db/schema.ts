@@ -112,10 +112,13 @@ export const claimEvidence = pgTable(
     fileName: text("file_name"),
     rawText: text("raw_text"),
     extractJson: jsonb("extract_json"),
+    // SHA-256 of the original file, and a vendor|amount|currency|date key (see contentKey) for cross-channel duplicates.
+    fileHash: text("file_hash"),
+    contentKey: text("content_key"),
     addedBy: uuid("added_by").references(() => users.id),
     createdAt: createdAt(),
   },
-  (t) => [index("claim_evidence_claim").on(t.claimId)],
+  (t) => [index("claim_evidence_claim").on(t.claimId), index("claim_evidence_ws_hash").on(t.workspaceId, t.fileHash), index("claim_evidence_ws_key").on(t.workspaceId, t.contentKey)],
 );
 
 export const claimSplits = pgTable("claim_splits", {

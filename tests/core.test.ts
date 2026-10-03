@@ -91,3 +91,20 @@ describe("ambiguous matches", () => {
     expect(isAmbiguous([{ id: "a", score: 0.95, reasons: [] }])).toBe(false);
   });
 });
+
+import { contentKey } from "../src/lib/evidence";
+describe("evidence fingerprint", () => {
+  it("matches a forwarded invoice and a photo of it", () => {
+    const pdf = { vendor: "ACME SOFTWARE INC.", amount_cents: 4900, currency: "USD", txn_date: "2026-09-01" };
+    const photo = { vendor: "Acme Software", amount_cents: 4900, currency: "USD", txn_date: "2026-09-01" };
+    expect(contentKey(pdf)).toBe(contentKey(photo));
+    expect(contentKey({ ...photo, amount_cents: 5000 })).not.toBe(contentKey(pdf));
+    expect(contentKey({ vendor: "", amount_cents: 1 })).toBeNull();
+  });
+});
+
+describe("fingerprint ignores guesses", () => {
+  it("has no key when the date was only defaulted", () => {
+    expect(contentKey({ vendor: "Chipotle", amount_cents: 6400, currency: "USD", txn_date: "2026-10-03", field_confidence: { date: 0.5 } })).toBeNull();
+  });
+});

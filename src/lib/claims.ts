@@ -5,6 +5,7 @@ import { openContradictions, revalidateApproval } from "./approvals";
 import { audit } from "./audit";
 import { claimEvidence, claims, claimSplits, db, memberships, users, type EvidenceKind } from "./db";
 import { DUPLICATE_THRESHOLD, findMatches, isAmbiguous } from "./matching";
+import { contentKey } from "./evidence";
 import { formatMoney, splitEven } from "./money";
 
 export const LOW_CONFIDENCE = 0.55;
@@ -23,6 +24,7 @@ export type NewClaim = {
   receiptKey?: string | null;
   receiptMime?: string | null;
   receiptName?: string | null;
+  fileHash?: string;
   aiJson?: unknown;
   aiConfidence?: number | null;
   payerUserId: string;
@@ -46,10 +48,11 @@ export async function createClaim(workspaceId: string, actorId: string, c: NewCl
     .from(claims)
     .where(eq(claims.workspaceId, workspaceId));
 
+  const { fileHash, ...fields } = c;
   const [claim] = await db
     .insert(claims)
     .values({
-      ...c,
+      ...fields,
       tipCents: c.tipCents ?? 0,
       taxCents: c.taxCents ?? 0,
       note: c.note ?? "",
@@ -71,6 +74,8 @@ export async function createClaim(workspaceId: string, actorId: string, c: NewCl
       fileName: c.receiptName ?? null,
       rawText: c.rawText ?? null,
       extractJson: c.aiJson ?? null,
+      fileHash: fileHash ?? null,
+      contentKey: contentKey({ ...(c.aiJson as object), vendor: c.vendor, amount_cents: c.amountCents, currency: c.currency, txn_date: c.txnDate }),
       addedBy: actorId,
     });
   }
@@ -104,7 +109,19 @@ export async function runMatching(workspaceId: string, claimId: string) {
       .from(claims)
       .where(and(eq(claims.workspaceId, workspaceId), ne(claims.id, claimId), ne(claims.status, "rejected")))
   ).filter((o) => !dismissed.has(o.id));
-  const candidates = findMatches(claim, others);
+  // Same purchase seen through another channel (forwarded PDF vs photo): a certain match, whatever the amounts say.
+  const keys = (await db.select({ k: claimEvidence.contentKey }).from(claimEvidence).where(eq(claimEvidence.claimId, claimId))).flatMap((r) => (r.k ? [r.k] : []));
+  const sameContent = keys.length
+    ? await db
+        .select({ claimId: claimEvidence.claimId })
+        .from(claimEvidence)
+        .where(and(eq(claimEvidence.workspaceId, workspaceId), ne(claimEvidence.claimId, claimId), inArray(claimEvidence.contentKey, keys)))
+    : [];
+  const sameIds = new Set(sameContent.map((s) => s.claimId));
+  const candidates = [
+    ...others.filter((o) => sameIds.has(o.id)).map((o) => ({ id: o.id, number: o.number, score: 1, reasons: ["same receipt content from another channel"] })),
+    ...findMatches(claim, others).filter((m) => !sameIds.has(m.id)),
+  ].slice(0, 3);
   const ambiguous = isAmbiguous(candidates);
   const top = candidates[0];
   if (!top || top.score < DUPLICATE_THRESHOLD) {
@@ -176,11 +193,24 @@ export async function addEvidence(
   workspaceId: string,
   actorId: string,
   claim: typeof claims.$inferSelect,
-  e: { kind: EvidenceKind; source: "upload" | "slack" | "email" | "manual"; fileKey?: string; fileMime?: string; fileName?: string; rawText?: string | null; extract: EvidenceExtract & Record<string, unknown> },
+  e: { kind: EvidenceKind; source: "upload" | "slack" | "email" | "manual"; fileKey?: string; fileMime?: string; fileName?: string; fileHash?: string; rawText?: string | null; extract: EvidenceExtract & Record<string, unknown> },
 ) {
   const [row] = await db
     .insert(claimEvidence)
-    .values({ workspaceId, claimId: claim.id, kind: e.kind, source: e.source, fileKey: e.fileKey, fileMime: e.fileMime, fileName: e.fileName, rawText: e.rawText ?? null, extractJson: e.extract, addedBy: actorId })
+    .values({
+      workspaceId,
+      claimId: claim.id,
+      kind: e.kind,
+      source: e.source,
+      fileKey: e.fileKey,
+      fileMime: e.fileMime,
+      fileName: e.fileName,
+      fileHash: e.fileHash,
+      contentKey: contentKey(e.extract),
+      rawText: e.rawText ?? null,
+      extractJson: e.extract,
+      addedBy: actorId,
+    })
     .returning();
   const x = e.extract;
   const fill = {

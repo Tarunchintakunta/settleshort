@@ -133,8 +133,10 @@ export function parseTextLocal(text: string, members: AiMember[], today: string)
     text.match(/\bfor\s+([A-Z][\w'&]*(?:\s+[A-Z][\w'&]*)*)/)?.[1] ??
     text.match(/^\s*([A-Z][\w'&]+)\s+[$₹€£]/)?.[1] ??
     null;
-  let txn_date: string | null = today;
-  if (/yesterday/i.test(text)) txn_date = new Date(Date.parse(today) - 86_400_000).toISOString().slice(0, 10);
+  // An explicit date wins; "yesterday" is relative; otherwise today is only a guess (low date confidence).
+  const explicit = findDate(text)?.iso ?? null;
+  const yesterday = /yesterday/i.test(text);
+  const txn_date = explicit ?? (yesterday ? new Date(Date.parse(today) - 86_400_000).toISOString().slice(0, 10) : today);
   const confident = cents !== null && payees.length === mentions.length;
   return {
     amount_cents: cents ?? 0,
@@ -149,7 +151,7 @@ export function parseTextLocal(text: string, members: AiMember[], today: string)
     field_confidence: {
       amount: cents === null ? 0 : 0.9,
       vendor: vendor ? 0.75 : 0.2,
-      date: /yesterday|today|\d{1,2}[/-]\d{1,2}/i.test(text) ? 0.85 : 0.5,
+      date: explicit || yesterday || /\btoday\b/i.test(text) ? 0.85 : 0.5,
       currency: currencyFromSymbol(text) ? 0.9 : 0.5,
       payees: payees.length === mentions.length ? 0.85 : 0.3,
     },

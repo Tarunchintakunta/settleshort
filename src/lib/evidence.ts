@@ -90,3 +90,15 @@ export function missingQuestions(c: { amountCents: number; vendor: string; txnDa
   if (!c.purpose.trim()) out.push({ field: "purpose", question: "What was it for? (the business reason)", placeholder: "Client lunch with Acme, onboarding offsite…" });
   return out;
 }
+
+/**
+ * Content fingerprint for one piece of evidence: the same purchase gives the same key whether it arrived as
+ * a forwarded PDF or a phone photo. Null when the extract is too thin to identify a purchase.
+ */
+export function contentKey(x: { vendor?: string | null; amount_cents?: number; currency?: string; txn_date?: string | null; field_confidence?: FieldConfidence } | null | undefined) {
+  if (!x?.amount_cents || !x.txn_date || !x.vendor) return null;
+  // A guessed field (e.g. a date defaulted to today) would make unrelated purchases look identical.
+  if (["vendor", "amount", "date"].some((f) => (x.field_confidence?.[f] ?? 1) < FIELD_UNSURE)) return null;
+  const merchant = normalizeMerchant(x.vendor).split(" ")[0];
+  return merchant ? `${merchant}|${x.amount_cents}|${x.currency ?? ""}|${x.txn_date}` : null;
+}

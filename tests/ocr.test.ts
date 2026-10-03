@@ -39,3 +39,15 @@ describe("field-level confidence", () => {
     expect(guess.field_confidence.date).toBeLessThan(0.6);
   });
 });
+
+import { parseTextLocal } from "../src/lib/ai-local";
+describe("message dates", () => {
+  it("reads an explicit date and is unsure when there is none", () => {
+    const a = parseTextLocal("Paid $49 at Figma on 2026-09-01", [], "2026-10-03");
+    expect(a.txn_date).toBe("2026-09-01");
+    expect(a.field_confidence.date).toBeGreaterThan(0.6);
+    const b = parseTextLocal("Paid $49 at Figma", [], "2026-10-03");
+    expect(b.txn_date).toBe("2026-10-03");
+    expect(b.field_confidence.date).toBeLessThan(0.6);
+  });
+});

@@ -48,6 +48,12 @@ function friendlyError(raw: string, isText: boolean): { title: string; body: str
       title: "Receipt uploads are not switched on yet",
       body: "File storage for receipts isn't connected on this deployment. You can still create the claim by pasting the message instead.",
     };
+  const seen = raw.match(/already submitted as claim #(\d+)/i);
+  if (seen)
+    return {
+      title: `We've seen this receipt before`,
+      body: `This exact file is already claim #${seen[1]}, so it wasn't added twice. Open the Claims list to find it, or try a different receipt.`,
+    };
   if (/10mb|too large/i.test(raw)) return { title: "That file is too large", body: "Receipts can be up to 10MB. Try a smaller photo or export the page as a PDF." };
   if (/jpeg|png|webp|pdf|invalid_type/i.test(raw)) return { title: "That file type isn't supported", body: "Use a photo (JPEG, PNG or WebP) or a PDF." };
   if (/sign in|unauthorized|401/i.test(raw)) return { title: "Your session ended", body: "Sign in again, then retry. Nothing was saved." };
