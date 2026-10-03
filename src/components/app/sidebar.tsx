@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { GearSixIcon, PulseIcon, SquaresFourIcon, StackIcon, TrayIcon, UsersThreeIcon, WalletIcon, type Icon } from "@phosphor-icons/react";
+import { GearSixIcon, SirenIcon, PulseIcon, SquaresFourIcon, StackIcon, TrayIcon, UsersThreeIcon, WalletIcon, type Icon } from "@phosphor-icons/react";
 import { cx } from "@/components/ui";
 
 const NAV: { href: string; label: string; icon: Icon }[] = [
   { href: "/app", label: "Overview", icon: SquaresFourIcon },
+  { href: "/app/exceptions", label: "Exceptions", icon: SirenIcon },
   { href: "/app/claims", label: "Claims", icon: TrayIcon },
   { href: "/app/me", label: "My money", icon: WalletIcon },
   { href: "/app/batches", label: "Batches", icon: StackIcon },
@@ -15,11 +16,11 @@ const NAV: { href: string; label: string; icon: Icon }[] = [
   { href: "/app/settings", label: "Settings", icon: GearSixIcon },
 ];
 
-export function SideNav({ counts }: { counts: Record<string, number> }) {
+export function SideNav({ counts, hide = [] }: { counts: Record<string, number>; hide?: string[] }) {
   const path = usePathname();
   return (
     <nav aria-label="App" className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto md:mx-0 md:flex-col md:gap-0.5 md:overflow-visible">
-      {NAV.map(({ href, label, icon: Icon }) => {
+      {NAV.filter((n) => !hide.includes(n.href)).map(({ href, label, icon: Icon }) => {
         const active = href === "/app" ? path === href : path.startsWith(href);
         const count = counts[href];
         return (
