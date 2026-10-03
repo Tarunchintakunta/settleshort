@@ -86,7 +86,7 @@ export function BatchActions({ batch, recipients, isAdmin, blocked, mode }: Prop
             setOpen(true);
           }}
         >
-          <ShieldCheckIcon className="size-5" weight="fill" aria-hidden /> Approve &amp; Pay
+          <ShieldCheckIcon className="size-5" weight="fill" aria-hidden /> Approve &amp; Pay<span className="money">{total}</span>
         </Button>
       )}
       {error && !open && (
