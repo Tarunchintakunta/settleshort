@@ -157,6 +157,9 @@ export const claimEvidence = pgTable(
     // SHA-256 of the original file, and a vendor|amount|currency|date key (see contentKey) for cross-channel duplicates.
     fileHash: text("file_hash"),
     contentKey: text("content_key"),
+    // Privacy: a statement file only its uploader can open; reviewers see the lines they chose to share.
+    privateFile: boolean("private_file").notNull().default(false),
+    redactedCount: integer("redacted_count").notNull().default(0),
     addedBy: uuid("added_by").references(() => users.id),
     createdAt: createdAt(),
   },

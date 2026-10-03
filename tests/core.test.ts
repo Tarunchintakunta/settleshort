@@ -157,3 +157,11 @@ describe("purpose suggestions", () => {
     expect(suggestPurposes(null, ctx)).toEqual([]);
   });
 });
+
+import { redactStatement } from "../src/lib/evidence";
+describe("statement redaction (#48)", () => {
+  it("keeps only the chosen lines and counts what was hidden", () => {
+    const lines = ["01 SEP NETFLIX 15.49", "02 SEP CHIPOTLE 64.00", "", "03 SEP PHARMACY 22.10"];
+    expect(redactStatement(lines, [1])).toEqual({ text: "02 SEP CHIPOTLE 64.00", keptCount: 1, redactedCount: 2 });
+  });
+});

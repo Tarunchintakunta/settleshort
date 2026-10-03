@@ -205,7 +205,17 @@ export async function addEvidence(
   workspaceId: string,
   actorId: string,
   claim: typeof claims.$inferSelect,
-  e: { kind: EvidenceKind; source: "upload" | "slack" | "email" | "manual"; fileKey?: string; fileMime?: string; fileName?: string; fileHash?: string; rawText?: string | null; extract: EvidenceExtract & Record<string, unknown> },
+  e: {
+    kind: EvidenceKind;
+    source: "upload" | "slack" | "email" | "manual";
+    fileKey?: string;
+    fileMime?: string;
+    fileName?: string;
+    fileHash?: string;
+    privateFile?: boolean;
+    rawText?: string | null;
+    extract: EvidenceExtract & Record<string, unknown>;
+  },
 ) {
   const [row] = await db
     .insert(claimEvidence)
@@ -218,6 +228,7 @@ export async function addEvidence(
       fileMime: e.fileMime,
       fileName: e.fileName,
       fileHash: e.fileHash,
+      privateFile: e.privateFile ?? false,
       contentKey: contentKey(e.extract),
       rawText: e.rawText ?? null,
       extractJson: e.extract,

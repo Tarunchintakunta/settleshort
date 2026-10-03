@@ -38,7 +38,9 @@ export const POST = route<{ id: string }>(async (req, ctx, { id }) => {
       fileMime: file.type,
       fileName: file.name.slice(0, 200),
       fileHash: hash,
-      extract: { ...extract, provider: aiProvider(), ocr_text: rawText?.slice(0, 4000) },
+      // Statements are personal: the file stays private and its full OCR text is not kept.
+      privateFile: kind === "statement",
+      extract: { ...extract, provider: aiProvider(), ...(kind === "statement" ? {} : { ocr_text: rawText?.slice(0, 4000) }) },
     });
   }
 

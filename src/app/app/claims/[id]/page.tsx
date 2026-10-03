@@ -67,6 +67,7 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
     db.select().from(investigations).where(eq(investigations.claimId, id)).orderBy(desc(investigations.createdAt)),
     saasFindings(ctx.workspace.id),
   ]);
+  const name = (uid: string) => members.find((m) => m.id === uid)?.name ?? "Unknown";
   const saasNotes = [
     ...saas.personal.filter((p) => p.claimIds.includes(id)).map((p) => `${name(p.payerUserId)} has paid for ${p.vendor} personally in ${p.months.join(", ")}. Move it to the company card or a company account.`),
     ...saas.overlap.filter((o) => o.claimIds.includes(id)).map((o) => `${o.payerUserIds.map(name).join(" and ")} both bought ${o.vendor} in ${o.month}. Check whether one seat covers the team.`),
@@ -79,7 +80,6 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
   const voided = !activeApproval ? approvalRows[0] : undefined;
   const blocker = approvalBlocker({ id: ctx.user.id, role: ctx.role! }, { submitterId: claim.submitterId, payeeIds: (await payeesOf(claim)).map((p) => p.userId) }, ctx.workspace.alternateApproverId);
   const receipt = claim.receiptKey ? { src: `/api/v1/claims/${claim.id}/receipt`, mime: claim.receiptMime ?? "", filename: claim.receiptName ?? "receipt" } : null;
-  const name = (uid: string) => members.find((m) => m.id === uid)?.name ?? "Unknown";
   const ai = claim.aiJson as Ai | null;
   const match = claim.matchJson as MatchJson | null;
   const evidence = Object.entries(ai?.evidence ?? {}).filter(([, v]) => v);
@@ -366,6 +366,8 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
 
           <EvidencePanel
             claimId={claim.id}
+            viewerId={ctx.user.id}
+            canShareStatement={[claim.submitterId, claim.payerUserId].includes(ctx.user.id) && !["paid", "rejected"].includes(claim.status)}
             describeChange={Object.fromEntries(
               evidence_.flatMap((e) => {
                 const x = e.extractJson as { correction?: boolean; from?: Record<string, unknown>; to?: Record<string, unknown> } | null;
@@ -386,6 +388,9 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
               rawText: e.rawText,
               extract: e.extractJson as EvidenceRow["extract"],
               addedBy: e.addedBy ? name(e.addedBy) : "System",
+              addedById: e.addedBy,
+              privateFile: e.privateFile,
+              redactedCount: e.redactedCount,
               createdAt: e.createdAt.toISOString(),
             }))}
           />

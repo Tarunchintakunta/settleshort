@@ -23,13 +23,31 @@ export type EvidenceRow = {
     to?: Record<string, unknown>;
   } | null;
   addedBy: string;
+  addedById: string | null;
+  privateFile: boolean;
+  redactedCount: number;
   createdAt: string;
 };
 
 const KIND: Record<string, string> = { receipt: "Receipt", invoice: "Invoice", message: "Message", declaration: "Missing-receipt declaration", statement: "Statement" };
 
-export function EvidencePanel({ claimId, rows, canAdd, describeChange }: { claimId: string; rows: EvidenceRow[]; canAdd: boolean; describeChange?: Record<string, string> }) {
+export function EvidencePanel({
+  claimId,
+  rows,
+  canAdd,
+  describeChange,
+  viewerId,
+  canShareStatement = false,
+}: {
+  claimId: string;
+  rows: EvidenceRow[];
+  canAdd: boolean;
+  describeChange?: Record<string, string>;
+  viewerId?: string;
+  canShareStatement?: boolean;
+}) {
   const [fix, setFix] = useState("");
+  const [stmt, setStmt] = useState<{ text: string; keep: number[] } | null>(null);
   const router = useRouter();
   const file = useRef<HTMLInputElement>(null);
   const [text, setText] = useState("");
@@ -66,7 +84,10 @@ export function EvidencePanel({ claimId, rows, canAdd, describeChange }: { claim
                   {r.extract?.correction ? "Correction" : (KIND[r.kind] ?? r.kind)} <span className="font-normal text-muted">· {r.addedBy}</span>
                 </p>
                 {r.extract?.correction && describeChange?.[r.id] && <p className="text-[12px] text-accent">{describeChange[r.id]}</p>}
-                {r.fileName ? (
+                {r.redactedCount > 0 && <p className="text-[12px] text-muted">{r.redactedCount} unrelated statement line{r.redactedCount === 1 ? "" : "s"} hidden by the payer</p>}
+                {r.fileName && r.privateFile && r.addedById !== viewerId ? (
+                  <p className="text-[13px] text-muted">Statement file kept private by the uploader</p>
+                ) : r.fileName ? (
                   <a href={`/api/v1/claims/${claimId}/evidence/${r.id}`} target="_blank" className="text-[13px] break-all text-accent hover:underline">
                     {r.fileName}
                   </a>
@@ -104,6 +125,60 @@ export function EvidencePanel({ claimId, rows, canAdd, describeChange }: { claim
             Correct
           </Button>
         </form>
+      )}
+
+      {canShareStatement && (
+        <div className="mt-3">
+          {!stmt ? (
+            <button type="button" onClick={() => setStmt({ text: "", keep: [] })} className="text-[13px] font-medium text-accent hover:underline">
+              Prove payment with your bank statement, privately
+            </button>
+          ) : (
+            <div className="space-y-2 rounded-[10px] border border-line p-3">
+              <p className="text-[13px] text-ink-2">Paste the statement lines, then tick only the payment. Everything else is dropped before it&apos;s saved.</p>
+              <textarea
+                aria-label="Statement lines"
+                rows={4}
+                value={stmt.text}
+                onChange={(e) => setStmt({ text: e.target.value, keep: [] })}
+                className="w-full rounded-[8px] border border-line bg-panel p-2 font-mono text-[12px]"
+              />
+              <ul className="space-y-1 font-mono text-[12px]">
+                {stmt.text.split("\n").map((l, i) =>
+                  l.trim() ? (
+                    <li key={i}>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          className="size-4 accent-[var(--accent)]"
+                          checked={stmt.keep.includes(i)}
+                          onChange={(e) => setStmt({ ...stmt, keep: e.target.checked ? [...stmt.keep, i] : stmt.keep.filter((k) => k !== i) })}
+                        />
+                        <span className={stmt.keep.includes(i) ? "text-ink" : "text-muted line-through"}>{l}</span>
+                      </label>
+                    </li>
+                  ) : null,
+                )}
+              </ul>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={busy || !stmt.keep.length}
+                  onClick={() => run(async () => {
+                    await api(`/claims/${claimId}/statement`, { json: { lines: stmt.text.split("\n"), keep: stmt.keep } });
+                    setStmt(null);
+                  })}
+                >
+                  Share {stmt.keep.length} line{stmt.keep.length === 1 ? "" : "s"}
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setStmt(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {canAdd && (

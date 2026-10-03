@@ -36,6 +36,7 @@ const VERBS: Record<string, string> = {
   "claim.duplicate_suspected": "flagged a likely duplicate",
   "claim.duplicate_dismissed": "marked two claims as different expenses",
   "claim.evidence_added": "added evidence to a claim",
+  "claim.statement_shared": "shared selected statement lines as payment proof",
   "claim.corrected": "corrected a claim in plain words",
   "claim.lines_set": "itemized a claim",
   "claim.currency_set": "recorded the card charge and conversion basis",

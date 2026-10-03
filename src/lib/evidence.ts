@@ -127,3 +127,12 @@ export function suggestPurposes(txnDate: string | null, all: Context[]): { id: s
     .slice(0, 4)
     .map((c) => ({ id: c.id, purpose: contextPurpose(c) }));
 }
+
+/**
+ * Keeps only the statement lines the person chose to share; everything else is dropped before storage,
+ * so unrelated personal transactions never reach the server's database.
+ */
+export function redactStatement(lines: string[], keep: number[]) {
+  const kept = lines.filter((l, i) => keep.includes(i) && l.trim());
+  return { text: kept.join("\n"), keptCount: kept.length, redactedCount: lines.filter((l) => l.trim()).length - kept.length };
+}
