@@ -4,6 +4,7 @@ import { LOW_CONFIDENCE } from "./claims";
 import { approvals, batches, batchItems, claims, db, ledgerEntries } from "./db";
 import { obligationsForMany } from "./ledger";
 import { moneyStatus } from "./settlement";
+import { uncertainFields } from "./evidence";
 import { truthfulStatus, type ClaimFacts } from "./status";
 
 type Claim = typeof claims.$inferSelect;
@@ -25,7 +26,10 @@ export async function factsFor(rows: Claim[]) {
       const latestItems = mine.filter((i) => i.batch.id === latest?.id).map((i) => i.item);
       const facts: ClaimFacts = {
         status: c.status,
-        flagged: !!c.duplicateOfId || (c.aiConfidence != null && c.aiConfidence < LOW_CONFIDENCE),
+        flagged:
+          !!c.duplicateOfId ||
+          (c.aiConfidence != null && c.aiConfidence < LOW_CONFIDENCE) ||
+          uncertainFields((c.aiJson as { field_confidence?: Record<string, number> } | null)?.field_confidence).length > 0,
         createdAt: c.createdAt,
         approvedAt: appr.find((a) => a.claimId === c.id)?.createdAt ?? null,
         batch: latest ? { status: latest.status, createdAt: latest.createdAt, sentAt: latest.paypalPayoutBatchId ? latest.approvedAt : null } : null,

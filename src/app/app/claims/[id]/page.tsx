@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeftIcon, FilePdfIcon, QuotesIcon, WarningIcon } from "@phosphor-icons/react/ssr";
 import { ClaimEditor } from "@/components/claims/claim-editor";
 import { EvidencePanel, type EvidenceRow } from "@/components/claims/evidence-panel";
-import { Confidence, Money, StatusPill } from "@/components/ui";
+import { Confidence, cx, Money, StatusPill } from "@/components/ui";
 import { requirePageCtx } from "@/lib/auth";
 import { LOW_CONFIDENCE, workspaceMembers } from "@/lib/claims";
 import { approvals, batches, batchItems, claimEvidence, claimPayments, claims, claimSplits, db, ledgerEntries } from "@/lib/db";
@@ -17,11 +17,12 @@ import { claimTimeline } from "@/lib/status";
 import { Pill } from "@/components/ui";
 import { payeesOf } from "@/lib/approvals";
 import { approvalBlocker } from "@/lib/policy";
+import { FIELD_UNSURE, uncertainFields } from "@/lib/evidence";
 import { formatMoney } from "@/lib/money";
 
 export const metadata = { title: "Claim" };
 
-type Ai = { provider?: string; evidence?: Record<string, string>; ocr_text?: string; line_items?: { name: string; amount_cents: number }[] } & Record<string, unknown>;
+type Ai = { provider?: string; field_confidence?: Record<string, number>; evidence?: Record<string, string>; ocr_text?: string; line_items?: { name: string; amount_cents: number }[] } & Record<string, unknown>;
 type MatchJson = { rationale?: string; candidates?: { id: string; number?: number; score: number; reasons: string[] }[] };
 
 const SOURCE: Record<string, string> = { upload: "receipt upload", slack: "Slack", email: "email", manual: "message" };
@@ -145,7 +146,14 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
                 <ul className="space-y-2">
                   {evidence.map(([k, v]) => (
                     <li key={k} className="rounded-[8px] border border-line bg-sunken/70 px-3 py-2.5">
-                      <p className="text-[11px] font-medium tracking-[0.08em] text-muted uppercase">{k}</p>
+                      <p className="flex justify-between text-[11px] font-medium tracking-[0.08em] text-muted uppercase">
+                        {k}
+                        {ai?.field_confidence?.[k === "total" ? "amount" : k] != null && (
+                          <span className={cx("tnum font-mono normal-case tracking-normal", ai.field_confidence[k === "total" ? "amount" : k] < FIELD_UNSURE && "text-warning")}>
+                            {Math.round(ai.field_confidence[k === "total" ? "amount" : k] * 100)}% sure
+                          </span>
+                        )}
+                      </p>
                       <p className="mt-1 flex items-start gap-1.5 font-mono text-[13px] leading-relaxed text-ink">
                         <QuotesIcon className="mt-0.5 size-3 shrink-0 text-muted" weight="fill" aria-hidden />
                         <span className="break-words">{v}</span>
@@ -173,6 +181,7 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
               canEdit={ctx.isAdmin || claim.submitterId === ctx.user.id}
               lowConfidence={claim.aiConfidence != null && claim.aiConfidence < LOW_CONFIDENCE}
               approveBlocked={blocker?.message ?? null}
+              uncertain={uncertainFields(ai?.field_confidence)}
               approvable={claim.status === "pending_review" || (claim.status === "in_batch" && !activeApproval && batchRow?.batch.status === "awaiting_approval")}
             />
             {activeApproval ? (

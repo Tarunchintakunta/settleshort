@@ -34,3 +34,11 @@ describe("matching", () => {
     expect(normalizeMerchant("The Coffee Shop, Inc.")).toBe("coffee shop");
   });
 });
+
+import { uncertainFields } from "../src/lib/evidence";
+describe("uncertain fields", () => {
+  it("lists only fields under the threshold", () => {
+    expect(uncertainFields({ vendor: 0.9, amount: 0.3, date: 0.59 })).toEqual(["amount", "date"]);
+    expect(uncertainFields(null)).toEqual([]);
+  });
+});

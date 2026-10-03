@@ -69,11 +69,24 @@ export function parseReceiptText(text: string, ocrConfidence = 90): ReceiptExtra
   if (vendor) confidence += 0.1;
   if (line_items.length) confidence += 0.05;
   confidence = Math.min(0.92, confidence * Math.min(1, 0.4 + ocrConfidence / 150));
+  const ocr = Math.min(1, 0.4 + ocrConfidence / 150);
+  const symbol = currencyFromSymbol(text);
+  if (taxHit) evidence.tax = taxHit.line;
+  if (tipHit) evidence.tip = tipHit.line;
+  const r2 = (n: number) => Number(n.toFixed(2));
+  const field_confidence: Record<string, number> = {
+    vendor: r2((vendor ? 0.7 : 0.1) * ocr),
+    amount: r2((totalHit ? 0.9 : amount ? 0.35 : 0) * ocr),
+    date: r2((date ? 0.85 : 0.1) * ocr),
+    currency: symbol ? 0.9 : 0.4,
+    ...(taxHit ? { tax: r2(0.8 * ocr) } : {}),
+    ...(tipHit ? { tip: r2(0.8 * ocr) } : {}),
+  };
 
   return {
     vendor,
     amount_cents: amount,
-    currency: currencyFromSymbol(text) ?? "USD",
+    currency: symbol ?? "USD",
     txn_date: date?.iso ?? null,
     tax_cents: taxHit?.cents ?? 0,
     tip_cents: tipHit?.cents ?? 0,
@@ -82,6 +95,7 @@ export function parseReceiptText(text: string, ocrConfidence = 90): ReceiptExtra
     confidence: Number(confidence.toFixed(2)),
     notes: totalHit ? "" : "No labelled total found; used the largest amount. Please confirm.",
     evidence,
+    field_confidence,
   };
 }
 
@@ -94,7 +108,7 @@ export async function extractReceiptLocal(file: Buffer, mime: string): Promise<{
     if (!raw.trim()) {
       return {
         rawText: "",
-        extract: { vendor: "", amount_cents: 0, currency: "USD", txn_date: null, tax_cents: 0, tip_cents: 0, line_items: [], payment_last4: null, confidence: 0.1, notes: "Scanned PDF without a text layer. Add an AI key for vision extraction, or enter fields manually.", evidence: {} },
+        extract: { vendor: "", amount_cents: 0, currency: "USD", txn_date: null, tax_cents: 0, tip_cents: 0, line_items: [], payment_last4: null, confidence: 0.1, notes: "Scanned PDF without a text layer. Add an AI key for vision extraction, or enter fields manually.", evidence: {}, field_confidence: { vendor: 0, amount: 0, date: 0 } },
       };
     }
     return { rawText: raw, extract: parseReceiptText(raw, 95) };
@@ -132,5 +146,12 @@ export function parseTextLocal(text: string, members: AiMember[], today: string)
     txn_date,
     note: text.slice(0, 200),
     confidence: confident ? (vendor ? 0.84 : 0.72) : 0.4,
+    field_confidence: {
+      amount: cents === null ? 0 : 0.9,
+      vendor: vendor ? 0.75 : 0.2,
+      date: /yesterday|today|\d{1,2}[/-]\d{1,2}/i.test(text) ? 0.85 : 0.5,
+      currency: currencyFromSymbol(text) ? 0.9 : 0.5,
+      payees: payees.length === mentions.length ? 0.85 : 0.3,
+    },
   };
 }

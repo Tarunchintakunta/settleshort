@@ -21,7 +21,8 @@ const ReceiptOut = z.object({
   payment_last4: z.string().nullable(),
   confidence: z.number(),
   notes: z.string(),
-  evidence: z.object({ vendor: z.string(), total: z.string(), date: z.string() }),
+  evidence: z.object({ vendor: z.string(), total: z.string(), date: z.string(), tax: z.string(), tip: z.string() }),
+  field_confidence: z.object({ vendor: z.number(), amount: z.number(), date: z.number(), currency: z.number(), tax: z.number(), tip: z.number() }),
 });
 
 const TextOut = z.object({
@@ -34,6 +35,7 @@ const TextOut = z.object({
   txn_date: z.string().nullable(),
   note: z.string(),
   confidence: z.number(),
+  field_confidence: z.object({ amount: z.number(), vendor: z.number(), date: z.number(), currency: z.number(), payees: z.number() }),
 });
 
 async function parse<T extends z.ZodType>(schema: T, system: string, content: Anthropic.ContentBlockParam[]) {
@@ -55,7 +57,7 @@ export async function claudeReceipt(file: Buffer, mime: string, system: string) 
     mime === "application/pdf"
       ? { type: "document", source: { type: "base64", media_type: "application/pdf", data } }
       : { type: "image", source: { type: "base64", media_type: mime as "image/png" | "image/jpeg" | "image/webp", data } };
-  return parse(ReceiptOut, system, [block, { type: "text", text: "Extract this receipt. In evidence, quote the exact receipt text you used for vendor, total and date (empty string if absent)." }]);
+  return parse(ReceiptOut, system, [block, { type: "text", text: "Extract this receipt. In evidence, quote the exact receipt text you used for vendor, total, date, tax and tip (empty string if absent). Score each field's certainty separately in field_confidence." }]);
 }
 
 export async function claudeText(prompt: string, system: string) {

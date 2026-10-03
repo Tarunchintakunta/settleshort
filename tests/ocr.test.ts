@@ -29,3 +29,13 @@ VISA **** 4242`);
     expect(x.confidence).toBeLessThan(0.55);
   });
 });
+
+describe("field-level confidence", () => {
+  it("scores a clearly labelled total high and a guessed total low", () => {
+    const sure = parseReceiptText("BLUE DOOR COFFEE\n09/24/2026\nTOTAL $18.40", 95);
+    const guess = parseReceiptText("BLUE DOOR COFFEE\nlatte $4.00\ncroissant $6.50", 95);
+    expect(sure.field_confidence.amount).toBeGreaterThan(0.6);
+    expect(guess.field_confidence.amount).toBeLessThan(0.6);
+    expect(guess.field_confidence.date).toBeLessThan(0.6);
+  });
+});

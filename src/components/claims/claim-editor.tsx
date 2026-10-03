@@ -16,9 +16,13 @@ type Props = {
   approveBlocked: string | null;
   /** Waiting for a (re-)approval: in review, or batched with a voided approval. */
   approvable: boolean;
+  /** Fields the extractor was unsure about (see lib/evidence.ts). */
+  uncertain?: string[];
 };
 
-export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence, approveBlocked, approvable }: Props) {
+export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence, approveBlocked, approvable, uncertain = [] }: Props) {
+  const unsure = (f: string) => (uncertain.includes(f) ? "border-warning ring-3 ring-warning/15" : "");
+  const hint = (f: string) => (uncertain.includes(f) ? "AI unsure: check against the evidence" : undefined);
   const router = useRouter();
   const [f, setF] = useState({
     vendor: claim.vendor,
@@ -71,22 +75,22 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence, a
     >
       <fieldset disabled={!editable || busy} className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <Field label="Vendor">
-            <input value={f.vendor} onChange={set("vendor")} className={inputCls} required />
+          <Field label="Vendor" hint={hint("vendor")}>
+            <input value={f.vendor} onChange={set("vendor")} className={`${inputCls} ${unsure("vendor")}`} required />
           </Field>
         </div>
-        <Field label="Amount">
-          <input value={f.amount} onChange={set("amount")} inputMode="decimal" pattern="\d+(\.\d{1,2})?" className={`${inputCls} money`} required />
+        <Field label="Amount" hint={hint("amount")}>
+          <input value={f.amount} onChange={set("amount")} inputMode="decimal" pattern="\d+(\.\d{1,2})?" className={`${inputCls} money ${unsure("amount")}`} required />
         </Field>
-        <Field label="Currency">
-          <select value={f.currency} onChange={set("currency")} className={inputCls}>
+        <Field label="Currency" hint={hint("currency")}>
+          <select value={f.currency} onChange={set("currency")} className={`${inputCls} ${unsure("currency")}`}>
             {["USD", "INR", "EUR", "GBP"].map((c) => (
               <option key={c}>{c}</option>
             ))}
           </select>
         </Field>
-        <Field label="Date">
-          <input type="date" value={f.txnDate} onChange={set("txnDate")} className={inputCls} />
+        <Field label="Date" hint={hint("date")}>
+          <input type="date" value={f.txnDate} onChange={set("txnDate")} className={`${inputCls} ${unsure("date")}`} />
         </Field>
         <Field label="Reimburse to">
           <select value={f.payerUserId} onChange={set("payerUserId")} className={inputCls} disabled={!isAdmin}>

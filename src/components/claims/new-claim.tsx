@@ -6,6 +6,7 @@ import { ArrowClockwiseIcon, ArrowRightIcon, ChatTextIcon, CheckIcon, FilePdfIco
 import { Alert, Button, ButtonLink, Confidence, cx, PROVIDER_LABEL, tabBtn, tabTrack } from "@/components/ui";
 import { api } from "@/lib/client";
 import { formatMoney } from "@/lib/money";
+import { uncertainFields } from "@/lib/evidence";
 
 type Claim = {
   id: string;
@@ -26,6 +27,7 @@ type Claim = {
     line_items?: { name: string; amount_cents: number }[];
     payee_names?: string[];
     notes?: string;
+    field_confidence?: Record<string, number>;
   } | null;
   matchJson: { rationale?: string; candidates?: { number?: number; score: number }[] } | null;
 };
@@ -293,13 +295,14 @@ function Extraction({
     `Checking ${claimCount} existing claims for duplicates`,
   ];
   const ev = claim?.aiJson?.evidence ?? {};
-  const fields: { k: string; v: string; q?: string; big?: boolean; m?: boolean }[] = claim
+  const unsure = uncertainFields(claim?.aiJson?.field_confidence);
+  const fields: { k: string; v: string; q?: string; big?: boolean; m?: boolean; f?: string }[] = claim
     ? [
-        { k: "Vendor", v: claim.vendor?.trim() || "Unknown vendor", q: ev.vendor },
-        { k: "Total", v: formatMoney(claim.amountCents, claim.currency), q: ev.total, big: true, m: true },
-        { k: "Date", v: claim.txnDate ? new Date(claim.txnDate + "T00:00:00").toLocaleDateString("en-US", { dateStyle: "medium" }) : "Not found", q: ev.date },
-        ...(claim.taxCents ? [{ k: "Tax", v: formatMoney(claim.taxCents, claim.currency), m: true }] : []),
-        ...(claim.tipCents ? [{ k: "Tip", v: formatMoney(claim.tipCents, claim.currency), m: true }] : []),
+        { k: "Vendor", v: claim.vendor?.trim() || "Unknown vendor", q: ev.vendor, f: "vendor" },
+        { k: "Total", v: formatMoney(claim.amountCents, claim.currency), q: ev.total, big: true, m: true, f: "amount" },
+        { k: "Date", v: claim.txnDate ? new Date(claim.txnDate + "T00:00:00").toLocaleDateString("en-US", { dateStyle: "medium" }) : "Not found", q: ev.date, f: "date" },
+        ...(claim.taxCents ? [{ k: "Tax", v: formatMoney(claim.taxCents, claim.currency), q: ev.tax, m: true, f: "tax" }] : []),
+        ...(claim.tipCents ? [{ k: "Tip", v: formatMoney(claim.tipCents, claim.currency), q: ev.tip, m: true, f: "tip" }] : []),
         ...(claim.aiJson?.payment_last4 ? [{ k: "Card", v: `ending ${claim.aiJson.payment_last4}` }] : []),
         ...(claim.aiJson?.payee_names?.length ? [{ k: "For", v: claim.aiJson.payee_names.join(", ") }] : []),
       ]
@@ -390,7 +393,10 @@ function Extraction({
                   >
                     <dt className="text-[12px] font-medium tracking-[0.04em] text-muted uppercase">{f.k}</dt>
                     <dd className="min-w-0">
-                      <span className={cx(f.big ? "text-[28px] leading-none font-semibold" : "text-sm font-medium", f.m ? "money" : "break-words")}>{f.v}</span>
+                      <span className={cx(f.big ? "text-[28px] leading-none font-semibold" : "text-sm font-medium", f.m ? "money" : "break-words", f.f && unsure.includes(f.f) && "text-warning")}>{f.v}</span>
+                      {f.f && unsure.includes(f.f) && (
+                        <span className="ml-2 inline-flex rounded-full bg-warning-soft px-2 py-0.5 align-middle text-[11px] font-medium text-warning">AI unsure, check this</span>
+                      )}
                       {f.q && (
                         <span className="mt-1.5 flex items-start gap-1.5 rounded-[6px] bg-sunken px-2 py-1 text-[11.5px] text-ink-2">
                           <QuotesIcon className="mt-0.5 size-3 shrink-0 text-muted" weight="fill" aria-hidden />
