@@ -1,0 +1,1 @@
+ALTER TABLE "claims" ADD COLUMN "acknowledged_conflicts" jsonb DEFAULT '[]'::jsonb NOT NULL;

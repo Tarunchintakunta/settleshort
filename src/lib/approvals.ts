@@ -3,10 +3,18 @@ import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { fail } from "./api";
 import { audit } from "./audit";
 import { approvals, batches, batchItems, claimEvidence, claims, db, users } from "./db";
+import { findContradictions, type EvidenceFacts } from "./evidence";
 import { obligationsFor } from "./ledger";
 import { approvalBlocker, diffSnapshots, hashSnapshot, type Approver, type Snapshot } from "./policy";
 
 type Claim = typeof claims.$inferSelect;
+
+/** Disagreements between this claim's evidence that nobody has accepted yet. */
+export async function openContradictions(claim: Claim) {
+  const ev = await db.select().from(claimEvidence).where(eq(claimEvidence.claimId, claim.id)).orderBy(claimEvidence.createdAt);
+  const acked = new Set(claim.acknowledgedConflicts.map((a) => a.key));
+  return findContradictions(ev.map((e) => ({ id: e.id, kind: e.kind, extract: e.extractJson as EvidenceFacts["extract"] }))).filter((c) => !acked.has(c.key));
+}
 
 /** Who is reimbursed how much for this claim (employee payers only). Single source for snapshots. */
 export async function payeesOf(claim: Claim) {
@@ -34,6 +42,9 @@ export async function approveClaim(ws: { id: string; alternateApproverId: string
   } else if (!["pending_review", "matched"].includes(claim.status)) fail(409, "locked", `Claim is ${claim.status} and can't be approved`);
   const blocked = approvalBlocker(approver, { submitterId: claim.submitterId, payeeIds: (await payeesOf(claim)).map((p) => p.userId) }, ws.alternateApproverId);
   if (blocked) fail(403, blocked.code, blocked.message);
+
+  const open = await openContradictions(claim);
+  if (open.length) fail(409, "contradiction", `Resolve conflicting evidence first: ${open.map((c) => c.message).join("; ")}`);
 
   const snap = await currentSnapshot(claim);
   const hash = hashSnapshot(snap);

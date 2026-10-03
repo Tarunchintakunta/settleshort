@@ -42,3 +42,34 @@ describe("uncertain fields", () => {
     expect(uncertainFields(null)).toEqual([]);
   });
 });
+
+import { findContradictions } from "../src/lib/evidence";
+describe("contradictions", () => {
+  const msg = { id: "m", kind: "message", extract: { vendor: "Truffles", amount_cents: 200000, currency: "INR", txn_date: "2026-09-20" } };
+  const rcpt = { id: "r", kind: "receipt", extract: { vendor: "Truffles Cafe", amount_cents: 250000, currency: "INR", txn_date: "2026-09-20" } };
+  it("flags a message and receipt that disagree on the amount", () => {
+    const [c] = findContradictions([msg, rcpt]);
+    expect(c.field).toBe("amount");
+    expect(c.message).toBe("The message says ₹2,000.00 but the receipt says ₹2,500.00");
+  });
+  it("is quiet when evidence agrees", () => {
+    expect(findContradictions([msg, { ...rcpt, extract: { ...rcpt.extract, amount_cents: 200000 } }])).toEqual([]);
+  });
+  it("flags different merchants and far-apart dates", () => {
+    const other = { id: "o", kind: "invoice", extract: { vendor: "Starbucks", amount_cents: 200000, currency: "INR", txn_date: "2026-09-25" } };
+    expect(findContradictions([msg, other]).map((c) => c.field).sort()).toEqual(["date", "vendor"]);
+  });
+});
+
+describe("contradictions ignore guesses", () => {
+  it("doesn't flag a date the parser only defaulted", () => {
+    const a = { id: "a", kind: "message", extract: { amount_cents: 6400, currency: "USD", txn_date: "2026-09-29", field_confidence: { date: 0.85 } } };
+    const b = { id: "b", kind: "message", extract: { amount_cents: 6400, currency: "USD", txn_date: "2026-10-03", field_confidence: { date: 0.5 } } };
+    expect(findContradictions([a, b])).toEqual([]);
+  });
+  it("names original and added evidence of the same kind", () => {
+    const a = { id: "a", kind: "message", extract: { amount_cents: 6400, currency: "USD" } };
+    const b = { id: "b", kind: "message", extract: { amount_cents: 7240, currency: "USD" } };
+    expect(findContradictions([a, b])[0].message).toBe("The original message says $64.00 but the added message says $72.40");
+  });
+});

@@ -82,6 +82,8 @@ export const claims = pgTable(
     status: text("status", { enum: CLAIM_STATUSES }).notNull().default("pending_review"),
     duplicateOfId: uuid("duplicate_of_id"),
     matchJson: jsonb("match_json"),
+    // Contradictions between evidence that a human accepted, as { key, by, note, at } (see lib/evidence.ts).
+    acknowledgedConflicts: jsonb("acknowledged_conflicts").$type<{ key: string; by: string; note: string; at: string }[]>().notNull().default([]),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

@@ -15,7 +15,8 @@ import { ConfirmReceipt } from "@/components/claims/confirm-receipt";
 import { factsFor } from "@/lib/claim-facts";
 import { claimTimeline } from "@/lib/status";
 import { Pill } from "@/components/ui";
-import { payeesOf } from "@/lib/approvals";
+import { openContradictions, payeesOf } from "@/lib/approvals";
+import { ConflictsPanel } from "@/components/claims/conflicts-panel";
 import { approvalBlocker } from "@/lib/policy";
 import { FIELD_UNSURE, uncertainFields } from "@/lib/evidence";
 import { formatMoney } from "@/lib/money";
@@ -46,6 +47,7 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
     obligationsFor(claim),
   ]);
   const { facts, truth } = (await factsFor([claim])).get(claim.id)!;
+  const conflicts = await openContradictions(claim);
   // The viewer's own completed payouts on this claim, so they can confirm receipt.
   const myPaid = (
     await db.select().from(batchItems).where(and(eq(batchItems.claimId, id), eq(batchItems.receiverUserId, ctx.user.id), eq(batchItems.status, "SUCCESS")))
@@ -85,6 +87,8 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
           <p className="mt-1 text-[13px] text-muted">Reimburses {name(claim.payerUserId)}</p>
         </div>
       </header>
+
+      <ConflictsPanel claimId={claim.id} conflicts={conflicts} canResolve={ctx.isAdmin} />
 
       {claim.duplicateOfId && dupOf && (
         <section className="rise mb-8 rounded-[12px] border border-warning/30 bg-warning-soft p-5 shadow-soft">

@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { aiProvider, explainMatch, parseClaimText, PROMPT_VERSION } from "./ai";
-import { revalidateApproval } from "./approvals";
+import { openContradictions, revalidateApproval } from "./approvals";
 import { audit } from "./audit";
 import { claimEvidence, claims, claimSplits, db, memberships, users, type EvidenceKind } from "./db";
 import { DUPLICATE_THRESHOLD, findMatches } from "./matching";
@@ -185,6 +185,11 @@ export async function addEvidence(
   };
   if (Object.keys(fill).length) await db.update(claims).set({ ...fill, updatedAt: new Date() }).where(eq(claims.id, claim.id));
   await audit(workspaceId, actorId, "claim.evidence_added", "claim", claim.id, { kind: e.kind, filled: Object.keys(fill) });
+  const conflicts = await openContradictions(claim);
+  if (conflicts.length) {
+    await audit(workspaceId, null, "claim.contradiction_found", "claim", claim.id, { conflicts: conflicts.map((c) => c.message) });
+    if (claim.status === "matched") await db.update(claims).set({ status: "pending_review" }).where(eq(claims.id, claim.id));
+  }
   await revalidateApproval(workspaceId, claim.id, actorId);
   return row;
 }
