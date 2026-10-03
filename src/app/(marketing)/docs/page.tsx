@@ -59,7 +59,7 @@ function Pre({ children, label }: { children: string; label: string }) {
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
     <section id={id} className="scroll-mt-24 border-t border-line pt-10" aria-labelledby={`${id}-h`}>
-      <h2 id={`${id}-h`} className="text-[26px] font-semibold tracking-[-0.025em] text-ink">
+      <h2 id={`${id}-h`} className="scroll-mt-24 text-[26px] font-semibold tracking-[-0.025em] text-ink">
         {title}
       </h2>
       <div className="mt-4 text-[15px] leading-relaxed text-ink-2">{children}</div>
@@ -147,17 +147,22 @@ pnpm dev`}</Pre>
           <p>
             All endpoints live under <Code>/api/v1</Code>, are scoped to the caller’s workspace, and return JSON.
           </p>
-          <ul className="mt-4 divide-y divide-line rounded-[12px] border border-line bg-panel">
-            {API.map(([m, p, d]) => (
-              <li key={m + p} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
-                <span className="flex items-center gap-3">
-                  <span className="w-14 font-mono text-[11px] font-semibold text-accent">{m}</span>
-                  <span className="font-mono text-xs break-all text-ink">{p}</span>
-                </span>
-                <span className="text-sm text-muted sm:ml-auto sm:text-right">{d}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="mt-4 overflow-hidden rounded-[12px] border border-line bg-panel">
+            <div className="hidden grid-cols-[64px_minmax(0,300px)_minmax(0,1fr)] gap-4 border-b border-line bg-sunken px-4 py-2 text-[11px] font-medium tracking-[0.14em] text-muted uppercase sm:grid">
+              <span>Method</span>
+              <span>Path</span>
+              <span>What it does</span>
+            </div>
+            <ul className="divide-y divide-line">
+              {API.map(([m, p, d]) => (
+                <li key={m + p} className="grid grid-cols-[52px_minmax(0,1fr)] gap-x-3 gap-y-1 px-4 py-2.5 sm:gap-x-4 sm:grid-cols-[64px_minmax(0,300px)_minmax(0,1fr)] sm:items-center">
+                  <span className="font-mono text-[11px] leading-5 font-semibold text-accent">{m}</span>
+                  <span className="font-mono text-xs leading-5 break-all text-ink">{p}</span>
+                  <span className="col-start-2 text-sm leading-5 text-muted sm:col-start-3">{d}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </Section>
 
         <Section id="zapier" title="Zapier recipe">
