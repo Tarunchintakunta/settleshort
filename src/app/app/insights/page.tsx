@@ -56,6 +56,11 @@ export default async function Insights() {
     owed.get(c.id)!.payees.some((p) => payouts.filter((x) => x.claimId === c.id && x.userId === p.userId).reduce((a, x) => a + (SENT[x.kind] ?? 0) * x.amountCents, 0) > p.owedCents),
   ).length;
 
+  const sumBy = (rows: typeof all) => {
+    const m = new Map<string, number>();
+    for (const c of rows) m.set(c.currency, (m.get(c.currency) ?? 0) + c.amountCents);
+    return m;
+  };
   const money = (m: Map<string, number>) => ([...m].length ? [...m].map(([cur, v]) => formatMoney(v, cur)).join(" + ") : formatMoney(0, "USD"));
   const tiles = [
     { label: "Median submit to paid", value: duration(median(paidMs)), sub: `${paidMs.length} paid claims` },
@@ -64,6 +69,8 @@ export default async function Insights() {
     { label: "Unresolved claims", value: String(unresolved), sub: "in review, scheduled, partial or failed" },
     { label: "Duplicate claims stopped", value: String(dupes.length), sub: `${money(dupeCents)} not paid twice` },
     { label: "Payout success rate", value: terminal.length ? `${Math.round((success / terminal.length) * 100)}%` : "No data yet", sub: `${success} of ${terminal.length} PayPal items` },
+    { label: "Deposits still held", value: money(sumBy(all.filter((c) => c.kind === "deposit" && c.depositStatus === "held"))), sub: "refundable deposits not yet back" },
+    { label: "To bill to clients", value: money(sumBy(all.filter((c) => c.recoveryStatus === "to_invoice" || c.recoveryStatus === "invoiced"))), sub: "recoverable costs not yet recovered" },
     { label: "Over-payments", value: String(overpaid), sub: "claims where more was sent than owed. Must stay 0." },
   ];
 

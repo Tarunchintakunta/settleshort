@@ -11,6 +11,7 @@ import { approvals, batches, batchItems, claimEvidence, claimPayments, claims, c
 import { linesFor, obligationsFor } from "@/lib/ledger";
 import { LinesCard } from "@/components/claims/lines-card";
 import { CurrencyCard } from "@/components/claims/currency-card";
+import { TrackingCard } from "@/components/claims/tracking-card";
 import { FixRequests } from "@/components/claims/fix-requests";
 import { RemindButton } from "@/components/claims/remind-button";
 import { InvestigationPanel } from "@/components/claims/investigation-panel";
@@ -317,6 +318,18 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
             reimbursed={{ cents: claim.amountCents, currency: claim.currency }}
             fx={{ rate: claim.fxRate, source: claim.fxSource, at: claim.fxAt?.toISOString() ?? null }}
             canEdit={(ctx.isAdmin || claim.submitterId === ctx.user.id) && ["draft", "pending_review", "matched"].includes(claim.status)}
+          />
+
+          <TrackingCard
+            claimId={claim.id}
+            kind={claim.kind}
+            depositStatus={claim.depositStatus}
+            depositNote={claim.depositNote}
+            recoverableClient={claim.recoverableClient}
+            recoveryStatus={claim.recoveryStatus}
+            recoveryRef={claim.recoveryRef}
+            canEdit={(ctx.isAdmin || claim.submitterId === ctx.user.id) && claim.status !== "rejected"}
+            isAdmin={ctx.isAdmin}
           />
 
           <MoneyTimeline truth={truth} steps={claimTimeline(facts)}>

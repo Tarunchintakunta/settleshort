@@ -95,6 +95,14 @@ export const claims = pgTable(
     fxRate: real("fx_rate"),
     fxSource: text("fx_source"),
     fxAt: timestamp("fx_at", { withTimezone: true }),
+    // Refundable deposits (equipment, venues) are tracked until returned or legitimately consumed.
+    kind: text("kind", { enum: ["expense", "deposit"] }).notNull().default("expense"),
+    depositStatus: text("deposit_status", { enum: ["held", "returned", "consumed"] }),
+    depositNote: text("deposit_note"),
+    // Costs the startup should invoice to a client, with their own recovery status.
+    recoverableClient: text("recoverable_client"),
+    recoveryStatus: text("recovery_status", { enum: ["to_invoice", "invoiced", "recovered", "written_off"] }),
+    recoveryRef: text("recovery_ref"),
     // Escalation: who the overdue approval is currently with, and since when.
     escalatedToUserId: uuid("escalated_to_user_id"),
     escalatedAt: timestamp("escalated_at", { withTimezone: true }),

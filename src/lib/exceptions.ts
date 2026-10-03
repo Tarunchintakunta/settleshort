@@ -46,6 +46,10 @@ export async function workspaceExceptions(ws: typeof workspaces.$inferSelect): P
       out.push({ key: `large-${c.id}`, kind: "large", title: label(c), why: `Above the ${formatMoney(ws.maxSingleCents, c.currency)} single-payout cap.`, action: "Check it, or raise the cap in Settings", href: claimLink(c), at: c.createdAt });
     if (c.status === "pending_review" && declared.some((d) => d.claimId === c.id))
       out.push({ key: `declared-${c.id}`, kind: "conflict", title: label(c), why: "No receipt: the payer signed a missing-receipt declaration.", action: "Read the declaration before approving", href: claimLink(c), at: c.updatedAt });
+    if (c.kind === "deposit" && c.depositStatus === "held" && c.createdAt.getTime() < Date.now() - 30 * DAY)
+      out.push({ key: `deposit-${c.id}`, kind: "stuck", title: label(c), why: "Refundable deposit still held after 30 days.", action: "Chase the refund or mark it used up", href: claimLink(c), at: c.createdAt });
+    if (c.recoveryStatus === "to_invoice" && c.createdAt.getTime() < Date.now() - 7 * DAY)
+      out.push({ key: `recover-${c.id}`, kind: "stuck", title: label(c), why: `Should be billed to ${c.recoverableClient} and hasn't been invoiced.`, action: "Invoice the client", href: claimLink(c), at: c.createdAt });
     if (c.status === "failed") out.push({ key: `failed-${c.id}`, kind: "payout", title: label(c), why: "PayPal couldn't pay it.", action: "Fix the receiver's PayPal email, then batch it again", href: claimLink(c), at: c.updatedAt });
     if (f.truth.key === "owes_back") out.push({ key: `back-${c.id}`, kind: "conflict", title: label(c), why: "A refund arrived after reimbursement.", action: "Record the money returned", href: claimLink(c), at: c.updatedAt });
     if (f.truth.key === "unclaimed") out.push({ key: `unclaimed-${c.id}`, kind: "payout", title: label(c), why: "The receiver hasn't accepted the PayPal payout.", action: "Ask them to accept it in PayPal", href: claimLink(c), at: c.updatedAt });
