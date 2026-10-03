@@ -78,6 +78,15 @@ export const claims = pgTable(
     category: text("category"),
     // Whose budget covers it (a team lead or cost owner), separate from who paid and who attended.
     budgetOwnerUserId: uuid("budget_owner_user_id").references(() => users.id),
+    // Currency transparency: what the receipt says, what the card was charged, and the stated conversion basis.
+    // amountCents/currency above is always what gets reimbursed.
+    receiptCents: integer("receipt_cents"),
+    receiptCurrency: text("receipt_currency"),
+    chargedCents: integer("charged_cents"),
+    chargedCurrency: text("charged_currency"),
+    fxRate: real("fx_rate"),
+    fxSource: text("fx_source"),
+    fxAt: timestamp("fx_at", { withTimezone: true }),
     // The approved context the purpose was taken from, if any (see contexts).
     contextId: uuid("context_id"),
     // Adjust-and-approve: the approver approved this much less, for the stated reason (shown to the claimant).

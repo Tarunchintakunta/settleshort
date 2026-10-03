@@ -160,3 +160,8 @@ export function lineBreakdown(totalCents: number, lines: Line[], taxCents: numbe
     extrasCents: extras,
   };
 }
+
+/** The conversion basis implied by two amounts, stated as "1 FROM = rate TO". */
+export function impliedRate(fromCents: number, toCents: number) {
+  return fromCents > 0 ? Number((toCents / fromCents).toFixed(6)) : null;
+}

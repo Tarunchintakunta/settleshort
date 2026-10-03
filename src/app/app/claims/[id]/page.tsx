@@ -10,6 +10,7 @@ import { LOW_CONFIDENCE, workspaceMembers } from "@/lib/claims";
 import { approvals, batches, batchItems, claimEvidence, claimPayments, claims, claimSplits, contexts, db, ledgerEntries } from "@/lib/db";
 import { linesFor, obligationsFor } from "@/lib/ledger";
 import { LinesCard } from "@/components/claims/lines-card";
+import { CurrencyCard } from "@/components/claims/currency-card";
 import { SettlementCard } from "@/components/claims/settlement-card";
 import { MoneyTimeline } from "@/components/claims/money-timeline";
 import { ConfirmReceipt } from "@/components/claims/confirm-receipt";
@@ -214,6 +215,15 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
               Approved <Money cents={claim.amountCents - claim.adjustmentCents} currency={claim.currency} /> of <Money cents={claim.amountCents} currency={claim.currency} />. {claim.adjustmentReason}
             </p>
           )}
+
+          <CurrencyCard
+            claimId={claim.id}
+            receipt={{ cents: claim.receiptCents ?? claim.amountCents, currency: claim.receiptCurrency ?? claim.currency }}
+            charged={claim.chargedCents != null ? { cents: claim.chargedCents, currency: claim.chargedCurrency ?? claim.currency } : null}
+            reimbursed={{ cents: claim.amountCents, currency: claim.currency }}
+            fx={{ rate: claim.fxRate, source: claim.fxSource, at: claim.fxAt?.toISOString() ?? null }}
+            canEdit={(ctx.isAdmin || claim.submitterId === ctx.user.id) && ["draft", "pending_review", "matched"].includes(claim.status)}
+          />
 
           <MoneyTimeline truth={truth} steps={claimTimeline(facts)}>
             {myPaid.map((i) => (

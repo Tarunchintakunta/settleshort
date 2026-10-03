@@ -116,3 +116,11 @@ describe("line items", () => {
     expect(o.payees[0]).toMatchObject({ owedCents: 10000, outstandingCents: 10000, payableNowCents: 7000 });
   });
 });
+
+import { impliedRate } from "../src/lib/settlement";
+describe("fx", () => {
+  it("states the rate between receipt and charged amounts", () => {
+    expect(impliedRate(250000, 3000)).toBe(0.012); // ₹2,500 charged as $30.00
+    expect(impliedRate(0, 100)).toBeNull();
+  });
+});

@@ -27,6 +27,7 @@ const VERBS: Record<string, string> = {
   "claim.evidence_added": "added evidence to a claim",
   "claim.corrected": "corrected a claim in plain words",
   "claim.lines_set": "itemized a claim",
+  "claim.currency_set": "recorded the card charge and conversion basis",
   "claim.people_set": "recorded who attended and whose budget covers a claim",
   "claim.line_approved": "approved a line item",
   "claim.line_held": "held a line item",

@@ -127,6 +127,13 @@
       "when": 1791020152321,
       "tag": "0017_contexts",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791020274775,
+      "tag": "0018_currency_transparency",
+      "breakpoints": true
     }
   ]
 }

@@ -57,6 +57,8 @@ export async function createClaim(workspaceId: string, actorId: string, c: NewCl
     .values({
       ...fields,
       ...(rule ? { category: rule.category, categorySource: "mapping" } : {}),
+      receiptCents: c.amountCents,
+      receiptCurrency: c.currency,
       tipCents: c.tipCents ?? 0,
       taxCents: c.taxCents ?? 0,
       note: c.note ?? "",
