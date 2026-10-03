@@ -143,3 +143,17 @@ describe("merchant mappings", () => {
     expect(findMapping("Blue Door Coffee", rules)).toBeNull();
   });
 });
+
+import { suggestPurposes } from "../src/lib/evidence";
+describe("purpose suggestions", () => {
+  const ctx = [
+    { id: "m", kind: "customer_meeting" as const, name: "Acme renewal", startsOn: "2026-09-29", endsOn: null },
+    { id: "p", kind: "project" as const, name: "Launch", startsOn: "2026-09-01", endsOn: "2026-09-30" },
+    { id: "old", kind: "customer_meeting" as const, name: "Globex", startsOn: "2026-08-01", endsOn: null },
+  ];
+  it("suggests only approved context around the date", () => {
+    expect(suggestPurposes("2026-09-29", ctx).map((s) => s.purpose)).toEqual(["Customer meeting: Acme renewal", "Project: Launch"]);
+    expect(suggestPurposes("2026-10-05", ctx)).toEqual([]);
+    expect(suggestPurposes(null, ctx)).toEqual([]);
+  });
+});

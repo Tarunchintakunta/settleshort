@@ -108,3 +108,22 @@ export function contentKey(x: { vendor?: string | null; amount_cents?: number; c
   const merchant = normalizeMerchant(x.vendor).split(" ")[0];
   return merchant ? `${merchant}|${x.amount_cents}|${x.currency ?? ""}|${x.txn_date}` : null;
 }
+
+export type Context = { id: string; kind: "customer_meeting" | "project" | "event"; name: string; startsOn: string | null; endsOn: string | null };
+const CONTEXT_LABEL: Record<Context["kind"], string> = { customer_meeting: "Customer meeting", project: "Project", event: "Event" };
+export const contextPurpose = (c: Context) => `${CONTEXT_LABEL[c.kind]}: ${c.name}`;
+
+/**
+ * Purposes a person can pick, taken only from approved context around the expense date: a meeting or event
+ * within a day, or a project running that day. Never generated text, never a guess without a date.
+ */
+export function suggestPurposes(txnDate: string | null, all: Context[]): { id: string; purpose: string }[] {
+  if (!txnDate) return [];
+  const t = Date.parse(txnDate);
+  const near = (d: string | null) => d != null && Math.abs(Date.parse(d) - t) <= 86_400_000;
+  return all
+    .filter((c) => (c.kind === "project" ? c.startsOn != null && Date.parse(c.startsOn) <= t && (c.endsOn == null || Date.parse(c.endsOn) >= t) : near(c.startsOn)))
+    .sort((a, b) => (a.kind === "project" ? 1 : 0) - (b.kind === "project" ? 1 : 0))
+    .slice(0, 4)
+    .map((c) => ({ id: c.id, purpose: contextPurpose(c) }));
+}

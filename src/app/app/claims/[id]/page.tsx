@@ -7,7 +7,7 @@ import { EvidencePanel, type EvidenceRow } from "@/components/claims/evidence-pa
 import { Confidence, cx, Money, StatusPill } from "@/components/ui";
 import { requirePageCtx } from "@/lib/auth";
 import { LOW_CONFIDENCE, workspaceMembers } from "@/lib/claims";
-import { approvals, batches, batchItems, claimEvidence, claimPayments, claims, claimSplits, db, ledgerEntries } from "@/lib/db";
+import { approvals, batches, batchItems, claimEvidence, claimPayments, claims, claimSplits, contexts, db, ledgerEntries } from "@/lib/db";
 import { linesFor, obligationsFor } from "@/lib/ledger";
 import { LinesCard } from "@/components/claims/lines-card";
 import { SettlementCard } from "@/components/claims/settlement-card";
@@ -21,7 +21,7 @@ import { ConflictsPanel } from "@/components/claims/conflicts-panel";
 import { DuplicateChooser } from "@/components/claims/duplicate-chooser";
 import { MissingQuestionCard } from "@/components/claims/missing-question";
 import { approvalBlocker } from "@/lib/policy";
-import { FIELD_UNSURE, missingQuestions, uncertainFields } from "@/lib/evidence";
+import { FIELD_UNSURE, missingQuestions, suggestPurposes, uncertainFields } from "@/lib/evidence";
 import { formatMoney } from "@/lib/money";
 
 export const metadata = { title: "Claim" };
@@ -51,6 +51,7 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
   const { facts, truth } = (await factsFor([claim])).get(claim.id)!;
   const conflicts = await openContradictions(claim);
   const lineInfo = await linesFor(claim);
+  const ctxRows = await db.select().from(contexts).where(eq(contexts.workspaceId, ctx.workspace.id));
   // The viewer's own completed payouts on this claim, so they can confirm receipt.
   const myPaid = (
     await db.select().from(batchItems).where(and(eq(batchItems.claimId, id), eq(batchItems.receiverUserId, ctx.user.id), eq(batchItems.status, "SUCCESS")))
@@ -104,6 +105,7 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
           questions={missingQuestions(claim, { kinds: evidence_.map((e) => e.kind), receiptRequiredCents: ctx.workspace.receiptRequiredCents })}
           canDeclare={[claim.submitterId, claim.payerUserId].includes(ctx.user.id)}
           receiptRequired={formatMoney(ctx.workspace.receiptRequiredCents, claim.currency)}
+          suggestions={suggestPurposes(claim.txnDate, ctxRows)}
         />
       )}
       <ConflictsPanel claimId={claim.id} conflicts={conflicts} canResolve={ctx.isAdmin} />

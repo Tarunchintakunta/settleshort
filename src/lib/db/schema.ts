@@ -78,6 +78,8 @@ export const claims = pgTable(
     category: text("category"),
     // Whose budget covers it (a team lead or cost owner), separate from who paid and who attended.
     budgetOwnerUserId: uuid("budget_owner_user_id").references(() => users.id),
+    // The approved context the purpose was taken from, if any (see contexts).
+    contextId: uuid("context_id"),
     // Adjust-and-approve: the approver approved this much less, for the stated reason (shown to the claimant).
     adjustmentCents: integer("adjustment_cents").notNull().default(0),
     adjustmentReason: text("adjustment_reason"),
@@ -321,4 +323,21 @@ export const claimLines = pgTable(
     decidedAt: timestamp("decided_at", { withTimezone: true }),
   },
   (t) => [index("claim_lines_claim").on(t.claimId)],
+);
+
+/** Admin-approved business context (customer meetings, projects, events) that purposes may be suggested from. */
+export const contexts = pgTable(
+  "contexts",
+  {
+    id: id(),
+    workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["customer_meeting", "project", "event"] }).notNull(),
+    name: text("name").notNull(),
+    // Meetings and events have dates; projects run from start to end (end null = ongoing).
+    startsOn: text("starts_on"),
+    endsOn: text("ends_on"),
+    createdBy: uuid("created_by").notNull().references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [index("contexts_ws").on(t.workspaceId)],
 );

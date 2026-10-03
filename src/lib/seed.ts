@@ -1,7 +1,7 @@
 // Demo seed: a fresh, isolated "Northbeam Labs" workspace per /demo visit so judges never collide.
 // No "server-only" import so scripts/seed.ts can reuse it.
 import { randomBytes } from "node:crypto";
-import { approvals, auditEvents, ledgerEntries, batches, batchItems, claimEvidence, claims, claimSplits, db, memberships, users, workspaces } from "./db";
+import { approvals, auditEvents, contexts, ledgerEntries, batches, batchItems, claimEvidence, claims, claimSplits, db, memberships, users, workspaces } from "./db";
 import { hashSnapshot, type Snapshot } from "./policy";
 
 const PEOPLE = [
@@ -128,6 +128,11 @@ export async function createDemoWorkspace() {
     { workspaceId: ws.id, actorId: null, action: "batch.completed", entityType: "batch", entityId: paid.id, metaJson: {}, createdAt: new Date("2026-09-02T17:05:00Z") },
     { workspaceId: ws.id, actorId: null, action: "claim.duplicate_suspected", entityType: "claim", entityId: ids.c8, metaJson: { of: "#6", score: 0.95 }, createdAt: new Date("2026-09-29T19:12:00Z") },
     { workspaceId: ws.id, actorId: u.maya, action: "batch.created", entityType: "batch", entityId: sept.id, metaJson: { claims: 3, total: "$287.55" }, createdAt: new Date("2026-09-30T10:00:00Z") },
+  ]);
+
+  await db.insert(contexts).values([
+    { workspaceId: ws.id, kind: "customer_meeting", name: "Acme renewal lunch", startsOn: "2026-09-29", createdBy: u.maya },
+    { workspaceId: ws.id, kind: "project", name: "September offsite", startsOn: "2026-09-20", endsOn: "2026-09-30", createdBy: u.maya },
   ]);
 
   return { workspaceId: ws.id, userId: u.maya };

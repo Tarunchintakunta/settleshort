@@ -3,7 +3,8 @@ import { ArrowRightIcon } from "@phosphor-icons/react/ssr";
 import { PageHeader, PROVIDER_LABEL } from "@/components/ui";
 import { SettingsForm } from "@/components/settings/settings-form";
 import { MerchantRules } from "@/components/settings/merchant-rules";
-import { db, merchantMappings } from "@/lib/db";
+import { ContextsManager } from "@/components/settings/contexts-manager";
+import { contexts, db, merchantMappings } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { aiProvider } from "@/lib/ai";
 import { requirePageCtx } from "@/lib/auth";
@@ -26,9 +27,10 @@ function Status({ ok, title, body }: { ok: boolean; title: string; body: string 
 
 export default async function SettingsPage() {
   const ctx = await requirePageCtx();
-  const [members, rules] = await Promise.all([
+  const [members, rules, ctxRows] = await Promise.all([
     workspaceMembers(ctx.workspace.id),
     db.select().from(merchantMappings).where(eq(merchantMappings.workspaceId, ctx.workspace.id)).orderBy(merchantMappings.merchantLabel),
+    db.select().from(contexts).where(eq(contexts.workspaceId, ctx.workspace.id)).orderBy(contexts.startsOn),
   ]);
   const pp = paypalMode();
   const ai = aiProvider();
@@ -40,6 +42,9 @@ export default async function SettingsPage() {
           <h2 className="mb-1 text-[15px] font-semibold tracking-[-0.015em]">Workspace and safety caps</h2>
           <p className="mb-5 text-sm text-muted">Approve is blocked above these limits, and nobody approves their own claim.</p>
           <SettingsForm ws={ctx.workspace} isAdmin={ctx.isAdmin} members={members} />
+          <h2 className="mt-8 mb-1 text-[15px] font-semibold tracking-[-0.015em]">Meetings and projects</h2>
+          <p className="mb-3 text-sm text-muted">Business purposes are suggested only from this list, never made up.</p>
+          <ContextsManager rows={ctxRows} isAdmin={ctx.isAdmin} />
           <h2 className="mt-8 mb-1 text-[15px] font-semibold tracking-[-0.015em]">Merchant rules</h2>
           <p className="mb-3 text-sm text-muted">How recurring vendors are categorized. Only a person creates or changes a rule.</p>
           <MerchantRules isAdmin={ctx.isAdmin} rules={rules.map((r) => ({ ...r, confirmedBy: members.find((m) => m.id === r.confirmedBy)?.name ?? "Unknown" }))} />

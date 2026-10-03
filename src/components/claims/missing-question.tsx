@@ -13,7 +13,9 @@ export function MissingQuestionCard({
   questions,
   canDeclare = false,
   receiptRequired = "",
+  suggestions = [],
 }: {
+  suggestions?: { id: string; purpose: string }[];
   claimId: string;
   questions: MissingQuestion[];
   canDeclare?: boolean;
@@ -111,6 +113,36 @@ export function MissingQuestionCard({
         </label>
         <Button disabled={busy || !value.trim()}>Answer</Button>
       </form>
+      {q.field === "purpose" && suggestions.length > 0 && (
+        <div className="mt-3">
+          <p className="text-xs text-muted">From your team&apos;s calendar of approved meetings and projects around this date:</p>
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            {suggestions.map((s) => (
+              <Button
+                key={s.id}
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  setErr(null);
+                  try {
+                    await api(`/claims/${claimId}`, { method: "PATCH", json: { contextId: s.id } });
+                    router.refresh();
+                  } catch (x) {
+                    setErr((x as Error).message);
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                {s.purpose}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
       {err && (
         <div className="mt-2">
           <Alert>{err}</Alert>

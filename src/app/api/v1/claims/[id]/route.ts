@@ -4,7 +4,8 @@ import { body, fail, route } from "@/lib/api";
 import { audit } from "@/lib/audit";
 import { approveClaim, revalidateApproval } from "@/lib/approvals";
 import { runMatching } from "@/lib/claims";
-import { aiFeedback, CATEGORIES, claims, db, merchantMappings } from "@/lib/db";
+import { aiFeedback, CATEGORIES, claims, contexts, db, merchantMappings } from "@/lib/db";
+import { contextPurpose } from "@/lib/evidence";
 import { normalizeMerchant } from "@/lib/matching";
 
 const AI_FIELDS: Record<string, string> = { vendor: "vendor", amountCents: "amount_cents", txnDate: "txn_date", currency: "currency" };
@@ -36,6 +37,8 @@ const Patch = z.object({
   txnDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   note: z.string().max(1000).optional(),
   purpose: z.string().trim().max(500).optional(),
+  // Pick a purpose from approved business context; the server writes the purpose text.
+  contextId: z.string().uuid().nullable().optional(),
   payerUserId: z.string().uuid().optional(),
   category: z.enum(CATEGORIES).nullable().optional(),
   // "always" turns this claim's category into the merchant rule (admins only). Default: this claim only.
@@ -55,6 +58,11 @@ export const PATCH = route<{ id: string }>(async (req, ctx, { id }) => {
   if (categoryRule === "always" && !ctx.isAdmin) fail(403, "forbidden", "Only admins change merchant rules");
   if (!markReady && !ctx.isAdmin && c.submitterId !== ctx.user.id) fail(403, "forbidden", "You can only edit your own claims");
 
+  if (fields.contextId) {
+    const [cx] = await db.select().from(contexts).where(and(eq(contexts.id, fields.contextId), eq(contexts.workspaceId, ctx.workspace.id)));
+    if (!cx) fail(400, "unknown_context", "That meeting or project doesn't exist");
+    fields.purpose = contextPurpose(cx!);
+  }
   const changes: Record<string, unknown> = Object.fromEntries(Object.entries(fields).filter(([k, v]) => v !== undefined && v !== c[k as keyof typeof c]));
   if ("category" in changes) changes.categorySource = "human";
   if (Object.keys(changes).length) {
