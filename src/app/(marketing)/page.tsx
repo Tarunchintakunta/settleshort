@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowDownIcon, CpuIcon, GitMergeIcon, GaugeIcon, PlusIcon, QuotesIcon } from "@phosphor-icons/react/ssr";
 import { CopyButton } from "@/components/copy-button";
@@ -286,25 +285,17 @@ export default function Home() {
             </p>
             <DemoLink className="mt-8 self-start" />
           </div>
-          <div className="relative border-t border-line bg-sunken p-3 sm:p-4 lg:col-span-7 lg:border-t-0 lg:border-l">
-            <div className="relative min-h-[280px] overflow-hidden rounded-[8px] border border-line bg-panel shadow-soft lg:min-h-[420px]">
-              <DashboardPicture />
-            </div>
+          <div className="flex items-center border-t border-line bg-sunken p-4 sm:p-6 lg:col-span-7 lg:border-t-0 lg:border-l">
+            <Shot
+              className="w-full bg-panel"
+              src="/marketing/dashboard.png"
+              alt="SettleShort overview for Northbeam Labs: Hi Maya, the September offsites batch of $287.55 awaiting approval, and open claims of $151.99."
+              sizes="(min-width: 1024px) 1000px, 140vw"
+              crop="aspect-[16/10] [&_img]:origin-[85%_50%] [&_img]:scale-[1.25]"
+            />
           </div>
         </div>
       </section>
     </>
-  );
-}
-
-function DashboardPicture() {
-  return (
-    <Image
-      src="/marketing/dashboard.png"
-      alt="SettleShort overview for Northbeam Labs with one batch awaiting approval, open claims, and recent activity."
-      fill
-      sizes="(min-width: 1024px) 680px, 100vw"
-      className="object-cover object-left-top"
-    />
   );
 }
