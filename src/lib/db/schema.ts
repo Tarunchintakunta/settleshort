@@ -180,3 +180,9 @@ export const aiJobs = pgTable("ai_jobs", {
   claimId: uuid("claim_id"),
   createdAt: createdAt(),
 });
+
+/** PayPal webhook event ids already processed; a replayed delivery is acknowledged and skipped. */
+export const webhookEvents = pgTable("webhook_events", {
+  id: text("id").primaryKey(),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+});

@@ -4,6 +4,7 @@ import { fail } from "./api";
 import { audit } from "./audit";
 import { batches, batchItems, claims, db, memberships, users, workspaces } from "./db";
 import { formatMoney } from "./money";
+import { isForwardTransition, PAID, FAILED, TERMINAL } from "./payout-status";
 import { createPayout, getPayout, PayPalError, paypalMode, PayoutItemStatus } from "./paypal";
 
 export async function createBatch(workspaceId: string, actorId: string, claimIds: string[], name?: string) {
@@ -14,13 +15,24 @@ export async function createBatch(workspaceId: string, actorId: string, claimIds
     .leftJoin(memberships, and(eq(memberships.userId, claims.payerUserId), eq(memberships.workspaceId, workspaceId)))
     .where(and(eq(claims.workspaceId, workspaceId), inArray(claims.id, claimIds)));
 
-  if (rows.length !== claimIds.length) fail(404, "not_found", "Some claims were not found");
+  if (rows.length !== claimIds.length || new Set(claimIds).size !== claimIds.length) fail(404, "not_found", "Some claims were not found");
   const notReady = rows.filter((r) => r.claim.status !== "matched");
   if (notReady.length) fail(409, "not_ready", `Only matched claims can be batched (#${notReady.map((r) => r.claim.number).join(", #")})`);
   const currencies = new Set(rows.map((r) => r.claim.currency));
   if (currencies.size > 1) fail(400, "mixed_currency", "A batch must use a single currency");
   const noEmail = rows.filter((r) => !r.paypalEmail);
   if (noEmail.length) fail(400, "missing_paypal_email", `Set a PayPal email for: ${[...new Set(noEmail.map((r) => r.payerName))].join(", ")}`);
+
+  // Claim the claims first, atomically: a double-click or concurrent request finds them already in_batch.
+  const locked = await db
+    .update(claims)
+    .set({ status: "in_batch", updatedAt: new Date() })
+    .where(and(inArray(claims.id, claimIds), eq(claims.status, "matched")))
+    .returning({ id: claims.id });
+  if (locked.length !== claimIds.length) {
+    if (locked.length) await db.update(claims).set({ status: "matched" }).where(inArray(claims.id, locked.map((l) => l.id)));
+    fail(409, "already_batched", "These claims were just put into another batch");
+  }
 
   const total = rows.reduce((s, r) => s + r.claim.amountCents, 0);
   const currency = [...currencies][0];
@@ -45,7 +57,6 @@ export async function createBatch(workspaceId: string, actorId: string, claimIds
       currency,
     })),
   );
-  await db.update(claims).set({ status: "in_batch", updatedAt: new Date() }).where(inArray(claims.id, claimIds));
   await audit(workspaceId, actorId, "batch.created", "batch", batch.id, { claims: rows.length, total: formatMoney(total, currency) });
   return batch;
 }
@@ -105,9 +116,6 @@ async function sendPayout(workspaceId: string, actorId: string | null, batchId: 
   return refreshBatch(workspaceId, batchId, actorId);
 }
 
-const PAID = new Set(["SUCCESS"]);
-const FAILED = new Set(["FAILED", "RETURNED", "BLOCKED", "REFUNDED", "REVERSED", "DENIED"]);
-const TERMINAL = new Set([...PAID, ...FAILED, "UNCLAIMED"]);
 
 export async function refreshBatch(workspaceId: string, batchId: string, actorId: string | null): Promise<Batch> {
   const [batch] = await db.select().from(batches).where(and(eq(batches.id, batchId), eq(batches.workspaceId, workspaceId)));
@@ -123,17 +131,19 @@ export async function refreshBatch(workspaceId: string, batchId: string, actorId
   return applyItemStatuses(batch.id, status.items, actorId, status.raw);
 }
 
-/** Shared by polling and webhooks. */
+/** Shared by polling and webhooks. Every write is compare-and-set, so concurrent updates apply once. */
 export async function applyItemStatuses(batchId: string, statuses: PayoutItemStatus[], actorId: string | null, raw?: unknown) {
   const [batch] = await db.select().from(batches).where(eq(batches.id, batchId));
   const items = await db.select().from(batchItems).where(eq(batchItems.batchId, batchId));
   for (const s of statuses) {
     const item = items.find((i) => i.claimId === s.senderItemId || (s.payoutItemId && i.paypalItemId === s.payoutItemId));
-    if (!item || item.status === s.status) continue;
-    await db
+    if (!item || !isForwardTransition(item.status, s.status)) continue;
+    const [won] = await db
       .update(batchItems)
       .set({ status: s.status, paypalItemId: s.payoutItemId, transactionId: s.transactionId ?? null, errorMessage: s.error ?? null })
-      .where(eq(batchItems.id, item.id));
+      .where(and(eq(batchItems.id, item.id), eq(batchItems.status, item.status)))
+      .returning({ id: batchItems.id });
+    if (!won) continue;
     item.status = s.status;
     const claimStatus = PAID.has(s.status) ? "paid" : FAILED.has(s.status) ? "failed" : null;
     if (claimStatus) await db.update(claims).set({ status: claimStatus, updatedAt: new Date() }).where(eq(claims.id, item.claimId));
@@ -148,11 +158,11 @@ export async function applyItemStatuses(batchId: string, statuses: PayoutItemSta
   if (items.every((i) => TERMINAL.has(i.status))) {
     next = items.every((i) => PAID.has(i.status)) ? "completed" : items.some((i) => PAID.has(i.status)) ? "partial" : "failed";
   }
-  const [updated] = await db
+  const [moved] = await db
     .update(batches)
     .set({ status: next, ...(raw ? { paypalResponse: raw } : {}) })
-    .where(eq(batches.id, batchId))
+    .where(and(eq(batches.id, batchId), eq(batches.status, batch.status)))
     .returning();
-  if (next !== batch.status) await audit(batch.workspaceId, actorId, `batch.${next}`, "batch", batchId, {});
-  return updated;
+  if (moved && next !== batch.status) await audit(batch.workspaceId, actorId, `batch.${next}`, "batch", batchId, {});
+  return moved ?? (await db.select().from(batches).where(eq(batches.id, batchId)))[0];
 }
