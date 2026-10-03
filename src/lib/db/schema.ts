@@ -32,6 +32,8 @@ export const workspaces = pgTable("workspaces", {
   isDemo: integer("is_demo").notNull().default(0),
   // Policy: claims at or above this need a receipt/invoice, or an honest missing-receipt declaration.
   receiptRequiredCents: integer("receipt_required_cents").notNull().default(2500),
+  // Above this, two different people must approve. Null = one approval is enough.
+  secondApprovalAboveCents: integer("second_approval_above_cents"),
   // Approves claims submitted by, or paid to, admins (maker-checker for founders).
   alternateApproverId: uuid("alternate_approver_id"),
   createdAt: createdAt(),
@@ -47,6 +49,8 @@ export const memberships = pgTable(
     paypalReceiverEmail: text("paypal_receiver_email"),
     // Release authority: may send approved money to PayPal. Separate from approving claims.
     canRelease: boolean("can_release").notNull().default(false),
+    // Largest claim this person may approve alone. Null = no limit.
+    approvalLimitCents: integer("approval_limit_cents"),
     // Set when an admin confirms the PayPal address belongs to this person, or after a successful payout.
     // Changing the address clears it; unverified receivers can't be paid.
     paypalVerifiedAt: timestamp("paypal_verified_at", { withTimezone: true }),
@@ -238,6 +242,8 @@ export const approvals = pgTable(
     claimId: uuid("claim_id").notNull().references(() => claims.id, { onDelete: "cascade" }),
     approverId: uuid("approver_id").notNull().references(() => users.id),
     onBehalfOfId: uuid("on_behalf_of_id").references(() => users.id),
+    // The authority this sign-off carried when it was given (limit in cents, null = unlimited).
+    coversCents: integer("covers_cents"),
     snapshotHash: text("snapshot_hash").notNull(),
     snapshotJson: jsonb("snapshot_json").notNull(),
     invalidatedAt: timestamp("invalidated_at", { withTimezone: true }),
@@ -349,4 +355,19 @@ export const contexts = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("contexts_ws").on(t.workspaceId)],
+);
+
+/** Temporary approval cover: `toUserId` approves with `fromUserId`'s authority until `endsAt`. */
+export const delegations = pgTable(
+  "delegations",
+  {
+    id: id(),
+    workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+    fromUserId: uuid("from_user_id").notNull().references(() => users.id),
+    toUserId: uuid("to_user_id").notNull().references(() => users.id),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("delegations_ws_to").on(t.workspaceId, t.toUserId)],
 );

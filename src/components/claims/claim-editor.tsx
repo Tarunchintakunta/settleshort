@@ -188,7 +188,19 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence, a
                 type="button"
                 disabled={busy || !!approveBlocked}
                 title={approveBlocked ?? undefined}
-                onClick={() => run(() => api(`/claims/${claim.id}`, { method: "PATCH", json: { markReady: true } }), "Approved")}
+                onClick={async () => {
+                  setBusy(true);
+                  setMsg(null);
+                  try {
+                    const r = await api<{ approvalNeeded: string | null }>(`/claims/${claim.id}`, { method: "PATCH", json: { markReady: true } });
+                    setMsg({ ok: true, text: r.approvalNeeded ? `Signed off. Still needs ${r.approvalNeeded}.` : "Approved" });
+                    router.refresh();
+                  } catch (e) {
+                    setMsg({ ok: false, text: (e as Error).message });
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
               >
                 <CheckIcon className="size-4" weight="bold" aria-hidden /> Approve
               </Button>

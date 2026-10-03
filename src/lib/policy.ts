@@ -62,3 +62,23 @@ export function approvalBlocker(
   if (approver.role === "member" && approver.id !== alternateApproverId) return { code: "forbidden", message: "Only admins or the alternate approver can approve claims" };
   return null;
 }
+
+/** One sign-off and the authority it carried. `coversCents` null = no limit. */
+export type SignOff = { approverId: string; coversCents: number | null };
+
+/**
+ * Whether the sign-offs so far fully approve this amount: someone whose limit covers it, and, above the
+ * workspace's second-approval threshold, two different people. Otherwise says what is still needed.
+ */
+export function approvalOutcome(amountCents: number, signOffs: SignOff[], secondApprovalAboveCents: number | null): { approved: true } | { approved: false; needed: string } {
+  const covered = signOffs.some((s) => s.coversCents == null || s.coversCents >= amountCents);
+  const people = new Set(signOffs.map((s) => s.approverId)).size;
+  if (!covered) return { approved: false, needed: "an approver whose limit covers this amount" };
+  if (secondApprovalAboveCents != null && amountCents > secondApprovalAboveCents && people < 2) return { approved: false, needed: "a second approver (two people sign off above the threshold)" };
+  return { approved: true };
+}
+
+export type Delegation = { fromUserId: string; toUserId: string; startsAt: Date; endsAt: Date };
+
+/** Delegations active right now for this person. Expired ones simply stop counting. */
+export const activeDelegations = (userId: string, all: Delegation[], now = new Date()) => all.filter((d) => d.toUserId === userId && d.startsAt <= now && d.endsAt > now);

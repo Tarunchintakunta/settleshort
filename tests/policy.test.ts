@@ -40,3 +40,26 @@ describe("maker-checker", () => {
     expect(approvalBlocker({ id: "rita", role: "member" }, claim, null)?.code).toBe("forbidden");
   });
 });
+
+import { activeDelegations, approvalOutcome } from "../src/lib/policy";
+describe("approval limits (#26)", () => {
+  it("needs someone whose limit covers the amount", () => {
+    expect(approvalOutcome(80000, [{ approverId: "lead", coversCents: 50000 }], null)).toEqual({ approved: false, needed: "an approver whose limit covers this amount" });
+    expect(approvalOutcome(80000, [{ approverId: "lead", coversCents: 50000 }, { approverId: "cfo", coversCents: null }], null)).toEqual({ approved: true });
+  });
+  it("needs two different people above the second-approval threshold", () => {
+    expect(approvalOutcome(30000, [{ approverId: "cfo", coversCents: null }], 20000).approved).toBe(false);
+    expect(approvalOutcome(30000, [{ approverId: "cfo", coversCents: null }, { approverId: "cfo", coversCents: null }], 20000).approved).toBe(false);
+    expect(approvalOutcome(30000, [{ approverId: "cfo", coversCents: null }, { approverId: "lead", coversCents: 10000 }], 20000).approved).toBe(true);
+    expect(approvalOutcome(10000, [{ approverId: "cfo", coversCents: null }], 20000).approved).toBe(true);
+  });
+});
+
+describe("delegation (#27)", () => {
+  const d = { fromUserId: "maya", toUserId: "rita", startsAt: new Date("2026-10-01"), endsAt: new Date("2026-10-08") };
+  it("counts only while active", () => {
+    expect(activeDelegations("rita", [d], new Date("2026-10-03"))).toHaveLength(1);
+    expect(activeDelegations("rita", [d], new Date("2026-10-09"))).toHaveLength(0);
+    expect(activeDelegations("sam", [d], new Date("2026-10-03"))).toHaveLength(0);
+  });
+});

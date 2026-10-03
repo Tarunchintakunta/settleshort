@@ -257,8 +257,13 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
             />
             {activeApproval ? (
               <p className="mt-4 border-t border-line pt-4 text-[13px] text-ink-2">
-                Approved by <b className="text-ink">{name(activeApproval.approverId)}</b> on{" "}
-                {activeApproval.createdAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}. Changing the amount, recipient or evidence voids it.
+                {claim.status === "pending_review" ? "Signed off by " : "Approved by "}
+                {approvalRows
+                  .filter((a) => !a.invalidatedAt)
+                  .map((a) => `${name(a.approverId)}${a.onBehalfOfId ? ` (covering for ${name(a.onBehalfOfId)})` : ""}`)
+                  .join(" and ")}{" "}
+                on {activeApproval.createdAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}.
+                {claim.status === "pending_review" ? " It still needs another approver with enough authority." : " Changing the amount, recipient or evidence voids it."}
               </p>
             ) : voided?.invalidReason ? (
               <p className="mt-4 rounded-[8px] border border-warning/30 bg-warning-soft px-3 py-2 text-[13px] text-warning">

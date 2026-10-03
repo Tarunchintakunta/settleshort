@@ -6,7 +6,7 @@ import { UserPlusIcon } from "@phosphor-icons/react";
 import { Button, Field, inputCls } from "@/components/ui";
 import { api } from "@/lib/client";
 
-type Member = { id: string; name: string; email: string; role: string; paypalEmail: string | null; membershipId: string; canRelease: boolean; paypalVerifiedAt: Date | string | null };
+type Member = { id: string; name: string; email: string; role: string; paypalEmail: string | null; membershipId: string; canRelease: boolean; paypalVerifiedAt: Date | string | null; approvalLimitCents: number | null };
 
 export function InviteForm() {
   const router = useRouter();
@@ -153,5 +153,106 @@ export function VerifyPaypal({ m, canVerify }: { m: Member; canVerify: boolean }
       )}
       {err && <span className="text-xs text-danger">{err}</span>}
     </span>
+  );
+}
+
+/** Largest claim someone may approve alone. Set by another admin, never by the person themselves. */
+export function LimitCell({ m, canEdit }: { m: Member; canEdit: boolean }) {
+  const router = useRouter();
+  const [v, setV] = useState(m.approvalLimitCents != null ? String(m.approvalLimitCents / 100) : "");
+  const [err, setErr] = useState<string | null>(null);
+  if (m.role === "member") return <span className="text-xs text-muted">Doesn&apos;t approve</span>;
+  if (!canEdit) return <span className="money text-xs">{m.approvalLimitCents != null ? `up to ${(m.approvalLimitCents / 100).toFixed(2)}` : "No limit"}</span>;
+  const changed = v !== (m.approvalLimitCents != null ? String(m.approvalLimitCents / 100) : "");
+  return (
+    <form
+      className="flex items-center gap-2"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setErr(null);
+        try {
+          await api(`/members/${m.membershipId}`, { method: "PATCH", json: { approvalLimitCents: v ? Math.round(Number(v) * 100) : null } });
+          router.refresh();
+        } catch (x) {
+          setErr((x as Error).message);
+        }
+      }}
+    >
+      <input aria-label={`Approval limit for ${m.name}`} inputMode="decimal" placeholder="No limit" value={v} onChange={(e) => setV(e.target.value)} className={`${inputCls} money h-9 w-28 text-xs`} />
+      {changed && (
+        <Button size="sm" variant="secondary">
+          Save
+        </Button>
+      )}
+      {err && <span className="text-xs text-danger">{err}</span>}
+    </form>
+  );
+}
+
+type Del = { id: string; fromUserId: string; toUserId: string; endsAt: string };
+
+/** Holiday cover: hand your approvals to a teammate until a date; it ends on its own. */
+export function DelegationPanel({ me, members, rows, canDelegate }: { me: string; members: { id: string; name: string }[]; rows: Del[]; canDelegate: boolean }) {
+  const router = useRouter();
+  const [f, setF] = useState({ to: "", until: "" });
+  const [err, setErr] = useState<string | null>(null);
+  const name = (id: string) => members.find((m) => m.id === id)?.name ?? "Unknown";
+  return (
+    <section className="mb-8 rounded-[12px] border border-line p-6 shadow-soft">
+      <h2 className="mb-1 text-[15px] font-semibold tracking-[-0.015em]">Approval cover</h2>
+      <p className="mb-4 text-sm text-muted">Going away? Hand your approval authority to a teammate until a date. Every approval they make records that it was on your behalf.</p>
+      <ul className="mb-4 space-y-1 text-sm">
+        {rows.map((d) => (
+          <li key={d.id} className="flex flex-wrap items-center gap-2">
+            {name(d.toUserId)} covers for {name(d.fromUserId)} until {new Date(d.endsAt).toLocaleDateString("en-US", { dateStyle: "medium" })}
+            {d.fromUserId === me && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={async () => {
+                  await api(`/delegations/${d.id}`, { method: "DELETE" });
+                  router.refresh();
+                }}
+              >
+                End now
+              </Button>
+            )}
+          </li>
+        ))}
+        {!rows.length && <li className="text-muted">Nobody is covering for anyone.</li>}
+      </ul>
+      {canDelegate && (
+        <form
+          className="flex flex-wrap items-end gap-2"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setErr(null);
+            try {
+              await api("/delegations", { json: { toUserId: f.to, endsAt: f.until } });
+              setF({ to: "", until: "" });
+              router.refresh();
+            } catch (x) {
+              setErr((x as Error).message);
+            }
+          }}
+        >
+          <select aria-label="Who covers" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} className={`${inputCls} w-auto`} required>
+            <option value="">Who covers for me</option>
+            {members
+              .filter((m) => m.id !== me)
+              .map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+          </select>
+          <input aria-label="Until" type="date" value={f.until} onChange={(e) => setF({ ...f, until: e.target.value })} className={`${inputCls} w-auto`} required />
+          <Button size="sm" variant="secondary">
+            Hand over
+          </Button>
+          {err && <span className="text-xs text-danger">{err}</span>}
+        </form>
+      )}
+    </section>
   );
 }

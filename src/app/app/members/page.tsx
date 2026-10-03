@@ -1,13 +1,18 @@
 import { PageHeader, Pill } from "@/components/ui";
-import { InviteForm, PaypalEmailCell, ReleaseToggle, VerifyPaypal } from "@/components/settings/members-client";
+import { DelegationPanel, InviteForm, LimitCell, PaypalEmailCell, ReleaseToggle, VerifyPaypal } from "@/components/settings/members-client";
 import { requirePageCtx } from "@/lib/auth";
 import { workspaceMembers } from "@/lib/claims";
+import { db, delegations } from "@/lib/db";
+import { and, eq, gt } from "drizzle-orm";
 
 export const metadata = { title: "Members" };
 
 export default async function MembersPage({ searchParams }: PageProps<"/app/members">) {
   const ctx = await requirePageCtx();
-  const members = await workspaceMembers(ctx.workspace.id);
+  const [members, dels] = await Promise.all([
+    workspaceMembers(ctx.workspace.id),
+    db.select().from(delegations).where(and(eq(delegations.workspaceId, ctx.workspace.id), gt(delegations.endsAt, new Date()))),
+  ]);
   const canGrant = !!members.find((m) => m.id === ctx.user.id)?.canRelease;
   const welcome = (await searchParams).welcome;
   return (
@@ -25,6 +30,7 @@ export default async function MembersPage({ searchParams }: PageProps<"/app/memb
               <th className="px-5 py-3 font-medium">Name</th>
               <th className="px-5 py-3 font-medium">Role</th>
               <th className="px-5 py-3 font-medium">PayPal receiver</th>
+              <th className="px-5 py-3 font-medium" title="Largest claim they approve alone">Approves up to</th>
               <th className="px-5 py-3 font-medium" title="May send approved money to PayPal">Release</th>
             </tr>
           </thead>
@@ -54,6 +60,9 @@ export default async function MembersPage({ searchParams }: PageProps<"/app/memb
                   </div>
                 </td>
                 <td className="px-5 py-3.5">
+                  <LimitCell m={m} canEdit={ctx.isAdmin && m.id !== ctx.user.id} />
+                </td>
+                <td className="px-5 py-3.5">
                   <ReleaseToggle m={m} canEdit={canGrant} />
                 </td>
               </tr>
@@ -61,6 +70,7 @@ export default async function MembersPage({ searchParams }: PageProps<"/app/memb
           </tbody>
         </table>
       </div>
+      <DelegationPanel me={ctx.user.id} members={members} rows={dels.map((d) => ({ ...d, endsAt: d.endsAt.toISOString() }))} canDelegate={ctx.role !== "member"} />
       {ctx.isAdmin && <InviteForm />}
     </>
   );

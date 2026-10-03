@@ -134,6 +134,13 @@
       "when": 1791020274775,
       "tag": "0018_currency_transparency",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791020455614,
+      "tag": "0019_approval_authority",
+      "breakpoints": true
     }
   ]
 }

@@ -33,7 +33,7 @@ export type NewClaim = {
 
 export async function workspaceMembers(workspaceId: string) {
   return db
-    .select({ id: users.id, name: users.name, email: users.email, role: memberships.role, paypalEmail: memberships.paypalReceiverEmail, membershipId: memberships.id, canRelease: memberships.canRelease, paypalVerifiedAt: memberships.paypalVerifiedAt })
+    .select({ id: users.id, name: users.name, email: users.email, role: memberships.role, paypalEmail: memberships.paypalReceiverEmail, membershipId: memberships.id, canRelease: memberships.canRelease, paypalVerifiedAt: memberships.paypalVerifiedAt, approvalLimitCents: memberships.approvalLimitCents })
     .from(memberships)
     .innerJoin(users, eq(users.id, memberships.userId))
     .where(eq(memberships.workspaceId, workspaceId))
