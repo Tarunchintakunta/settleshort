@@ -7,12 +7,13 @@ import { EvidencePanel, type EvidenceRow } from "@/components/claims/evidence-pa
 import { Confidence, cx, Money, StatusPill } from "@/components/ui";
 import { requirePageCtx } from "@/lib/auth";
 import { LOW_CONFIDENCE, workspaceMembers } from "@/lib/claims";
-import { approvals, batches, batchItems, claimEvidence, claimPayments, claims, claimSplits, contexts, db, fixRequests, ledgerEntries } from "@/lib/db";
+import { approvals, batches, batchItems, claimEvidence, claimPayments, claims, claimSplits, contexts, db, fixRequests, investigations, ledgerEntries } from "@/lib/db";
 import { linesFor, obligationsFor } from "@/lib/ledger";
 import { LinesCard } from "@/components/claims/lines-card";
 import { CurrencyCard } from "@/components/claims/currency-card";
 import { FixRequests } from "@/components/claims/fix-requests";
 import { RemindButton } from "@/components/claims/remind-button";
+import { InvestigationPanel } from "@/components/claims/investigation-panel";
 import { blockerFor } from "@/lib/reminders";
 import { SettlementCard } from "@/components/claims/settlement-card";
 import { MoneyTimeline } from "@/components/claims/money-timeline";
@@ -57,9 +58,10 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
   const { facts, truth } = (await factsFor([claim])).get(claim.id)!;
   const conflicts = await openContradictions(claim);
   const lineInfo = await linesFor(claim);
-  const [ctxRows, fixRows] = await Promise.all([
+  const [ctxRows, fixRows, invRows] = await Promise.all([
     db.select().from(contexts).where(eq(contexts.workspaceId, ctx.workspace.id)),
     db.select().from(fixRequests).where(eq(fixRequests.claimId, id)),
+    db.select().from(investigations).where(eq(investigations.claimId, id)).orderBy(desc(investigations.createdAt)),
   ]);
   // The viewer's own completed payouts on this claim, so they can confirm receipt.
   const myPaid = (
@@ -186,6 +188,10 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
           suggestions={suggestPurposes(claim.txnDate, ctxRows)}
         />
       )}
+      <InvestigationPanel
+        canAct={ctx.isAdmin}
+        rows={invRows.map((r) => ({ id: r.id, reason: r.reason, openedBy: name(r.openedBy), notes: r.notes.map((n) => ({ ...n, by: name(n.by) })), status: r.status, outcome: r.outcome }))}
+      />
       <FixRequests
         claimId={claim.id}
         rows={fixRows.map((r) => ({ id: r.id, field: r.field, message: r.message, by: name(r.requestedBy), reply: r.reply, resolved: !!r.resolvedAt }))}

@@ -20,6 +20,7 @@ const VERBS: Record<string, string> = {
   "claim.marked_ready": "marked a claim ready",
   "claim.approved": "approved a claim",
   "claim.fix_requested": "asked for a specific fix",
+  "investigation.resolved": "resolved a missing-payout investigation",
   "claim.escalated": "escalated an overdue approval to the next person",
   "claim.reminded": "sent a reminder explaining what's blocking a claim",
   "claim.fix_resolved": "answered a fix request",

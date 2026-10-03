@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { body, fail, route } from "@/lib/api";
 import { audit } from "@/lib/audit";
-import { batches, batchItems, db } from "@/lib/db";
+import { batches, batchItems, db, investigations } from "@/lib/db";
 
 // The receiver confirms the money arrived, or reports it missing (which opens an investigation).
 export const POST = route<{ itemId: string }>(async (req, ctx, { itemId }) => {
@@ -20,5 +20,11 @@ export const POST = route<{ itemId: string }>(async (req, ctx, { itemId }) => {
   const where = group ? and(eq(batchItems.batchId, row!.item.batchId), eq(batchItems.payoutGroup, group)) : eq(batchItems.id, itemId);
   await db.update(batchItems).set(received ? { confirmedAt: new Date(), notReceivedAt: null } : { notReceivedAt: new Date(), confirmedAt: null }).where(where);
   await audit(ctx.workspace.id, ctx.user.id, received ? "payout.confirmed_received" : "payout.reported_missing", "batch_item", itemId, { note });
+  // Missing money opens one tracked investigation (not a second one for the same payout).
+  if (!received) {
+    const open = await db.select().from(investigations).where(and(eq(investigations.batchItemId, itemId), eq(investigations.status, "open")));
+    if (!open.length)
+      await db.insert(investigations).values({ workspaceId: ctx.workspace.id, claimId: row!.item.claimId, batchItemId: itemId, openedBy: ctx.user.id, reason: note || "Receiver reports the money never arrived" });
+  }
   return { ok: true };
 });

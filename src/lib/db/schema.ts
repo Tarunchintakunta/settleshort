@@ -396,3 +396,23 @@ export const fixRequests = pgTable(
   },
   (t) => [index("fix_requests_claim").on(t.claimId)],
 );
+
+/** "Provider says completed, employee says missing": a tracked case until someone resolves it with an outcome. */
+export const investigations = pgTable(
+  "investigations",
+  {
+    id: id(),
+    workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+    claimId: uuid("claim_id").notNull().references(() => claims.id, { onDelete: "cascade" }),
+    batchItemId: uuid("batch_item_id").notNull(),
+    openedBy: uuid("opened_by").notNull().references(() => users.id),
+    reason: text("reason").notNull(),
+    notes: jsonb("notes").$type<{ by: string; text: string; at: string }[]>().notNull().default([]),
+    status: text("status", { enum: ["open", "resolved"] }).notNull().default("open"),
+    outcome: text("outcome", { enum: ["arrived", "returned_reissue", "other"] }),
+    resolvedBy: uuid("resolved_by").references(() => users.id),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("investigations_ws").on(t.workspaceId, t.status)],
+);
