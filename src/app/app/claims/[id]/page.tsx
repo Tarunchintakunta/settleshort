@@ -7,7 +7,9 @@ import { EvidencePanel, type EvidenceRow } from "@/components/claims/evidence-pa
 import { Confidence, Money, StatusPill } from "@/components/ui";
 import { requirePageCtx } from "@/lib/auth";
 import { LOW_CONFIDENCE, workspaceMembers } from "@/lib/claims";
-import { approvals, batches, batchItems, claimEvidence, claims, claimSplits, db } from "@/lib/db";
+import { approvals, batches, batchItems, claimEvidence, claimPayments, claims, claimSplits, db, ledgerEntries } from "@/lib/db";
+import { obligationsFor } from "@/lib/ledger";
+import { SettlementCard } from "@/components/claims/settlement-card";
 import { payeesOf } from "@/lib/approvals";
 import { approvalBlocker } from "@/lib/policy";
 import { formatMoney } from "@/lib/money";
@@ -26,17 +28,20 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
   const [claim] = await db.select().from(claims).where(and(eq(claims.id, id), eq(claims.workspaceId, ctx.workspace.id)));
   if (!claim) notFound();
 
-  const [members, splits, dupOf, batchRow, evidence_, approvalRows] = await Promise.all([
+  const [members, splits, dupOf, batchRow, evidence_, approvalRows, payments, ledger, obligations] = await Promise.all([
     workspaceMembers(ctx.workspace.id),
     db.select().from(claimSplits).where(eq(claimSplits.claimId, id)),
     claim.duplicateOfId ? db.select().from(claims).where(eq(claims.id, claim.duplicateOfId)).then((r) => r[0]) : null,
     db.select({ item: batchItems, batch: batches }).from(batchItems).innerJoin(batches, eq(batches.id, batchItems.batchId)).where(eq(batchItems.claimId, id)).then((r) => r.at(-1)),
     db.select().from(claimEvidence).where(eq(claimEvidence.claimId, id)).orderBy(claimEvidence.createdAt),
     db.select().from(approvals).where(eq(approvals.claimId, id)).orderBy(desc(approvals.createdAt)),
+    db.select().from(claimPayments).where(eq(claimPayments.claimId, id)),
+    db.select().from(ledgerEntries).where(eq(ledgerEntries.claimId, id)).orderBy(ledgerEntries.createdAt),
+    obligationsFor(claim),
   ]);
   const activeApproval = approvalRows.find((a) => !a.invalidatedAt);
   const voided = !activeApproval ? approvalRows[0] : undefined;
-  const blocker = approvalBlocker({ id: ctx.user.id, role: ctx.role! }, { submitterId: claim.submitterId, payeeIds: payeesOf(claim).map((p) => p.userId) }, ctx.workspace.alternateApproverId);
+  const blocker = approvalBlocker({ id: ctx.user.id, role: ctx.role! }, { submitterId: claim.submitterId, payeeIds: (await payeesOf(claim)).map((p) => p.userId) }, ctx.workspace.alternateApproverId);
   const receipt = claim.receiptKey ? { src: `/api/v1/claims/${claim.id}/receipt`, mime: claim.receiptMime ?? "", filename: claim.receiptName ?? "receipt" } : null;
   const name = (uid: string) => members.find((m) => m.id === uid)?.name ?? "Unknown";
   const ai = claim.aiJson as Ai | null;
@@ -213,42 +218,24 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
             <h2 id="settlement-h" className="mb-2 text-[15px] font-semibold tracking-[-0.015em]">
               Settlement
             </h2>
-            <div className="overflow-hidden rounded-[12px] border border-line bg-panel shadow-soft">
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-success-soft text-[12px] font-semibold text-success" aria-hidden>
-                    {name(claim.payerUserId)[0]}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted">Reimburse to</p>
-                    <p className="truncate text-sm font-medium">{name(claim.payerUserId)}</p>
-                  </div>
-                </div>
-                <Money cents={claim.amountCents} currency={claim.currency} className="text-[17px] font-semibold" />
-              </div>
-              {splits.length > 0 && (
-                <div className="border-t border-line bg-sunken/40 px-4 py-3">
-                  <p className="mb-2 text-xs text-muted">Split between {splits.length} people</p>
-                  <ul className="space-y-1.5 text-sm">
-                    {splits.map((s) => (
-                      <li key={s.id} className="flex items-center justify-between gap-3">
-                        <span className="flex min-w-0 items-center gap-2">
-                          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-panel text-[10px] font-semibold ring-1 ring-line" aria-hidden>
-                            {name(s.userId)[0]}
-                          </span>
-                          <span className="truncate text-ink-2">{name(s.userId)}</span>
-                          <span className="tnum text-xs text-muted">{Math.round(s.shareBps / 100)}%</span>
-                        </span>
-                        <Money cents={s.amountCents} currency={claim.currency} className="text-ink" />
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+            <SettlementCard
+              claimId={claim.id}
+              currency={claim.currency}
+              totalCents={claim.amountCents}
+              o={obligations}
+              payments={payments}
+              entries={ledger.map((e) => ({ id: e.id, kind: e.kind, userId: e.userId, amountCents: e.amountCents, reference: e.reference, createdAt: e.createdAt.toISOString() }))}
+              members={members}
+              participants={splits.map((x) => name(x.userId))}
+              approvedBy={activeApproval ? name(activeApproval.approverId) : null}
+              canEditFunding={(ctx.isAdmin || claim.submitterId === ctx.user.id) && ["draft", "pending_review", "matched"].includes(claim.status)}
+              canRecord={ctx.isAdmin && ["matched", "partially_paid", "paid", "failed"].includes(claim.status)}
+            />
+            <div className="mt-3 overflow-hidden rounded-[12px] border border-line bg-panel shadow-soft">
               {batchRow ? (
                 <Link
                   href={`/app/batches/${batchRow.batch.id}`}
-                  className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 text-sm transition-colors hover:bg-sunken"
+                  className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm transition-colors hover:bg-sunken"
                 >
                   <span className="min-w-0">
                     <span className="text-muted">Batch </span>
@@ -258,7 +245,7 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
                   <StatusPill status={batchRow.item.status} />
                 </Link>
               ) : (
-                <p className="border-t border-line px-4 py-3 text-xs text-muted">
+                <p className="px-4 py-3 text-xs text-muted">
                   {claim.status === "matched" ? "Approved. Goes into the next settlement batch." : claim.status === "rejected" ? "Rejected, so it won't be paid." : "Not in a settlement batch yet."}
                 </p>
               )}

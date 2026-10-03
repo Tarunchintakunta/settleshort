@@ -4,41 +4,50 @@ import { fail } from "./api";
 import { releaseProblems } from "./approvals";
 import { audit } from "./audit";
 import { batches, batchItems, claims, db, memberships, users, workspaces } from "./db";
+import { obligationsFor, obligationsForMany, recordLedger } from "./ledger";
 import { formatMoney } from "./money";
 import { isForwardTransition, PAID, FAILED, TERMINAL } from "./payout-status";
 import { createPayout, getPayout, PayPalError, paypalMode, PayoutItemStatus } from "./paypal";
 
-export async function createBatch(workspaceId: string, actorId: string, claimIds: string[], name?: string) {
-  const rows = await db
-    .select({ claim: claims, payerName: users.name, paypalEmail: memberships.paypalReceiverEmail })
-    .from(claims)
-    .innerJoin(users, eq(users.id, claims.payerUserId))
-    .leftJoin(memberships, and(eq(memberships.userId, claims.payerUserId), eq(memberships.workspaceId, workspaceId)))
-    .where(and(eq(claims.workspaceId, workspaceId), inArray(claims.id, claimIds)));
+/** Claim statuses that can go into a batch: approved, or approved with money still outstanding. */
+const BATCHABLE = ["matched", "partially_paid", "failed"] as const;
 
+export async function createBatch(workspaceId: string, actorId: string, claimIds: string[], name?: string) {
+  const rows = await db.select().from(claims).where(and(eq(claims.workspaceId, workspaceId), inArray(claims.id, claimIds)));
   if (rows.length !== claimIds.length || new Set(claimIds).size !== claimIds.length) fail(404, "not_found", "Some claims were not found");
-  const notReady = rows.filter((r) => r.claim.status !== "matched");
-  if (notReady.length) fail(409, "not_ready", `Only approved claims can be batched (#${notReady.map((r) => r.claim.number).join(", #")})`);
+  const notReady = rows.filter((r) => !(BATCHABLE as readonly string[]).includes(r.status));
+  if (notReady.length) fail(409, "not_ready", `Only approved claims can be batched (#${notReady.map((r) => r.number).join(", #")})`);
   const problems = await releaseProblems(workspaceId, claimIds);
   if (problems.length) fail(409, "approval_stale", problems.map((p) => `#${p.number}: ${p.problems.join("; ")}`).join(" · "));
-  const currencies = new Set(rows.map((r) => r.claim.currency));
+  const currencies = new Set(rows.map((r) => r.currency));
   if (currencies.size > 1) fail(400, "mixed_currency", "A batch must use a single currency");
-  const noEmail = rows.filter((r) => !r.paypalEmail);
-  if (noEmail.length) fail(400, "missing_paypal_email", `Set a PayPal email for: ${[...new Set(noEmail.map((r) => r.payerName))].join(", ")}`);
+  const currency = [...currencies][0];
+
+  // One line per claim and person still owed money (multiple payers, partial repayments, company-funded parts).
+  const owed = await obligationsForMany(rows);
+  const lines = rows.flatMap((c) => owed.get(c.id)!.payees.filter((p) => p.outstandingCents > 0).map((p) => ({ claim: c, userId: p.userId, amountCents: p.outstandingCents })));
+  if (!lines.length) fail(400, "nothing_owed", "Nothing is owed on these claims");
+  const people = await db
+    .select({ id: users.id, name: users.name, paypalEmail: memberships.paypalReceiverEmail })
+    .from(users)
+    .leftJoin(memberships, and(eq(memberships.userId, users.id), eq(memberships.workspaceId, workspaceId)))
+    .where(inArray(users.id, [...new Set(lines.map((l) => l.userId))]));
+  const person = (id: string) => people.find((p) => p.id === id)!;
+  const noEmail = [...new Set(lines.filter((l) => !person(l.userId).paypalEmail).map((l) => person(l.userId).name))];
+  if (noEmail.length) fail(400, "missing_paypal_email", `Set a PayPal email for: ${noEmail.join(", ")}`);
 
   // Claim the claims first, atomically: a double-click or concurrent request finds them already in_batch.
   const locked = await db
     .update(claims)
     .set({ status: "in_batch", updatedAt: new Date() })
-    .where(and(inArray(claims.id, claimIds), eq(claims.status, "matched")))
+    .where(and(inArray(claims.id, claimIds), inArray(claims.status, [...BATCHABLE])))
     .returning({ id: claims.id });
   if (locked.length !== claimIds.length) {
-    if (locked.length) await db.update(claims).set({ status: "matched" }).where(inArray(claims.id, locked.map((l) => l.id)));
+    for (const l of locked) await db.update(claims).set({ status: rows.find((r) => r.id === l.id)!.status }).where(eq(claims.id, l.id));
     fail(409, "already_batched", "These claims were just put into another batch");
   }
 
-  const total = rows.reduce((s, r) => s + r.claim.amountCents, 0);
-  const currency = [...currencies][0];
+  const total = lines.reduce((s, l) => s + l.amountCents, 0);
   const [batch] = await db
     .insert(batches)
     .values({
@@ -50,18 +59,36 @@ export async function createBatch(workspaceId: string, actorId: string, claimIds
       status: "awaiting_approval",
     })
     .returning();
-  await db.insert(batchItems).values(
-    rows.map((r) => ({
-      batchId: batch.id,
-      claimId: r.claim.id,
-      receiverEmail: r.paypalEmail!,
-      receiverName: r.payerName,
-      amountCents: r.claim.amountCents,
-      currency,
-    })),
-  );
-  await audit(workspaceId, actorId, "batch.created", "batch", batch.id, { claims: rows.length, total: formatMoney(total, currency) });
+  const items = await db
+    .insert(batchItems)
+    .values(
+      lines.map((l) => ({
+        batchId: batch.id,
+        claimId: l.claim.id,
+        receiverUserId: l.userId,
+        receiverEmail: person(l.userId).paypalEmail!,
+        receiverName: person(l.userId).name,
+        amountCents: l.amountCents,
+        currency,
+      })),
+    )
+    .returning();
+  // Netting: everything owed to one receiver goes out as a single PayPal item.
+  const groups = new Map<string, string>();
+  for (const i of items) if (!groups.has(i.receiverEmail)) groups.set(i.receiverEmail, i.id);
+  for (const [email, group] of groups) await db.update(batchItems).set({ payoutGroup: group }).where(and(eq(batchItems.batchId, batch.id), eq(batchItems.receiverEmail, email)));
+  await audit(workspaceId, actorId, "batch.created", "batch", batch.id, { claims: rows.length, payouts: groups.size, total: formatMoney(total, currency) });
   return batch;
+}
+
+/** PayPal items after netting: one per payout group. */
+export function payoutGroups(items: (typeof batchItems.$inferSelect)[]) {
+  const by = new Map<string, (typeof batchItems.$inferSelect)[]>();
+  for (const i of items) {
+    const g = i.payoutGroup ?? i.claimId;
+    by.set(g, [...(by.get(g) ?? []), i]);
+  }
+  return [...by].map(([group, members]) => ({ group, members, email: members[0].receiverEmail, amountCents: members.reduce((a, m) => a + m.amountCents, 0), currency: members[0].currency }));
 }
 
 /** The human gate. Only path in the codebase that moves money. */
@@ -78,7 +105,7 @@ export async function approveBatch(workspaceId: string, actorId: string, batchId
   const problems = await releaseProblems(workspaceId, items.map((i) => i.claimId));
   if (problems.length) fail(409, "changed_since_approval", `Re-approve before paying: ${problems.map((p) => `#${p.number} ${p.problems.join("; ")}`).join(" · ")}`);
 
-  const overSingle = items.filter((i) => i.amountCents > ws.maxSingleCents);
+  const overSingle = payoutGroups(items).filter((g) => g.amountCents > ws.maxSingleCents);
   if (overSingle.length) fail(400, "cap_single", `Item over single-payout cap of ${formatMoney(ws.maxSingleCents, batch.currency)}`);
   if (batch.totalCents > ws.maxBatchCents) fail(400, "cap_batch", `Batch exceeds cap of ${formatMoney(ws.maxBatchCents, batch.currency)}`);
 
@@ -98,7 +125,13 @@ export async function approveBatch(workspaceId: string, actorId: string, batchId
 type Batch = typeof batches.$inferSelect;
 
 const payoutItems = (items: (typeof batchItems.$inferSelect)[]) =>
-  items.map((i) => ({ senderItemId: i.claimId, email: i.receiverEmail, amountCents: i.amountCents, currency: i.currency, note: `SettleShort claim ${i.claimId.slice(0, 8)}` }));
+  payoutGroups(items).map((g) => ({
+    senderItemId: g.group,
+    email: g.email,
+    amountCents: g.amountCents,
+    currency: g.currency,
+    note: `SettleShort: ${g.members.length} claim${g.members.length === 1 ? "" : "s"}`,
+  }));
 
 /**
  * Sends (or, with replay, verifies) the payout. Three outcomes:
@@ -119,7 +152,11 @@ async function sendPayout(workspaceId: string, actorId: string | null, batchId: 
     }
     await db.update(batches).set({ status: "failed", errorMessage: message, paypalMode: paypalMode() }).where(eq(batches.id, batchId));
     // Definitive rejection: nothing was paid, so release claims for a fresh batch (new sender_batch_id).
-    await db.update(claims).set({ status: "matched", updatedAt: new Date() }).where(inArray(claims.id, items.map((i) => i.claimId)));
+    for (const id of new Set(items.map((i) => i.claimId))) {
+      const [c] = await db.select().from(claims).where(eq(claims.id, id));
+      const settled = (await obligationsFor(c)).payees.some((p) => p.settledCents > 0);
+      await db.update(claims).set({ status: settled ? "partially_paid" : "matched", updatedAt: new Date() }).where(eq(claims.id, id));
+    }
     await audit(workspaceId, actorId, "payout.failed", "batch", batchId, { error: message });
     fail(502, "paypal_error", message);
   }
@@ -137,7 +174,7 @@ export async function refreshBatch(workspaceId: string, batchId: string, actorId
   }
   if (!batch.paypalPayoutBatchId) return batch;
   const items = await db.select().from(batchItems).where(eq(batchItems.batchId, batchId));
-  const status = await getPayout(batch.paypalPayoutBatchId, items.map((i) => ({ senderItemId: i.claimId, email: i.receiverEmail })));
+  const status = await getPayout(batch.paypalPayoutBatchId, payoutGroups(items).map((g) => ({ senderItemId: g.group, email: g.email })));
   return applyItemStatuses(batch.id, status.items, actorId, status.raw);
 }
 
@@ -146,23 +183,29 @@ export async function applyItemStatuses(batchId: string, statuses: PayoutItemSta
   const [batch] = await db.select().from(batches).where(eq(batches.id, batchId));
   const items = await db.select().from(batchItems).where(eq(batchItems.batchId, batchId));
   for (const s of statuses) {
-    const item = items.find((i) => i.claimId === s.senderItemId || (s.payoutItemId && i.paypalItemId === s.payoutItemId));
-    if (!item || !isForwardTransition(item.status, s.status)) continue;
-    const [won] = await db
-      .update(batchItems)
-      .set({ status: s.status, paypalItemId: s.payoutItemId, transactionId: s.transactionId ?? null, errorMessage: s.error ?? null })
-      .where(and(eq(batchItems.id, item.id), eq(batchItems.status, item.status)))
-      .returning({ id: batchItems.id });
-    if (!won) continue;
-    item.status = s.status;
-    const claimStatus = PAID.has(s.status) ? "paid" : FAILED.has(s.status) ? "failed" : null;
-    if (claimStatus) await db.update(claims).set({ status: claimStatus, updatedAt: new Date() }).where(eq(claims.id, item.claimId));
-    await audit(batch.workspaceId, actorId, `payout.item.${s.status.toLowerCase()}`, "batch_item", item.id, {
-      receiver: item.receiverEmail,
-      amount: formatMoney(item.amountCents, item.currency),
-      transaction_id: s.transactionId,
-      error: s.error,
-    });
+    // A netted PayPal item covers every batch item in its payout group.
+    const group = items.filter((i) => (i.payoutGroup ?? i.claimId) === s.senderItemId || (s.payoutItemId && i.paypalItemId === s.payoutItemId));
+    for (const item of group) {
+      if (!isForwardTransition(item.status, s.status)) continue;
+      const [won] = await db
+        .update(batchItems)
+        .set({ status: s.status, paypalItemId: s.payoutItemId, transactionId: s.transactionId ?? null, errorMessage: s.error ?? null })
+        .where(and(eq(batchItems.id, item.id), eq(batchItems.status, item.status)))
+        .returning({ id: batchItems.id });
+      if (!won) continue;
+      const wasPaid = PAID.has(item.status);
+      item.status = s.status;
+      const kind = PAID.has(s.status) ? "payout" : wasPaid && FAILED.has(s.status) ? "payout_reversal" : null;
+      const userId = item.receiverUserId ?? (await db.select({ u: claims.payerUserId }).from(claims).where(eq(claims.id, item.claimId)))[0].u;
+      if (kind) await recordLedger(batch.workspaceId, actorId, [{ claimId: item.claimId, userId, kind, amountCents: item.amountCents, currency: item.currency, reference: s.transactionId ?? s.payoutItemId, batchItemId: item.id }]);
+      else if (FAILED.has(s.status)) await db.update(claims).set({ status: "failed", updatedAt: new Date() }).where(eq(claims.id, item.claimId));
+      await audit(batch.workspaceId, actorId, `payout.item.${s.status.toLowerCase()}`, "batch_item", item.id, {
+        receiver: item.receiverEmail,
+        amount: formatMoney(item.amountCents, item.currency),
+        transaction_id: s.transactionId,
+        error: s.error,
+      });
+    }
   }
   let next = batch.status;
   if (items.every((i) => TERMINAL.has(i.status))) {

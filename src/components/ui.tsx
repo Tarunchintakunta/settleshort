@@ -53,6 +53,7 @@ const STATUS: Record<string, [Tone, string]> = {
   matched: ["accent", "Approved"],
   in_batch: ["neutral", "In batch"],
   paid: ["success", "Paid"],
+  partially_paid: ["warning", "Partially paid"],
   failed: ["danger", "Failed"],
   rejected: ["neutral", "Rejected"],
   awaiting_approval: ["warning", "Awaiting approval"],

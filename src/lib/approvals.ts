@@ -3,18 +3,20 @@ import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { fail } from "./api";
 import { audit } from "./audit";
 import { approvals, batches, batchItems, claimEvidence, claims, db, users } from "./db";
+import { obligationsFor } from "./ledger";
 import { approvalBlocker, diffSnapshots, hashSnapshot, type Approver, type Snapshot } from "./policy";
 
 type Claim = typeof claims.$inferSelect;
 
-/** Who gets paid how much for this claim. Single source for snapshots and batching. */
-export function payeesOf(claim: Claim) {
-  return [{ userId: claim.payerUserId, amountCents: claim.amountCents }];
+/** Who is reimbursed how much for this claim (employee payers only). Single source for snapshots. */
+export async function payeesOf(claim: Claim) {
+  const o = await obligationsFor(claim);
+  return o.payees.filter((p) => p.owedCents > 0).map((p) => ({ userId: p.userId, amountCents: p.owedCents }));
 }
 
 export async function currentSnapshot(claim: Claim): Promise<Snapshot> {
-  const ev = await db.select({ id: claimEvidence.id }).from(claimEvidence).where(eq(claimEvidence.claimId, claim.id));
-  return { amountCents: claim.amountCents, currency: claim.currency, payees: payeesOf(claim), evidenceIds: ev.map((e) => e.id) };
+  const [ev, payees] = await Promise.all([db.select({ id: claimEvidence.id }).from(claimEvidence).where(eq(claimEvidence.claimId, claim.id)), payeesOf(claim)]);
+  return { amountCents: claim.amountCents, currency: claim.currency, payees, evidenceIds: ev.map((e) => e.id) };
 }
 
 export async function activeApproval(claimId: string) {
@@ -30,7 +32,7 @@ export async function approveClaim(ws: { id: string; alternateApproverId: string
     const [b] = await db.select({ status: batches.status }).from(batchItems).innerJoin(batches, eq(batches.id, batchItems.batchId)).where(and(eq(batchItems.claimId, claimId), eq(batches.status, "awaiting_approval")));
     if (!b) fail(409, "locked", "This claim's batch has already been released");
   } else if (!["pending_review", "matched"].includes(claim.status)) fail(409, "locked", `Claim is ${claim.status} and can't be approved`);
-  const blocked = approvalBlocker(approver, { submitterId: claim.submitterId, payeeIds: payeesOf(claim).map((p) => p.userId) }, ws.alternateApproverId);
+  const blocked = approvalBlocker(approver, { submitterId: claim.submitterId, payeeIds: (await payeesOf(claim)).map((p) => p.userId) }, ws.alternateApproverId);
   if (blocked) fail(403, blocked.code, blocked.message);
 
   const snap = await currentSnapshot(claim);

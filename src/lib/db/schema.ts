@@ -50,7 +50,7 @@ export const memberships = pgTable(
   (t) => [uniqueIndex("memberships_ws_user").on(t.workspaceId, t.userId)],
 );
 
-export const CLAIM_STATUSES = ["draft", "pending_review", "matched", "in_batch", "paid", "failed", "rejected"] as const;
+export const CLAIM_STATUSES = ["draft", "pending_review", "matched", "in_batch", "partially_paid", "paid", "failed", "rejected"] as const;
 export type ClaimStatus = (typeof CLAIM_STATUSES)[number];
 
 export const claims = pgTable(
@@ -154,6 +154,9 @@ export const batchItems = pgTable("batch_items", {
   currency: text("currency").notNull(),
   paypalItemId: text("paypal_item_id"),
   status: text("status").notNull().default("NEW"), // NEW | PENDING | SUCCESS | UNCLAIMED | FAILED | ...
+  receiverUserId: uuid("receiver_user_id").references(() => users.id),
+  // PayPal sender_item_id shared by every item netted into one payout to the same receiver.
+  payoutGroup: text("payout_group"),
   transactionId: text("transaction_id"),
   errorMessage: text("error_message"),
 });
@@ -208,4 +211,32 @@ export const approvals = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("approvals_claim").on(t.claimId)],
+);
+
+/** Who funded a claim: employees (reimbursed), the company card or an advance (not reimbursed). */
+export const claimPayments = pgTable("claim_payments", {
+  id: id(),
+  claimId: uuid("claim_id").notNull().references(() => claims.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").references(() => users.id),
+  source: text("source", { enum: ["employee", "company_card", "advance"] }).notNull(),
+  amountCents: integer("amount_cents").notNull(),
+});
+
+/** Append-only money movements per claim and person: payouts, repayments, refunds, clawbacks. */
+export const ledgerEntries = pgTable(
+  "ledger_entries",
+  {
+    id: id(),
+    workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+    claimId: uuid("claim_id").notNull().references(() => claims.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    kind: text("kind", { enum: ["payout", "payout_reversal", "repayment", "refund", "clawback"] }).notNull(),
+    amountCents: integer("amount_cents").notNull(),
+    currency: text("currency").notNull(),
+    reference: text("reference"),
+    batchItemId: uuid("batch_item_id"),
+    createdBy: uuid("created_by"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("ledger_claim").on(t.claimId), index("ledger_ws_user").on(t.workspaceId, t.userId)],
 );

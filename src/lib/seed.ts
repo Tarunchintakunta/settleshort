@@ -1,7 +1,7 @@
 // Demo seed: a fresh, isolated "Northbeam Labs" workspace per /demo visit so judges never collide.
 // No "server-only" import so scripts/seed.ts can reuse it.
 import { randomBytes } from "node:crypto";
-import { approvals, auditEvents, batches, batchItems, claimEvidence, claims, claimSplits, db, memberships, users, workspaces } from "./db";
+import { approvals, auditEvents, ledgerEntries, batches, batchItems, claimEvidence, claims, claimSplits, db, memberships, users, workspaces } from "./db";
 import { hashSnapshot, type Snapshot } from "./policy";
 
 const PEOPLE = [
@@ -105,17 +105,21 @@ export async function createDemoWorkspace() {
     })
     .returning();
   await db.insert(batchItems).values([
-    { batchId: paid.id, claimId: ids.c1, receiverEmail: pp.sam, receiverName: "Sam Patel", amountCents: 3210, currency: "USD", status: "SUCCESS", paypalItemId: "SIMITEM-AUG1", transactionId: "SIMTX8AUG1" },
-    { batchId: paid.id, claimId: ids.c2, receiverEmail: pp.rita, receiverName: "Rita Gomez", amountCents: 4500, currency: "USD", status: "SUCCESS", paypalItemId: "SIMITEM-AUG2", transactionId: "SIMTX8AUG2" },
+    { batchId: paid.id, claimId: ids.c1, receiverUserId: u.sam, payoutGroup: ids.c1, receiverEmail: pp.sam, receiverName: "Sam Patel", amountCents: 3210, currency: "USD", status: "SUCCESS", paypalItemId: "SIMITEM-AUG1", transactionId: "SIMTX8AUG1" },
+    { batchId: paid.id, claimId: ids.c2, receiverUserId: u.rita, payoutGroup: ids.c2, receiverEmail: pp.rita, receiverName: "Rita Gomez", amountCents: 4500, currency: "USD", status: "SUCCESS", paypalItemId: "SIMITEM-AUG2", transactionId: "SIMTX8AUG2" },
+  ]);
+  await db.insert(ledgerEntries).values([
+    { workspaceId: ws.id, claimId: ids.c1, userId: u.sam, kind: "payout", amountCents: 3210, currency: "USD", reference: "SIMTX8AUG1", createdAt: new Date("2026-09-02T17:05:00Z") },
+    { workspaceId: ws.id, claimId: ids.c2, userId: u.rita, kind: "payout", amountCents: 4500, currency: "USD", reference: "SIMTX8AUG2", createdAt: new Date("2026-09-02T17:05:00Z") },
   ]);
   const [sept] = await db
     .insert(batches)
     .values({ workspaceId: ws.id, name: "September offsites", createdBy: u.maya, status: "awaiting_approval", totalCents: 18650 + 4230 + 5875, currency: "USD" })
     .returning();
   await db.insert(batchItems).values([
-    { batchId: sept.id, claimId: ids.c3, receiverEmail: pp.dev, receiverName: "Dev Kumar", amountCents: 18650, currency: "USD" },
-    { batchId: sept.id, claimId: ids.c4, receiverEmail: pp.rita, receiverName: "Rita Gomez", amountCents: 4230, currency: "USD" },
-    { batchId: sept.id, claimId: ids.c5, receiverEmail: pp.jules, receiverName: "Jules Moreau", amountCents: 5875, currency: "USD" },
+    { batchId: sept.id, claimId: ids.c3, receiverUserId: u.dev, payoutGroup: ids.c3, receiverEmail: pp.dev, receiverName: "Dev Kumar", amountCents: 18650, currency: "USD" },
+    { batchId: sept.id, claimId: ids.c4, receiverUserId: u.rita, payoutGroup: ids.c4, receiverEmail: pp.rita, receiverName: "Rita Gomez", amountCents: 4230, currency: "USD" },
+    { batchId: sept.id, claimId: ids.c5, receiverUserId: u.jules, payoutGroup: ids.c5, receiverEmail: pp.jules, receiverName: "Jules Moreau", amountCents: 5875, currency: "USD" },
   ]);
 
   await db.insert(auditEvents).values([

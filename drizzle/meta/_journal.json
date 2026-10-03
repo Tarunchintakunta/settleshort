@@ -43,6 +43,13 @@
       "when": 1791017237365,
       "tag": "0005_approvals",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791017639034,
+      "tag": "0006_payments_ledger",
+      "breakpoints": true
     }
   ]
 }
