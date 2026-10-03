@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { CheckIcon, GitMergeIcon, XIcon } from "@phosphor-icons/react";
+import { CheckIcon, XIcon } from "@phosphor-icons/react";
 import { Alert, Button, Field, inputCls } from "@/components/ui";
 import { api } from "@/lib/client";
 
@@ -135,16 +135,6 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence, a
                 onClick={() => run(() => api(`/claims/${claim.id}`, { method: "PATCH", json: { markReady: true } }), "Approved")}
               >
                 <CheckIcon className="size-4" weight="bold" aria-hidden /> Approve
-              </Button>
-            )}
-            {isAdmin && claim.duplicateOfId && (
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={busy}
-                onClick={() => run(() => api("/claims/merge", { json: { ids: [claim.duplicateOfId, claim.id] } }), "Merged into the original claim")}
-              >
-                <GitMergeIcon className="size-4" aria-hidden /> Merge into original
               </Button>
             )}
           </div>

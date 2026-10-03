@@ -4,7 +4,7 @@ import { aiProvider, explainMatch, parseClaimText, PROMPT_VERSION } from "./ai";
 import { openContradictions, revalidateApproval } from "./approvals";
 import { audit } from "./audit";
 import { claimEvidence, claims, claimSplits, db, memberships, users, type EvidenceKind } from "./db";
-import { DUPLICATE_THRESHOLD, findMatches } from "./matching";
+import { DUPLICATE_THRESHOLD, findMatches, isAmbiguous } from "./matching";
 import { formatMoney, splitEven } from "./money";
 
 export const LOW_CONFIDENCE = 0.55;
@@ -96,14 +96,19 @@ export async function createClaim(workspaceId: string, actorId: string, c: NewCl
 /** Rules-first dedupe; a strong match parks the claim in review with an AI-written rationale. */
 export async function runMatching(workspaceId: string, claimId: string) {
   const [claim] = await db.select().from(claims).where(and(eq(claims.id, claimId), eq(claims.workspaceId, workspaceId)));
-  const others = await db
-    .select()
-    .from(claims)
-    .where(and(eq(claims.workspaceId, workspaceId), ne(claims.id, claimId), ne(claims.status, "rejected")));
+  // A human already said "not the same expense" for these; never suggest them again.
+  const dismissed = new Set((claim.matchJson as { dismissed?: string[] } | null)?.dismissed ?? []);
+  const others = (
+    await db
+      .select()
+      .from(claims)
+      .where(and(eq(claims.workspaceId, workspaceId), ne(claims.id, claimId), ne(claims.status, "rejected")))
+  ).filter((o) => !dismissed.has(o.id));
   const candidates = findMatches(claim, others);
+  const ambiguous = isAmbiguous(candidates);
   const top = candidates[0];
   if (!top || top.score < DUPLICATE_THRESHOLD) {
-    const [updated] = await db.update(claims).set({ matchJson: { candidates }, duplicateOfId: null, updatedAt: new Date() }).where(eq(claims.id, claimId)).returning();
+    const [updated] = await db.update(claims).set({ matchJson: { candidates, dismissed: [...dismissed] }, duplicateOfId: null, updatedAt: new Date() }).where(eq(claims.id, claimId)).returning();
     return updated;
   }
   const other = others.find((o) => o.id === top.id)!;
@@ -118,7 +123,7 @@ export async function runMatching(workspaceId: string, claimId: string) {
     .update(claims)
     .set({
       duplicateOfId: top.id,
-      matchJson: { candidates, rationale },
+      matchJson: { candidates, rationale, ambiguous, dismissed: [...dismissed] },
       status: claim.status === "matched" ? "pending_review" : claim.status,
       updatedAt: new Date(),
     })

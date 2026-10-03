@@ -23,6 +23,7 @@ const VERBS: Record<string, string> = {
   "claim.rejected": "rejected a claim",
   "claim.merged": "merged duplicate claims",
   "claim.duplicate_suspected": "flagged a likely duplicate",
+  "claim.duplicate_dismissed": "marked two claims as different expenses",
   "claim.evidence_added": "added evidence to a claim",
   "claim.contradiction_found": "found evidence that disagrees",
   "claim.contradiction_accepted": "accepted a difference between pieces of evidence",

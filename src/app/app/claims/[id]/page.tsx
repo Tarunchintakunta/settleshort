@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon, FilePdfIcon, QuotesIcon, WarningIcon } from "@phosphor-icons/react/ssr";
@@ -17,6 +17,7 @@ import { claimTimeline } from "@/lib/status";
 import { Pill } from "@/components/ui";
 import { openContradictions, payeesOf } from "@/lib/approvals";
 import { ConflictsPanel } from "@/components/claims/conflicts-panel";
+import { DuplicateChooser } from "@/components/claims/duplicate-chooser";
 import { MissingQuestionCard } from "@/components/claims/missing-question";
 import { approvalBlocker } from "@/lib/policy";
 import { FIELD_UNSURE, missingQuestions, uncertainFields } from "@/lib/evidence";
@@ -25,7 +26,7 @@ import { formatMoney } from "@/lib/money";
 export const metadata = { title: "Claim" };
 
 type Ai = { provider?: string; field_confidence?: Record<string, number>; evidence?: Record<string, string>; ocr_text?: string; line_items?: { name: string; amount_cents: number }[] } & Record<string, unknown>;
-type MatchJson = { rationale?: string; candidates?: { id: string; number?: number; score: number; reasons: string[] }[] };
+type MatchJson = { rationale?: string; ambiguous?: boolean; candidates?: { id: string; number?: number; score: number; reasons: string[] }[] };
 
 const SOURCE: Record<string, string> = { upload: "receipt upload", slack: "Slack", email: "email", manual: "message" };
 
@@ -36,10 +37,9 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
   const [claim] = await db.select().from(claims).where(and(eq(claims.id, id), eq(claims.workspaceId, ctx.workspace.id)));
   if (!claim) notFound();
 
-  const [members, splits, dupOf, batchRow, evidence_, approvalRows, payments, ledger, obligations] = await Promise.all([
+  const [members, splits, batchRow, evidence_, approvalRows, payments, ledger, obligations] = await Promise.all([
     workspaceMembers(ctx.workspace.id),
     db.select().from(claimSplits).where(eq(claimSplits.claimId, id)),
-    claim.duplicateOfId ? db.select().from(claims).where(eq(claims.id, claim.duplicateOfId)).then((r) => r[0]) : null,
     db.select({ item: batchItems, batch: batches }).from(batchItems).innerJoin(batches, eq(batches.id, batchItems.batchId)).where(eq(batchItems.claimId, id)).then((r) => r.at(-1)),
     db.select().from(claimEvidence).where(eq(claimEvidence.claimId, id)).orderBy(claimEvidence.createdAt),
     db.select().from(approvals).where(eq(approvals.claimId, id)).orderBy(desc(approvals.createdAt)),
@@ -61,6 +61,13 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
   const ai = claim.aiJson as Ai | null;
   const match = claim.matchJson as MatchJson | null;
   const evidence = Object.entries(ai?.evidence ?? {}).filter(([, v]) => v);
+  // Strong candidates only: the flagged one, plus a close second when the match is ambiguous.
+  const candIds = (match?.candidates ?? []).filter((c) => c.id === claim.duplicateOfId || (match?.ambiguous && c.score >= 0.6)).map((c) => c.id);
+  const candRows = candIds.length ? await db.select().from(claims).where(and(eq(claims.workspaceId, ctx.workspace.id), inArray(claims.id, candIds))) : [];
+  const dupCandidates = (match?.candidates ?? []).flatMap((m) => {
+    const c = candRows.find((r) => r.id === m.id);
+    return c ? [{ id: c.id, number: c.number, vendor: c.vendor, amountCents: c.amountCents, currency: c.currency, txnDate: c.txnDate, payer: name(c.payerUserId), score: m.score, reasons: m.reasons }] : [];
+  });
 
   return (
     <>
@@ -94,32 +101,13 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
       )}
       <ConflictsPanel claimId={claim.id} conflicts={conflicts} canResolve={ctx.isAdmin} />
 
-      {claim.duplicateOfId && dupOf && (
+      {claim.duplicateOfId && dupCandidates.length > 0 && (
         <section className="rise mb-8 rounded-[12px] border border-warning/30 bg-warning-soft p-5 shadow-soft">
           <p className="flex items-center gap-2 text-sm font-medium text-warning">
-            <WarningIcon className="size-4" weight="fill" aria-hidden /> Possible duplicate
+            <WarningIcon className="size-4" weight="fill" aria-hidden /> {match?.ambiguous ? "Matches more than one claim" : "Possible duplicate"}
           </p>
           {match?.rationale && <p className="mt-1.5 text-sm text-ink-2">{match.rationale}</p>}
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {[
-              { label: "This claim", c: claim },
-              { label: `Existing #${dupOf.number}`, c: dupOf },
-            ].map(({ label, c }) => (
-              <div key={label} className="rounded-[10px] border border-line bg-panel p-4 text-sm shadow-soft">
-                <p className="text-xs text-muted">{label}</p>
-                <p className="mt-1 font-medium">{c.vendor}</p>
-                <p className="mt-0.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-ink-2">
-                  <span>
-                    {c.txnDate ? new Date(c.txnDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "No date"} · {name(c.payerUserId)}
-                  </span>
-                  <Money cents={c.amountCents} currency={c.currency} />
-                </p>
-              </div>
-            ))}
-          </div>
-          <Link href={`/app/claims/${dupOf.id}`} className="mt-3 inline-block text-[13px] font-medium text-accent hover:underline">
-            Open #{dupOf.number}
-          </Link>
+          <DuplicateChooser claimId={claim.id} candidates={dupCandidates} ambiguous={!!match?.ambiguous} canDecide={ctx.isAdmin && ["pending_review", "matched"].includes(claim.status)} />
         </section>
       )}
 

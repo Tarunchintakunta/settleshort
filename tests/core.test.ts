@@ -82,3 +82,12 @@ describe("missing questions", () => {
     expect(missingQuestions({ amountCents: 0, vendor: "", txnDate: null, purpose: "x" }).map((x) => x.field)).toEqual(["amount", "vendor", "txnDate"]);
   });
 });
+
+import { isAmbiguous } from "../src/lib/matching";
+describe("ambiguous matches", () => {
+  it("needs a human when two strong candidates are close", () => {
+    expect(isAmbiguous([{ id: "a", score: 0.95, reasons: [] }, { id: "b", score: 0.9, reasons: [] }])).toBe(true);
+    expect(isAmbiguous([{ id: "a", score: 0.95, reasons: [] }, { id: "b", score: 0.5, reasons: [] }])).toBe(false);
+    expect(isAmbiguous([{ id: "a", score: 0.95, reasons: [] }])).toBe(false);
+  });
+});

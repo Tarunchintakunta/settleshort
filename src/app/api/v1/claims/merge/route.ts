@@ -3,8 +3,8 @@ import { z } from "zod";
 import { body, fail, route } from "@/lib/api";
 import { audit } from "@/lib/audit";
 import { getClaimsByIds } from "@/lib/claims";
-import { activeApproval } from "@/lib/approvals";
-import { claims, db } from "@/lib/db";
+import { activeApproval, revalidateApproval } from "@/lib/approvals";
+import { claimEvidence, claims, db } from "@/lib/db";
 
 // Keeps the first id; the rest become rejected duplicates pointing at it.
 export const POST = route(
@@ -18,6 +18,9 @@ export const POST = route(
       .update(claims)
       .set({ status: "rejected", duplicateOfId: keep, updatedAt: new Date() })
       .where(and(eq(claims.workspaceId, ctx.workspace.id), inArray(claims.id, dupes)));
+    // The duplicates' evidence joins the kept claim, so one claim tells the whole story (#1).
+    await db.update(claimEvidence).set({ claimId: keep }).where(inArray(claimEvidence.claimId, dupes));
+    await revalidateApproval(ctx.workspace.id, keep, ctx.user.id);
     // Merging resolves the duplicate flag; it is not an approval.
     const approved = await activeApproval(keep);
     await db.update(claims).set({ status: approved ? "matched" : "pending_review", duplicateOfId: null, updatedAt: new Date() }).where(eq(claims.id, keep));

@@ -63,6 +63,9 @@ export function scorePair(a: MatchInput, b: MatchInput): MatchCandidate {
 
 export const DUPLICATE_THRESHOLD = 0.8;
 
+/** Two strong candidates too close to call: a human must pick, the system never guesses. */
+export const isAmbiguous = (c: MatchCandidate[]) => c.length > 1 && c[1].score >= DUPLICATE_THRESHOLD - 0.2 && c[0].score - c[1].score < 0.1;
+
 export function findMatches(claim: MatchInput, others: MatchInput[], min = 0.5): MatchCandidate[] {
   return others
     .filter((o) => o.id !== claim.id)
