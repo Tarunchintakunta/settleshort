@@ -72,7 +72,7 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence }:
           </Field>
         </div>
         <Field label="Amount">
-          <input value={f.amount} onChange={set("amount")} inputMode="decimal" pattern="\d+(\.\d{1,2})?" className={`${inputCls} tnum font-mono`} required />
+          <input value={f.amount} onChange={set("amount")} inputMode="decimal" pattern="\d+(\.\d{1,2})?" className={`${inputCls} money`} required />
         </Field>
         <Field label="Currency">
           <select value={f.currency} onChange={set("currency")} className={inputCls}>
@@ -84,7 +84,7 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence }:
         <Field label="Date">
           <input type="date" value={f.txnDate} onChange={set("txnDate")} className={inputCls} />
         </Field>
-        <Field label="Paid by (reimbursed)">
+        <Field label="Reimburse to">
           <select value={f.payerUserId} onChange={set("payerUserId")} className={inputCls} disabled={!isAdmin}>
             {members.map((m) => (
               <option key={m.id} value={m.id}>
@@ -104,7 +104,7 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence }:
       {msg && <Alert tone={msg.ok ? "success" : "danger"}>{msg.text}</Alert>}
 
       {editable && (
-        <div className="flex flex-col gap-3 border-t border-line pt-5 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-3 border-t border-line pt-5 sm:flex-row sm:items-start">
           <div className="flex flex-wrap gap-2">
             <Button type="submit" variant="secondary" disabled={busy}>
               Save changes

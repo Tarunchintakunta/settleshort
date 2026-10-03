@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRightIcon, ChatTextIcon, CheckIcon, FilePdfIcon, QuotesIcon, UploadSimpleIcon, WarningIcon } from "@phosphor-icons/react";
+import { ArrowClockwiseIcon, ArrowRightIcon, ChatTextIcon, CheckIcon, FilePdfIcon, QuotesIcon, ReceiptIcon, UploadSimpleIcon, WarningCircleIcon, WarningIcon } from "@phosphor-icons/react";
 import { Alert, Button, ButtonLink, Confidence, cx, PROVIDER_LABEL, tabBtn, tabTrack } from "@/components/ui";
 import { api } from "@/lib/client";
 import { formatMoney } from "@/lib/money";
@@ -39,6 +39,22 @@ const MESSAGES = ["I paid $42.30 for Uber for @rita yesterday", "Chipotle $64 sp
 
 type Source = { kind: "image"; url: string; name: string } | { kind: "pdf"; name: string } | { kind: "text"; text: string };
 
+/** Turns API and network errors into copy a person can act on. Raw messages never reach the UI. */
+function friendlyError(raw: string, isText: boolean): { title: string; body: string } {
+  if (/s3 not configured/i.test(raw))
+    return {
+      title: "Receipt uploads are not switched on yet",
+      body: "File storage for receipts isn't connected on this deployment. You can still create the claim by pasting the message instead.",
+    };
+  if (/10mb|too large/i.test(raw)) return { title: "That file is too large", body: "Receipts can be up to 10MB. Try a smaller photo or export the page as a PDF." };
+  if (/jpeg|png|webp|pdf|invalid_type/i.test(raw)) return { title: "That file type isn't supported", body: "Use a photo (JPEG, PNG or WebP) or a PDF." };
+  if (/sign in|unauthorized|401/i.test(raw)) return { title: "Your session ended", body: "Sign in again, then retry. Nothing was saved." };
+  if (/failed to fetch|network|load failed/i.test(raw)) return { title: "We couldn't reach SettleShort", body: "Check your connection and retry. Nothing was saved." };
+  return isText
+    ? { title: "We couldn't read that message", body: "Try rephrasing it with an amount, for example \"I paid $42 at Uber for @rita\", or retry." }
+    : { title: "We couldn't process that receipt", body: "Retry, try one of the sample receipts, or paste the message instead. Nothing was saved." };
+}
+
 export function NewClaim({ provider, claimCount }: { provider: string; claimCount: number }) {
   const [tab, setTab] = useState<"upload" | "text">("upload");
   const [source, setSource] = useState<Source | null>(null);
@@ -47,6 +63,7 @@ export function NewClaim({ provider, claimCount }: { provider: string; claimCoun
   const [text, setText] = useState("");
   const [drag, setDrag] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const last = useRef<(() => void) | null>(null);
 
   function reset() {
     setSource(null);
@@ -55,6 +72,7 @@ export function NewClaim({ provider, claimCount }: { provider: string; claimCoun
   }
 
   async function upload(file: File) {
+    last.current = () => upload(file);
     reset();
     setSource(file.type === "application/pdf" ? { kind: "pdf", name: file.name } : { kind: "image", url: URL.createObjectURL(file), name: file.name });
     try {
@@ -67,12 +85,25 @@ export function NewClaim({ provider, claimCount }: { provider: string; claimCoun
     }
   }
 
+  // One click starts the run: the preview and progress appear before the sample file is fetched.
   async function sample(path: string) {
-    const blob = await (await fetch(path)).blob();
-    await upload(new File([blob], path.split("/").pop()!, { type: blob.type }));
+    const name = path.split("/").pop()!;
+    last.current = () => sample(path);
+    reset();
+    setSource(path.endsWith(".pdf") ? { kind: "pdf", name } : { kind: "image", url: path, name });
+    try {
+      const blob = await (await fetch(path)).blob();
+      const fd = new FormData();
+      fd.append("file", new File([blob], name, { type: blob.type }));
+      const r = await api<{ claim: Claim }>("/claims/upload", { method: "POST", body: fd });
+      setClaim(r.claim);
+    } catch (e) {
+      setError((e as Error).message);
+    }
   }
 
   async function submitText(t: string) {
+    last.current = () => submitText(t);
     reset();
     setSource({ kind: "text", text: t });
     try {
@@ -82,7 +113,22 @@ export function NewClaim({ provider, claimCount }: { provider: string; claimCoun
     }
   }
 
-  if (source) return <Extraction source={source} claim={claim} error={error} provider={provider} claimCount={claimCount} onReset={reset} />;
+  if (source)
+    return (
+      <Extraction
+        source={source}
+        claim={claim}
+        error={error}
+        provider={provider}
+        claimCount={claimCount}
+        onReset={reset}
+        onRetry={() => last.current?.()}
+        onUseMessage={() => {
+          reset();
+          setTab("text");
+        }}
+      />
+    );
 
   return (
     <div className="rise">
@@ -139,14 +185,18 @@ export function NewClaim({ provider, claimCount }: { provider: string; claimCoun
           </div>
           <div>
             <h2 className="text-sm font-medium">No receipt handy?</h2>
-            <p className="mt-1 text-sm text-muted">Run one of these through the same pipeline.</p>
+            <p className="mt-1 text-sm text-muted">One click runs a sample through the same extraction.</p>
             <ul className="mt-4 space-y-2">
               {SAMPLES.map((s) => (
                 <li key={s.file}>
-                  <button onClick={() => sample(s.file)} className="flex w-full items-center gap-3 rounded-[10px] border border-line bg-panel px-3 py-2.5 text-left text-sm transition-colors hover:border-line-strong hover:bg-sunken">
+                  <button
+                    onClick={() => sample(s.file)}
+                    className="group flex w-full items-center gap-3 rounded-[10px] border border-line bg-panel px-3 py-2.5 text-left text-sm transition-colors hover:border-accent/40 hover:bg-accent-soft/50"
+                  >
                     <span className="flex size-8 items-center justify-center rounded-[6px] bg-sunken font-mono text-[10px] text-muted">{s.kind}</span>
                     <span className="flex-1 font-medium">{s.label}</span>
-                    <ArrowRightIcon className="size-4 text-muted" aria-hidden />
+                    <span className="text-[13px] font-medium text-accent opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">Extract</span>
+                    <ArrowRightIcon className="size-4 text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-accent" aria-hidden />
                   </button>
                 </li>
               ))}
@@ -196,7 +246,25 @@ export function NewClaim({ provider, claimCount }: { provider: string; claimCoun
   );
 }
 
-function Extraction({ source, claim, error, provider, claimCount, onReset }: { source: Source; claim: Claim | null; error: string | null; provider: string; claimCount: number; onReset: () => void }) {
+function Extraction({
+  source,
+  claim,
+  error,
+  provider,
+  claimCount,
+  onReset,
+  onRetry,
+  onUseMessage,
+}: {
+  source: Source;
+  claim: Claim | null;
+  error: string | null;
+  provider: string;
+  claimCount: number;
+  onReset: () => void;
+  onRetry: () => void;
+  onUseMessage: () => void;
+}) {
   const reduce = useReducedMotion();
   const [step, setStep] = useState(0); // 0 reading, 1 structuring, 2 matching, 3 done
   const isText = source.kind === "text";
@@ -212,26 +280,33 @@ function Extraction({ source, claim, error, provider, claimCount, onReset }: { s
     return () => clearInterval(t);
   }, [claim, reduce]);
 
+  // Truthful per input: messages are parsed, receipts are read (OCR or a vision model).
   const steps = [
-    isText ? `Reading the message with ${PROVIDER_LABEL[provider]}` : provider === "local" ? "Reading text with on-device OCR" : `Reading the receipt with ${PROVIDER_LABEL[provider]}`,
+    isText
+      ? provider === "local"
+        ? "Parsing the message"
+        : `Parsing the message with ${PROVIDER_LABEL[provider]}`
+      : provider === "local"
+        ? "Reading the receipt with on-device OCR"
+        : `Reading the receipt with ${PROVIDER_LABEL[provider]}`,
     "Structuring vendor, amount, date and people",
     `Checking ${claimCount} existing claims for duplicates`,
   ];
   const ev = claim?.aiJson?.evidence ?? {};
-  const fields: { k: string; v: string; q?: string; big?: boolean }[] = claim
+  const fields: { k: string; v: string; q?: string; big?: boolean; m?: boolean }[] = claim
     ? [
-        { k: "Vendor", v: claim.vendor || "Not found", q: ev.vendor },
-        { k: "Total", v: formatMoney(claim.amountCents, claim.currency), q: ev.total, big: true },
+        { k: "Vendor", v: claim.vendor?.trim() || "Unknown vendor", q: ev.vendor },
+        { k: "Total", v: formatMoney(claim.amountCents, claim.currency), q: ev.total, big: true, m: true },
         { k: "Date", v: claim.txnDate ? new Date(claim.txnDate + "T00:00:00").toLocaleDateString("en-US", { dateStyle: "medium" }) : "Not found", q: ev.date },
-        ...(claim.taxCents ? [{ k: "Tax", v: formatMoney(claim.taxCents, claim.currency) }] : []),
-        ...(claim.tipCents ? [{ k: "Tip", v: formatMoney(claim.tipCents, claim.currency) }] : []),
+        ...(claim.taxCents ? [{ k: "Tax", v: formatMoney(claim.taxCents, claim.currency), m: true }] : []),
+        ...(claim.tipCents ? [{ k: "Tip", v: formatMoney(claim.tipCents, claim.currency), m: true }] : []),
         ...(claim.aiJson?.payment_last4 ? [{ k: "Card", v: `ending ${claim.aiJson.payment_last4}` }] : []),
         ...(claim.aiJson?.payee_names?.length ? [{ k: "For", v: claim.aiJson.payee_names.join(", ") }] : []),
       ]
     : [];
   const dup = claim?.duplicateOfId ? claim.matchJson : null;
 
-  const progress = error ? 100 : !claim ? 12 : Math.min(100, ((Math.min(step, 3) + 1) / 4) * 100);
+  const progress = error ? 34 : !claim ? 12 : Math.min(100, ((Math.min(step, 3) + 1) / 4) * 100);
 
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
@@ -260,7 +335,7 @@ function Extraction({ source, claim, error, provider, claimCount, onReset }: { s
 
       <div aria-live="polite">
         <div className="mb-5 h-1 overflow-hidden rounded-full bg-sunken" aria-hidden>
-          <div className="h-full rounded-full bg-accent transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]" style={{ width: `${progress}%` }} />
+          <div className={cx("h-full rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]", error ? "bg-warning" : "bg-accent")} style={{ width: `${progress}%` }} />
         </div>
         <ol className="space-y-3">
           {steps.map((label, i) => {
@@ -271,7 +346,7 @@ function Extraction({ source, claim, error, provider, claimCount, onReset }: { s
                 <span
                   className={cx(
                     "flex size-6 shrink-0 items-center justify-center rounded-full border",
-                    done ? "border-success bg-success text-white" : active ? "border-accent bg-accent-soft" : "border-line-strong bg-panel",
+                    done ? "border-success bg-success text-on-success" : active ? "border-accent bg-accent-soft" : "border-line-strong bg-panel",
                   )}
                   aria-hidden
                 >
@@ -292,21 +367,17 @@ function Extraction({ source, claim, error, provider, claimCount, onReset }: { s
           </div>
         )}
 
-        {error && (
-          <div className="mt-6 space-y-3">
-            <Alert>{error}</Alert>
-            <Button variant="secondary" onClick={onReset}>
-              Try another
-            </Button>
-          </div>
-        )}
+        {error && <ErrorState {...friendlyError(error, isText)} isText={isText} onRetry={onRetry} onReset={onReset} onUseMessage={onUseMessage} />}
 
         <AnimatePresence>
           {claim && step >= 2 && (
             <motion.div initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }} className="mt-8">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
-                <p className="font-mono text-sm font-medium">Claim #{claim.number}</p>
-                <Confidence value={claim.aiConfidence} provider={claim.aiJson?.provider} />
+                <p className="text-sm font-medium">
+                  Claim <span className="tnum">#{claim.number}</span>
+                  <span className="text-muted"> · {claim.vendor?.trim() || "Unknown vendor"}</span>
+                </p>
+                <Confidence value={claim.aiConfidence} provider={isText && claim.aiJson?.provider === "local" ? "parser" : claim.aiJson?.provider} />
               </div>
               <dl>
                 {fields.map((f, i) => (
@@ -319,7 +390,7 @@ function Extraction({ source, claim, error, provider, claimCount, onReset }: { s
                   >
                     <dt className="text-[12px] font-medium tracking-[0.04em] text-muted uppercase">{f.k}</dt>
                     <dd className="min-w-0">
-                      <span className={cx(f.big ? "text-[28px] leading-none font-semibold" : "text-sm font-medium", "tnum font-mono tracking-[-0.03em]")}>{f.v}</span>
+                      <span className={cx(f.big ? "text-[28px] leading-none font-semibold" : "text-sm font-medium", f.m ? "money" : "break-words")}>{f.v}</span>
                       {f.q && (
                         <span className="mt-1.5 flex items-start gap-1.5 rounded-[6px] bg-sunken px-2 py-1 text-[11.5px] text-ink-2">
                           <QuotesIcon className="mt-0.5 size-3 shrink-0 text-muted" weight="fill" aria-hidden />
@@ -363,6 +434,55 @@ function Extraction({ source, claim, error, provider, claimCount, onReset }: { s
               </Button>
             </div>
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ErrorState({
+  title,
+  body,
+  isText,
+  onRetry,
+  onReset,
+  onUseMessage,
+}: {
+  title: string;
+  body: string;
+  isText: boolean;
+  onRetry: () => void;
+  onReset: () => void;
+  onUseMessage: () => void;
+}) {
+  return (
+    <div role="alert" className="rise mt-6 rounded-[12px] border border-line bg-panel p-5 shadow-soft">
+      <div className="flex gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-warning-soft text-warning" aria-hidden>
+          <WarningCircleIcon className="size-5" weight="fill" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[15px] font-semibold tracking-[-0.015em]">{title}</p>
+          <p className="mt-1 text-sm leading-relaxed text-ink-2">{body}</p>
+        </div>
+      </div>
+      <div className="mt-5 flex flex-wrap gap-2 pl-12">
+        <Button size="sm" onClick={onRetry}>
+          <ArrowClockwiseIcon className="size-4" aria-hidden /> Retry
+        </Button>
+        {isText ? (
+          <Button size="sm" variant="secondary" onClick={onReset}>
+            Edit message
+          </Button>
+        ) : (
+          <>
+            <Button size="sm" variant="secondary" onClick={onUseMessage}>
+              <ChatTextIcon className="size-4" aria-hidden /> Paste a message instead
+            </Button>
+            <Button size="sm" variant="ghost" onClick={onReset}>
+              <ReceiptIcon className="size-4" aria-hidden /> Choose another receipt
+            </Button>
+          </>
         )}
       </div>
     </div>

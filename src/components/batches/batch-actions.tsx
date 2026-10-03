@@ -86,7 +86,7 @@ export function BatchActions({ batch, recipients, isAdmin, blocked, mode }: Prop
             setOpen(true);
           }}
         >
-          <ShieldCheckIcon className="size-5" weight="fill" aria-hidden /> Approve &amp; Pay
+          <ShieldCheckIcon className="size-5" weight="fill" aria-hidden /> Approve &amp; Pay<span className="money">{total}</span>
         </Button>
       )}
       {error && !open && (
@@ -114,7 +114,7 @@ export function BatchActions({ batch, recipients, isAdmin, blocked, mode }: Prop
           </div>
           <p className="text-[11px] font-medium tracking-[0.14em] text-muted uppercase">Confirm payout</p>
           <h2 id="approve-title" className="mt-2 text-[26px] leading-tight font-semibold tracking-[-0.03em]">
-            Pay {recipients} {recipients === 1 ? "person" : "people"} <span className="tnum font-mono">{total}</span>?
+            Pay {recipients} {recipients === 1 ? "person" : "people"} <span className="money">{total}</span>?
           </h2>
           <p className="mt-4 rounded-[8px] border border-line bg-sunken px-3.5 py-3 text-sm leading-relaxed text-ink-2">
             This sends <b className="text-ink">{batch.name}</b> to PayPal Payouts{mode === "sandbox" ? " in sandbox" : " (simulator)"}. Once PayPal accepts it, it can&apos;t be undone.

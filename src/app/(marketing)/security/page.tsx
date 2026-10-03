@@ -55,9 +55,9 @@ const ITEMS = [
 export default function SecurityPage() {
   return (
     <div className={`${wrap} py-16 sm:py-24`}>
-      <header className="grid gap-12 lg:grid-cols-12 lg:items-end">
+      <header className="grid gap-12 lg:grid-cols-12 lg:items-center">
         <div className="lg:col-span-6">
-          <h1 className="text-[40px] font-semibold leading-[1.04] tracking-[-0.03em] text-ink sm:text-[56px]">AI drafts. People pay.</h1>
+          <h1 className="text-[40px] font-semibold leading-[1.04] tracking-[-0.035em] text-ink sm:text-[56px]">AI drafts. People pay.</h1>
           <p className="mt-5 max-w-[50ch] text-lg leading-relaxed text-ink-2">
             The most capable part of SettleShort, the model, has the least authority. This is everything that stands between a receipt and a payout.
           </p>
@@ -71,7 +71,7 @@ export default function SecurityPage() {
           preload
         />
       </header>
-      <dl className="mt-24 grid gap-x-16 gap-y-14 sm:grid-cols-2">
+      <dl className="mt-20 grid gap-x-16 gap-y-10 sm:grid-cols-2">
         {ITEMS.map(({ icon: Icon, title, body }) => (
           <div key={title} className="border-t border-line pt-7">
             <dt className="flex items-center gap-3.5 text-[17px] font-semibold tracking-[-0.02em] text-ink">
@@ -84,7 +84,7 @@ export default function SecurityPage() {
           </div>
         ))}
       </dl>
-      <p className="mt-20 text-sm text-muted">
+      <p className="mt-16 border-t border-line pt-8 text-sm text-muted">
         Found an issue? Open a report on{" "}
         <a href="https://github.com/Tarunchintakunta/settleshort" className="text-accent underline-offset-4 hover:underline" target="_blank" rel="noopener noreferrer">
           GitHub

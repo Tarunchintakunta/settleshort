@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowDownIcon, CpuIcon, GitMergeIcon, GaugeIcon, PlusIcon, QuotesIcon } from "@phosphor-icons/react/ssr";
 import { CopyButton } from "@/components/copy-button";
@@ -99,7 +98,7 @@ export default function Home() {
   return (
     <>
       {/* Hero */}
-      <section className={`${wrap} pt-16 sm:pt-24`}>
+      <section className={`${wrap} pt-14 sm:pt-20`}>
         <div className="max-w-[880px]">
           <h1 className="rise text-[42px] font-semibold leading-[1.02] tracking-[-0.035em] text-ink sm:text-[60px] lg:text-[68px]">
             Receipt in. Settled out. <span className="text-accent sm:block">One approve.</span>
@@ -117,7 +116,7 @@ export default function Home() {
             </a>
           </div>
         </div>
-        <div className="rise mt-14 sm:mt-16" style={{ animationDelay: "180ms" }}>
+        <div className="rise mt-10 sm:mt-12" style={{ animationDelay: "180ms" }}>
           <Shot
             src="/marketing/extraction.png"
             alt="SettleShort reading a $186.50 Nopa receipt: each extracted field (vendor, total, date, tax, tip, card) sits beside the receipt with the quoted text it came from, and a warning says it is likely a duplicate of claim #3."
@@ -128,7 +127,7 @@ export default function Home() {
       </section>
 
       {/* Problem */}
-      <section className={`${wrap} py-28 sm:py-36`} aria-labelledby="problem">
+      <section className={`${wrap} py-20 sm:py-28`} aria-labelledby="problem">
         <h2 id="problem" className="sr-only">
           Why paying people back is slow
         </h2>
@@ -264,11 +263,11 @@ export default function Home() {
           <div className="divide-y divide-line border-y border-line lg:col-span-8">
             {FAQ.map(({ q, a }) => (
               <details key={q} className="group">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-[8px] py-5 text-[17px] font-medium tracking-[-0.015em] text-ink [&::-webkit-details-marker]:hidden">
+                <summary className="my-1 flex cursor-pointer list-none items-center justify-between gap-4 rounded-[8px] px-4 py-4 text-[17px] font-medium tracking-[-0.015em] text-ink transition-colors hover:bg-sunken hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden">
                   {q}
-                  <PlusIcon size={18} className="shrink-0 text-muted transition-transform duration-200 group-open:rotate-45" aria-hidden />
+                  <PlusIcon size={18} className="shrink-0 text-muted transition-transform duration-200 group-open:rotate-45 group-hover:text-accent" aria-hidden />
                 </summary>
-                <p className="max-w-[62ch] pb-6 text-[15px] leading-relaxed text-ink-2">{a}</p>
+                <p className="max-w-[62ch] px-4 pb-6 text-[15px] leading-relaxed text-ink-2">{a}</p>
               </details>
             ))}
           </div>
@@ -286,25 +285,17 @@ export default function Home() {
             </p>
             <DemoLink className="mt-8 self-start" />
           </div>
-          <div className="relative border-t border-line bg-sunken p-3 sm:p-4 lg:col-span-7 lg:border-t-0 lg:border-l">
-            <div className="relative min-h-[280px] overflow-hidden rounded-[8px] border border-line bg-panel shadow-soft lg:min-h-[420px]">
-              <DashboardPicture />
-            </div>
+          <div className="flex items-center border-t border-line bg-sunken p-4 sm:p-6 lg:col-span-7 lg:border-t-0 lg:border-l">
+            <Shot
+              className="w-full bg-panel"
+              src="/marketing/dashboard.png"
+              alt="SettleShort overview for Northbeam Labs: Hi Maya, the September offsites batch of $287.55 awaiting approval, and open claims of $151.99."
+              sizes="(min-width: 1024px) 1000px, 140vw"
+              crop="aspect-[16/10] [&_img]:origin-[85%_50%] [&_img]:scale-[1.25]"
+            />
           </div>
         </div>
       </section>
     </>
-  );
-}
-
-function DashboardPicture() {
-  return (
-    <Image
-      src="/marketing/dashboard.png"
-      alt="SettleShort overview for Northbeam Labs with one batch awaiting approval, open claims, and recent activity."
-      fill
-      sizes="(min-width: 1024px) 680px, 100vw"
-      className="object-cover object-left-top"
-    />
   );
 }

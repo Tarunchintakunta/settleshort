@@ -7,10 +7,10 @@ export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Bool
 type Variant = "primary" | "secondary" | "approve" | "danger" | "ghost";
 const VARIANTS: Record<Variant, string> = {
   primary:
-    "bg-accent text-white hover:bg-accent-hover shadow-[inset_0_1px_0_rgb(255_255_255/0.2),0_1px_2px_rgb(26_69_232/0.28)]",
+    "bg-accent text-on-accent hover:bg-accent-hover shadow-[inset_0_1px_0_rgb(255_255_255/0.2),0_1px_2px_rgb(26_69_232/0.28)]",
   secondary: "bg-panel text-ink border border-line shadow-[0_1px_0_rgb(255_255_255/0.5)] hover:border-line-strong hover:bg-sunken",
   approve:
-    "bg-success text-white hover:brightness-110 shadow-[inset_0_1px_0_rgb(255_255_255/0.24),0_1px_2px_rgb(13_122_76/0.35)]",
+    "bg-success text-on-success hover:brightness-110 shadow-[inset_0_1px_0_rgb(255_255_255/0.24),0_1px_2px_rgb(13_122_76/0.35)]",
   danger: "bg-panel text-danger border border-danger/30 hover:bg-danger-soft",
   ghost: "text-muted hover:text-ink hover:bg-sunken",
 };
@@ -79,7 +79,7 @@ export function Pill({
   dot?: boolean;
 }) {
   return (
-    <span className={cx("inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium tracking-[-0.01em]", TONES[tone], className)}>
+    <span className={cx("inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium tracking-[-0.01em] whitespace-nowrap", TONES[tone], className)}>
       {dot && <span className={cx("size-1.5 shrink-0 rounded-full", DOTS[tone])} aria-hidden />}
       {children}
     </span>
@@ -99,6 +99,7 @@ export const PROVIDER_LABEL: Record<string, string> = {
   claude: "Claude",
   openai: "OpenAI",
   local: "Local OCR",
+  parser: "Rules parser",
   simulator: "Sample data",
 };
 
@@ -119,7 +120,7 @@ export function Confidence({ value, provider, className }: { value: number | nul
 }
 
 export function Money({ cents, currency, className }: { cents: number; currency: string; className?: string }) {
-  return <span className={cx("tnum whitespace-nowrap font-mono tracking-[-0.03em]", className)}>{formatMoney(cents, currency)}</span>;
+  return <span className={cx("money", className)}>{formatMoney(cents, currency)}</span>;
 }
 
 export function Logo({ className }: { className?: string }) {

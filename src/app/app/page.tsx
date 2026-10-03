@@ -33,15 +33,21 @@ export default async function Dashboard() {
   const metrics = [
     { label: "Open claims", value: formatMoney(open.cents, "USD"), sub: `${open.n} claims` },
     { label: "Paid this month", value: formatMoney(paidMonth.cents, "USD"), sub: `${paidMonth.n} reimbursements` },
-    { label: "Extracted by AI", value: String(ai.n), sub: `${Math.round(ai.avg * 100)}% average confidence` },
+    { label: "AI extraction confidence", value: ai.n ? `${Math.round(ai.avg * 100)}%` : "None yet", sub: `average across ${ai.n} extracted ${ai.n === 1 ? "claim" : "claims"}` },
   ];
   const first = user.name.split(" ")[0];
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  const sub = awaiting.length
+    ? `${plural(awaiting.length, "batch is", "batches are")} waiting for ${isAdmin ? "your" : "an admin's"} approval.${review.length ? ` ${plural(review.length, "claim needs", "claims need")} a review.` : ""}`
+    : review.length
+      ? `${plural(review.length, "claim needs", "claims need")} a review. No payouts are waiting.`
+      : "You're all caught up. Nothing needs your attention.";
 
   return (
     <>
       <PageHeader
         title={`Hi ${first}`}
-        sub={awaiting.length ? "One decision is waiting on you. Everything else is in order." : "Nothing is waiting on your approval."}
+        sub={sub}
         actions={
           <ButtonLink href="/app/claims/new">
             <PlusIcon className="size-4" weight="bold" aria-hidden /> New claim
@@ -79,7 +85,7 @@ export default async function Dashboard() {
         {metrics.map((m) => (
           <div key={m.label} className="rounded-[12px] border border-line bg-panel px-5 py-5 shadow-soft">
             <dt className="text-[13px] text-muted">{m.label}</dt>
-            <dd className="tnum mt-2 font-mono text-[28px] leading-none font-semibold tracking-[-0.03em]">{m.value}</dd>
+            <dd className="money mt-2 text-[28px] leading-none font-semibold">{m.value}</dd>
             <dd className="mt-2 text-xs text-muted">{m.sub}</dd>
           </div>
         ))}
@@ -104,16 +110,16 @@ export default async function Dashboard() {
                     <Link href={`/app/claims/${c.id}`} className="flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-sunken">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">
-                          <span className="font-mono text-muted">#{c.number}</span> {c.vendor || "Untitled"}
+                          <span className="tnum text-muted">#{c.number}</span> {c.vendor?.trim() || "Unknown vendor"}
                         </p>
-                        <Pill tone={duplicate || low ? "warning" : "neutral"} dot className="mt-1.5">
-                          {reason}
-                        </Pill>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                          <Pill tone={duplicate || low ? "warning" : "neutral"} dot>
+                            {reason}
+                          </Pill>
+                          <Confidence value={c.aiConfidence} />
+                        </div>
                       </div>
-                      <span className="hidden sm:contents">
-                        <Confidence value={c.aiConfidence} />
-                      </span>
-                      <Money cents={c.amountCents} currency={c.currency} className="shrink-0 text-right text-sm" />
+                      <Money cents={c.amountCents} currency={c.currency} className="shrink-0 self-start pt-0.5 text-right text-[15px] font-semibold" />
                     </Link>
                   </li>
                 );

@@ -83,7 +83,7 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
               <thead className="border-b border-line text-left text-[11px] font-medium tracking-[0.06em] text-muted uppercase">
                 <tr>
                   <th className="px-5 py-3 font-medium">Recipient</th>
-                  <th className="px-5 py-3 font-medium">Claim</th>
+                  <th className="hidden px-5 py-3 font-medium sm:table-cell">Claim</th>
                   <th className="px-5 py-3 text-right font-medium">Amount</th>
                   <th className="px-5 py-3 font-medium">Status</th>
                 </tr>
@@ -91,22 +91,25 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
               <tbody className="divide-y divide-line">
                 {items.map(({ item, claim }) => (
                   <tr key={item.id}>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3.5 py-3.5 sm:px-5">
                       <p className="font-medium">{item.receiverName}</p>
-                      <p className="text-xs text-muted">{item.receiverEmail}</p>
+                      <p className="max-w-[150px] truncate text-xs text-muted sm:max-w-none" title={item.receiverEmail}>{item.receiverEmail}</p>
+                      <Link href={`/app/claims/${claim.id}`} className="mt-1 block text-xs text-ink-2 hover:underline sm:hidden">
+                        #{claim.number} {claim.vendor?.trim() || "Unknown vendor"}
+                      </Link>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="hidden px-5 py-3.5 sm:table-cell">
                       <Link href={`/app/claims/${claim.id}`} className="hover:underline">
-                        <span className="font-mono text-muted">#{claim.number}</span> {claim.vendor}
+                        <span className="tnum text-muted">#{claim.number}</span> {claim.vendor?.trim() || "Unknown vendor"}
                       </Link>
                       <div className="mt-1">
                         <Confidence value={claim.aiConfidence} />
                       </div>
                     </td>
-                    <td className="px-5 py-3.5 text-right">
+                    <td className="px-3.5 py-3.5 sm:px-5 text-right">
                       <Money cents={item.amountCents} currency={item.currency} className="font-medium" />
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3.5 py-3.5 sm:px-5">
                       <StatusPill status={item.status} />
                       {item.transactionId && <p className="mt-1 font-mono text-[11px] text-muted">{item.transactionId}</p>}
                       {item.errorMessage && <p className="mt-1 text-[11px] text-danger">{item.errorMessage}</p>}
@@ -114,10 +117,22 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
                   </tr>
                 ))}
               </tbody>
+              <tfoot className="border-t border-line-strong">
+                <tr>
+                  <th scope="row" className="px-3.5 py-3.5 sm:px-5 text-left text-[13px] font-medium text-ink-2">
+                    Total to {recipients} {recipients === 1 ? "person" : "people"}
+                  </th>
+                  <td className="hidden sm:table-cell" />
+                  <td className="px-3.5 py-3.5 sm:px-5 text-right">
+                    <Money cents={batch.totalCents} currency={batch.currency} className="text-[15px] font-semibold" />
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
             </table>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line bg-sunken px-5 py-4">
-            <p className="text-xs text-muted">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line bg-panel px-5 py-4">
+            <p className="max-w-[46ch] text-xs leading-relaxed text-muted">
               {batch.paypalPayoutBatchId ? (
                 <>
                   PayPal batch <span className="font-mono text-ink">{batch.paypalPayoutBatchId}</span>, sender id <span className="font-mono">{batch.id.slice(0, 8)}</span>
@@ -141,7 +156,7 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
                 <span
                   className={cx(
                     "relative z-10 mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border",
-                    t.done ? "border-success bg-success text-white" : "border-line-strong bg-panel text-transparent",
+                    t.done ? "border-success bg-success text-on-success" : "border-line-strong bg-panel text-transparent",
                   )}
                   aria-hidden
                 >

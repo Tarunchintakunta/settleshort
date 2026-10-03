@@ -32,9 +32,9 @@ export function DocsToc() {
   }, []);
 
   return (
-    <nav aria-label="On this page" className="hidden lg:block">
+    <nav aria-label="On this page" className="sticky top-24 hidden self-start lg:block">
       <p className="mb-3 text-[11px] font-medium tracking-[0.14em] text-muted uppercase">On this page</p>
-      <ul className="sticky top-24 space-y-0.5">
+      <ul className="space-y-0.5">
         {DOCS_TOC.map(([id, label]) => (
           <li key={id}>
             <a

@@ -33,10 +33,10 @@ export function SettingsForm({ ws, isAdmin }: { ws: { name: string; maxSingleCen
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Max single payout" hint="Approve is blocked above this">
-            <input inputMode="decimal" value={f.single} onChange={(e) => setF({ ...f, single: e.target.value })} className={`${inputCls} tnum font-mono`} />
+            <input inputMode="decimal" value={f.single} onChange={(e) => setF({ ...f, single: e.target.value })} className={`${inputCls} money`} />
           </Field>
           <Field label="Max batch total">
-            <input inputMode="decimal" value={f.batch} onChange={(e) => setF({ ...f, batch: e.target.value })} className={`${inputCls} tnum font-mono`} />
+            <input inputMode="decimal" value={f.batch} onChange={(e) => setF({ ...f, batch: e.target.value })} className={`${inputCls} money`} />
           </Field>
         </div>
       </fieldset>
