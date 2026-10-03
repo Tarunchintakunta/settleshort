@@ -7,10 +7,10 @@ export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Bool
 type Variant = "primary" | "secondary" | "approve" | "danger" | "ghost";
 const VARIANTS: Record<Variant, string> = {
   primary:
-    "bg-accent text-white hover:bg-accent-hover shadow-[inset_0_1px_0_rgb(255_255_255/0.2),0_1px_2px_rgb(26_69_232/0.28)]",
+    "bg-accent text-on-accent hover:bg-accent-hover shadow-[inset_0_1px_0_rgb(255_255_255/0.2),0_1px_2px_rgb(26_69_232/0.28)]",
   secondary: "bg-panel text-ink border border-line shadow-[0_1px_0_rgb(255_255_255/0.5)] hover:border-line-strong hover:bg-sunken",
   approve:
-    "bg-success text-white hover:brightness-110 shadow-[inset_0_1px_0_rgb(255_255_255/0.24),0_1px_2px_rgb(13_122_76/0.35)]",
+    "bg-success text-on-success hover:brightness-110 shadow-[inset_0_1px_0_rgb(255_255_255/0.24),0_1px_2px_rgb(13_122_76/0.35)]",
   danger: "bg-panel text-danger border border-danger/30 hover:bg-danger-soft",
   ghost: "text-muted hover:text-ink hover:bg-sunken",
 };
@@ -99,6 +99,7 @@ export const PROVIDER_LABEL: Record<string, string> = {
   claude: "Claude",
   openai: "OpenAI",
   local: "Local OCR",
+  parser: "Rules parser",
   simulator: "Sample data",
 };
 
