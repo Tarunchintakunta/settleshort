@@ -169,6 +169,13 @@
       "when": 1791021170240,
       "tag": "0023_deposits_recoverable",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791021356374,
+      "tag": "0024_offboarding",
+      "breakpoints": true
     }
   ]
 }

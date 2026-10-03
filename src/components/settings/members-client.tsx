@@ -6,7 +6,7 @@ import { UserPlusIcon } from "@phosphor-icons/react";
 import { Button, Field, inputCls } from "@/components/ui";
 import { api } from "@/lib/client";
 
-type Member = { id: string; name: string; email: string; role: string; paypalEmail: string | null; membershipId: string; canRelease: boolean; paypalVerifiedAt: Date | string | null; approvalLimitCents: number | null; escalatesToUserId: string | null };
+type Member = { id: string; name: string; email: string; role: string; paypalEmail: string | null; membershipId: string; canRelease: boolean; paypalVerifiedAt: Date | string | null; approvalLimitCents: number | null; escalatesToUserId: string | null; offboardedAt: Date | string | null };
 
 export function InviteForm() {
   const router = useRouter();
@@ -281,5 +281,82 @@ export function EscalatesTo({ m, members, canEdit }: { m: Member; members: { id:
           </option>
         ))}
     </select>
+  );
+}
+
+type Report = {
+  owedToThem: { claim: { number: number; vendor: string; currency: string }; cents: number }[];
+  owedByThem: { claim: { number: number; vendor: string; currency: string }; cents: number }[];
+  openClaims: { number: number; vendor: string }[];
+  waitingOnThem: { number: number; vendor: string }[];
+  subscriptions: { vendor: string; months: string[] }[];
+  delegations: unknown[];
+};
+const fmt = (c: number, cur: string) => new Intl.NumberFormat("en-US", { style: "currency", currency: cur }).format(c / 100);
+
+/** Shows everything unresolved with a leaving teammate, then removes their access once confirmed. */
+export function OffboardButton({ m }: { m: Member }) {
+  const router = useRouter();
+  const [r, setR] = useState<Report | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  if (m.offboardedAt) return <span className="text-xs text-muted">Left the company</span>;
+  if (m.role === "owner") return null;
+  const lines = r
+    ? [
+        ...r.owedToThem.map((x) => `Company still owes them ${fmt(x.cents, x.claim.currency)} on #${x.claim.number} ${x.claim.vendor}`),
+        ...r.owedByThem.map((x) => `They owe back ${fmt(x.cents, x.claim.currency)} on #${x.claim.number} ${x.claim.vendor}`),
+        ...r.openClaims.map((c) => `Their claim #${c.number} ${c.vendor} isn't approved yet`),
+        ...r.waitingOnThem.map((c) => `#${c.number} ${c.vendor} waits on their approval; it will escalate`),
+        ...r.subscriptions.map((s) => `They pay for ${s.vendor} personally (${s.months.join(", ")}): move it before they go`),
+        ...(r.delegations.length ? [`${r.delegations.length} approval cover arrangement(s) will end`] : []),
+      ]
+    : [];
+  return (
+    <div className="text-xs">
+      {!r ? (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={async () => {
+            setErr(null);
+            try {
+              setR(await api<Report>(`/members/${m.membershipId}/offboard`));
+            } catch (x) {
+              setErr((x as Error).message);
+            }
+          }}
+        >
+          Offboard…
+        </Button>
+      ) : (
+        <div className="mt-1 max-w-sm rounded-[8px] border border-line bg-sunken p-3">
+          <p className="font-medium">Before {m.name} leaves</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4">
+            {lines.length ? lines.map((l) => <li key={l}>{l}</li>) : <li>Nothing open. Safe to offboard.</li>}
+          </ul>
+          <p className="mt-2 text-muted">Offboarding removes app access. Anything owed either way stays tracked until settled.</p>
+          <div className="mt-2 flex gap-2">
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={async () => {
+                try {
+                  await api(`/members/${m.membershipId}/offboard`, { method: "POST" });
+                  router.refresh();
+                } catch (x) {
+                  setErr((x as Error).message);
+                }
+              }}
+            >
+              Offboard {m.name.split(" ")[0]}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setR(null)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+      {err && <span className="text-danger">{err}</span>}
+    </div>
   );
 }

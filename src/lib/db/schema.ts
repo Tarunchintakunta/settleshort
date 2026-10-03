@@ -51,6 +51,8 @@ export const memberships = pgTable(
     paypalReceiverEmail: text("paypal_receiver_email"),
     // Release authority: may send approved money to PayPal. Separate from approving claims.
     canRelease: boolean("can_release").notNull().default(false),
+    // Left the company: no app access, but money still owed to or by them stays tracked until settled.
+    offboardedAt: timestamp("offboarded_at", { withTimezone: true }),
     // Who an overdue approval escalates to after this person (their manager). Null = the owner.
     escalatesToUserId: uuid("escalates_to_user_id"),
     // Largest claim this person may approve alone. Null = no limit.

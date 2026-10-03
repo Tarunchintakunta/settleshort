@@ -66,11 +66,11 @@ export async function getCtx() {
   if (!user) return null;
   if (!s.workspaceId) return { user, workspace: null, role: null, isAdmin: false } as const;
   const [row] = await db
-    .select({ workspace: workspaces, role: memberships.role })
+    .select({ workspace: workspaces, role: memberships.role, offboardedAt: memberships.offboardedAt })
     .from(memberships)
     .innerJoin(workspaces, eq(workspaces.id, memberships.workspaceId))
     .where(and(eq(memberships.userId, user.id), eq(memberships.workspaceId, s.workspaceId)));
-  if (!row) return { user, workspace: null, role: null, isAdmin: false } as const;
+  if (!row || row.offboardedAt) return { user, workspace: null, role: null, isAdmin: false } as const;
   return { user, workspace: row.workspace, role: row.role, isAdmin: row.role !== "member" } as const;
 }
 

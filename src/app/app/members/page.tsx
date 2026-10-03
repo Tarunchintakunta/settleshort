@@ -1,5 +1,5 @@
 import { PageHeader, Pill } from "@/components/ui";
-import { DelegationPanel, EscalatesTo, InviteForm, LimitCell, PaypalEmailCell, ReleaseToggle, VerifyPaypal } from "@/components/settings/members-client";
+import { DelegationPanel, EscalatesTo, InviteForm, OffboardButton, LimitCell, PaypalEmailCell, ReleaseToggle, VerifyPaypal } from "@/components/settings/members-client";
 import { requirePageCtx } from "@/lib/auth";
 import { workspaceMembers } from "@/lib/claims";
 import { db, delegations } from "@/lib/db";
@@ -49,9 +49,10 @@ export default async function MembersPage({ searchParams }: PageProps<"/app/memb
                   </div>
                 </td>
                 <td className="px-5 py-3.5">
-                  <Pill tone={m.role === "member" ? "neutral" : "accent"} className="capitalize">
-                    {m.role}
+                  <Pill tone={m.offboardedAt ? "neutral" : m.role === "member" ? "neutral" : "accent"} className="capitalize">
+                    {m.offboardedAt ? "Left" : m.role}
                   </Pill>
+                  {ctx.isAdmin && m.id !== ctx.user.id && <OffboardButton m={m} />}
                 </td>
                 <td className="px-5 py-3.5">
                   <PaypalEmailCell m={m} canEdit={ctx.isAdmin} />

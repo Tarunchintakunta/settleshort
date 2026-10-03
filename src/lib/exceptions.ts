@@ -93,6 +93,23 @@ export async function workspaceExceptions(ws: typeof workspaces.$inferSelect): P
       at: new Date(),
     });
 
+  // People who left with money still open either way.
+  const { offboardingReport } = await import("./offboarding");
+  for (const m of await db.select().from(memberships).where(and(eq(memberships.workspaceId, ws.id), isNotNull(memberships.offboardedAt)))) {
+    const r = await offboardingReport(ws, m.userId);
+    const open = r.owedToThem.length + r.owedByThem.length + r.subscriptions.length;
+    if (open)
+      out.push({
+        key: `left-${m.userId}`,
+        kind: "payout",
+        title: `${who(m.userId)} has left with ${open} open item${open === 1 ? "" : "s"}`,
+        why: [r.owedToThem.length && "money owed to them", r.owedByThem.length && "money they owe back", r.subscriptions.length && "a subscription on their own card"].filter(Boolean).join(", ") + ".",
+        action: "Settle it before it's forgotten",
+        href: "/app/members",
+        at: m.offboardedAt!,
+      });
+  }
+
   const inBatch = open.filter((c) => c.status === "in_batch");
   for (const p of await releaseProblems(ws.id, inBatch.map((c) => c.id))) {
     const c = inBatch.find((x) => x.id === p.claimId)!;
