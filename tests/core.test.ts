@@ -131,3 +131,15 @@ describe("receipt policy", () => {
     expect(missingQuestions({ ...c, amountCents: 1200 }, { kinds: ["message"], receiptRequiredCents: 2500 })).toEqual([]);
   });
 });
+
+import { findMapping } from "../src/lib/matching";
+describe("merchant mappings", () => {
+  const rules = [{ merchantKey: "chipotle", category: "Meals" }, { merchantKey: "blue bottle", category: "Meals" }];
+  it("finds the rule for a longer or shorter merchant name", () => {
+    expect(findMapping("Chipotle Mexican Grill", rules)?.category).toBe("Meals");
+    expect(findMapping("CHIPOTLE", rules)?.category).toBe("Meals");
+  });
+  it("doesn't confuse merchants that only share a word", () => {
+    expect(findMapping("Blue Door Coffee", rules)).toBeNull();
+  });
+});

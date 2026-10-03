@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { body, fail, route } from "@/lib/api";
 import { audit } from "@/lib/audit";
-import { claims, db } from "@/lib/db";
+import { aiFeedback, claims, db } from "@/lib/db";
 
 // A human decides two claims are different expenses. The pair is never suggested again for this claim.
 export const POST = route<{ id: string }>(
@@ -18,6 +18,7 @@ export const POST = route<{ id: string }>(
       .where(eq(claims.id, id))
       .returning();
     await audit(ctx.workspace.id, ctx.user.id, "claim.duplicate_dismissed", "claim", id, { of, reason });
+    await db.insert(aiFeedback).values({ workspaceId: ctx.workspace.id, claimId: id, kind: "duplicate", subject: of, suggested: "duplicate", corrected: "different expense", reason, actorId: ctx.user.id });
     return updated;
   },
   { admin: true },

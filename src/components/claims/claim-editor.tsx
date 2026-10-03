@@ -4,10 +4,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CheckIcon, XIcon } from "@phosphor-icons/react";
 import { Alert, Button, Field, inputCls } from "@/components/ui";
+import { CATEGORIES } from "@/lib/categories";
 import { api } from "@/lib/client";
 
 type Props = {
-  claim: { id: string; vendor: string; amountCents: number; currency: string; txnDate: string | null; note: string; purpose: string; payerUserId: string; status: string; duplicateOfId: string | null };
+  claim: { id: string; vendor: string; amountCents: number; currency: string; txnDate: string | null; note: string; purpose: string; category: string | null; categorySource: string | null; payerUserId: string; status: string; duplicateOfId: string | null };
   members: { id: string; name: string }[];
   isAdmin: boolean;
   canEdit: boolean;
@@ -31,8 +32,10 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence, a
     txnDate: claim.txnDate ?? "",
     note: claim.note,
     purpose: claim.purpose,
+    category: claim.category ?? "",
     payerUserId: claim.payerUserId,
   });
+  const [always, setAlways] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const editable = canEdit && ["draft", "pending_review", "matched"].includes(claim.status);
@@ -62,6 +65,7 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence, a
         txnDate: f.txnDate || null,
         note: f.note,
         purpose: f.purpose,
+        ...(f.category !== (claim.category ?? "") ? { category: f.category || null, categoryRule: always ? "always" : "once" } : {}),
         ...(isAdmin ? { payerUserId: f.payerUserId } : {}),
         ...extra,
       },
@@ -103,6 +107,25 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence, a
             ))}
           </select>
         </Field>
+        <div className="sm:col-span-2">
+          <Field
+            label="Category"
+            hint={claim.categorySource === "mapping" && f.category === claim.category ? `From your merchant rule for ${claim.vendor}. Change it for this claim only, or update the rule.` : undefined}
+          >
+            <select value={f.category} onChange={set("category")} className={inputCls}>
+              <option value="">Uncategorized</option>
+              {CATEGORIES.map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+          </Field>
+          {isAdmin && f.category && f.category !== (claim.category ?? "") && (
+            <label className="mt-2 flex items-center gap-2 text-xs text-ink-2">
+              <input type="checkbox" checked={always} onChange={(e) => setAlways(e.target.checked)} className="size-4 accent-[var(--accent)]" />
+              Always use {f.category} for {claim.vendor || "this merchant"} (changes the merchant rule)
+            </label>
+          )}
+        </div>
         <div className="sm:col-span-2">
           <Field label="Business purpose" hint="Why the company should pay. Required before approval.">
             <input value={f.purpose} onChange={set("purpose")} className={inputCls} placeholder="Client lunch with Acme" />

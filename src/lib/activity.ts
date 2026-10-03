@@ -50,6 +50,8 @@ const VERBS: Record<string, string> = {
   "batch.partial": "batch partially paid",
   "batch.failed": "batch failed",
   "member.invited": "invited a member",
+  "merchant_rule.saved": "saved a merchant category rule",
+  "merchant_rule.deleted": "deleted a merchant category rule",
   "member.updated": "updated a member",
   "member.paypal_verified": "verified a member's PayPal address",
   "batch.receiver_updated": "updated a receiver to their verified PayPal address",

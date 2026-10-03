@@ -3,8 +3,8 @@ import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { aiProvider, explainMatch, parseClaimText, PROMPT_VERSION } from "./ai";
 import { openContradictions, revalidateApproval } from "./approvals";
 import { audit } from "./audit";
-import { claimEvidence, claims, claimSplits, db, memberships, users, type EvidenceKind } from "./db";
-import { DUPLICATE_THRESHOLD, findMatches, isAmbiguous } from "./matching";
+import { claimEvidence, claims, claimSplits, db, memberships, merchantMappings, users, type EvidenceKind } from "./db";
+import { DUPLICATE_THRESHOLD, findMapping, findMatches, isAmbiguous } from "./matching";
 import { contentKey } from "./evidence";
 import { formatMoney, splitEven } from "./money";
 
@@ -49,10 +49,14 @@ export async function createClaim(workspaceId: string, actorId: string, c: NewCl
     .where(eq(claims.workspaceId, workspaceId));
 
   const { fileHash, ...fields } = c;
+  // Confirmed merchant rule -> category. Shown on the claim as coming from the rule, and editable.
+  const rule = findMapping(c.vendor, await db.select().from(merchantMappings).where(eq(merchantMappings.workspaceId, workspaceId)));
+  if (rule) await db.update(merchantMappings).set({ uses: rule.uses + 1 }).where(eq(merchantMappings.id, rule.id));
   const [claim] = await db
     .insert(claims)
     .values({
       ...fields,
+      ...(rule ? { category: rule.category, categorySource: "mapping" } : {}),
       tipCents: c.tipCents ?? 0,
       taxCents: c.taxCents ?? 0,
       note: c.note ?? "",

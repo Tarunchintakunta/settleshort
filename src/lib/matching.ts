@@ -81,3 +81,10 @@ export function findMatches(claim: MatchInput, others: MatchInput[], min = 0.5):
     .sort((x, y) => y.score - x.score)
     .slice(0, 3);
 }
+
+/** The confirmed rule for a merchant: exact normalized name, else one name containing the other ("chipotle" / "chipotle mexican grill"). */
+export function findMapping<T extends { merchantKey: string }>(vendor: string, mappings: T[]): T | null {
+  const key = normalizeMerchant(vendor);
+  if (!key) return null;
+  return mappings.find((m) => m.merchantKey === key) ?? mappings.find((m) => key.startsWith(m.merchantKey + " ") || m.merchantKey.startsWith(key + " ")) ?? null;
+}

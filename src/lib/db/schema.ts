@@ -75,6 +75,9 @@ export const claims = pgTable(
     note: text("note").notNull().default(""),
     // Business purpose: why the company should pay. Required before approval; never invented by AI.
     purpose: text("purpose").notNull().default(""),
+    category: text("category"),
+    // "mapping" = filled from a confirmed merchant rule; "human" = set by a person on this claim.
+    categorySource: text("category_source"),
     rawText: text("raw_text"),
     // S3 object key only (receipts/{workspaceId}/{claimId}/{uuid}.{ext}); viewed via short-lived presigned GET URLs.
     receiptKey: text("receipt_key"),
@@ -254,4 +257,43 @@ export const ledgerEntries = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("ledger_claim").on(t.claimId), index("ledger_ws_user").on(t.workspaceId, t.userId)],
+);
+
+export { CATEGORIES } from "../categories";
+
+/** Confirmed "this merchant is always this category" rules. Only a person creates or changes them. */
+export const merchantMappings = pgTable(
+  "merchant_mappings",
+  {
+    id: id(),
+    workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+    merchantKey: text("merchant_key").notNull(),
+    merchantLabel: text("merchant_label").notNull(),
+    category: text("category").notNull(),
+    confirmedBy: uuid("confirmed_by").notNull().references(() => users.id),
+    uses: integer("uses").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("merchant_mappings_ws_key").on(t.workspaceId, t.merchantKey)],
+);
+
+/**
+ * Every time a person overrules the AI or the rules: a duplicate call, a category, an extracted field.
+ * Feeds the evaluation set; never changes company policy by itself.
+ */
+export const aiFeedback = pgTable(
+  "ai_feedback",
+  {
+    id: id(),
+    workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+    claimId: uuid("claim_id").references(() => claims.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["duplicate", "category", "extraction", "split"] }).notNull(),
+    subject: text("subject").notNull(),
+    suggested: text("suggested"),
+    corrected: text("corrected"),
+    reason: text("reason"),
+    actorId: uuid("actor_id").notNull().references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [index("ai_feedback_ws").on(t.workspaceId, t.kind)],
 );
