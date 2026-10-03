@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon, FilePdfIcon, QuotesIcon, WarningIcon } from "@phosphor-icons/react/ssr";
@@ -22,7 +22,9 @@ import { ConflictsPanel } from "@/components/claims/conflicts-panel";
 import { DuplicateChooser } from "@/components/claims/duplicate-chooser";
 import { MissingQuestionCard } from "@/components/claims/missing-question";
 import { approvalBlocker } from "@/lib/policy";
-import { FIELD_UNSURE, missingQuestions, suggestPurposes, uncertainFields } from "@/lib/evidence";
+import { FIELD_LABEL, FIELD_UNSURE, missingQuestions, suggestPurposes, uncertainFields } from "@/lib/evidence";
+import { decisionBrief } from "@/lib/brief";
+import { normalizeMerchant } from "@/lib/matching";
 import { formatMoney } from "@/lib/money";
 
 export const metadata = { title: "Claim" };
@@ -73,6 +75,33 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
     return c ? [{ id: c.id, number: c.number, vendor: c.vendor, amountCents: c.amountCents, currency: c.currency, txnDate: c.txnDate, payer: name(c.payerUserId), score: m.score, reasons: m.reasons }] : [];
   });
 
+  const approvableNow = claim.status === "pending_review" && !blocker;
+  const payerHistory = approvableNow
+    ? await db.select().from(claims).where(and(eq(claims.workspaceId, ctx.workspace.id), eq(claims.payerUserId, claim.payerUserId), ne(claims.id, claim.id)))
+    : [];
+  const brief = approvableNow
+    ? decisionBrief({
+        amountCents: claim.amountCents,
+        currency: claim.currency,
+        approvableCents: obligations.reimbursableCents,
+        vendor: claim.vendor,
+        purpose: claim.purpose,
+        payer: name(claim.payerUserId),
+        evidenceKinds: evidence_.map((e) => e.kind),
+        missing: missingQuestions(claim, { kinds: evidence_.map((e) => e.kind), receiptRequiredCents: ctx.workspace.receiptRequiredCents }).map((q) => q.question),
+        contradictions: conflicts.map((c) => c.message),
+        uncertainFields: uncertainFields(ai?.field_confidence).map((f) => FIELD_LABEL[f]?.toLowerCase() ?? f),
+        duplicateOf: claim.duplicateOfId ? (match?.candidates?.find((c) => c.id === claim.duplicateOfId)?.number ?? null) : null,
+        maxSingleCents: ctx.workspace.maxSingleCents,
+        receiptRequiredCents: ctx.workspace.receiptRequiredCents,
+        merchantHistoryCents: payerHistory
+          .filter((h) => ["matched", "in_batch", "partially_paid", "paid"].includes(h.status) && normalizeMerchant(h.vendor) && normalizeMerchant(h.vendor) === normalizeMerchant(claim.vendor))
+          .map((h) => h.amountCents),
+        firstClaimByPayer: payerHistory.length === 0,
+        receiptCurrency: claim.receiptCurrency,
+      })
+    : null;
+
   return (
     <>
       <Link href="/app/claims" className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-muted transition-colors hover:text-ink">
@@ -99,6 +128,42 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
           <p className="mt-1 text-[13px] text-muted">Reimburses {name(claim.payerUserId)}</p>
         </div>
       </header>
+
+      {brief && (
+        <section aria-labelledby="brief-h" className="rise mb-8 rounded-[12px] border border-line bg-panel p-5 shadow-soft">
+          <p id="brief-h" className="text-[11px] font-medium tracking-[0.12em] text-muted uppercase">
+            Decision brief
+          </p>
+          <p className="mt-1 text-[17px] font-semibold tracking-[-0.015em]">{brief.headline}</p>
+          <p className="mt-1 text-[13px] text-muted">Evidence: {brief.evidence}</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div>
+              <p className="text-xs font-medium text-ink-2">Gaps</p>
+              {brief.gaps.length ? (
+                <ul className="mt-1 list-disc pl-4 text-[13px] text-danger">
+                  {brief.gaps.map((g) => (
+                    <li key={g}>{g}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-[13px] text-success">None</p>
+              )}
+            </div>
+            <div>
+              <p className="text-xs font-medium text-ink-2">Unusual</p>
+              {brief.unusual.length ? (
+                <ul className="mt-1 list-disc pl-4 text-[13px] text-warning">
+                  {brief.unusual.map((g) => (
+                    <li key={g}>{g}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-[13px] text-success">Nothing unusual</p>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {(ctx.isAdmin || claim.submitterId === ctx.user.id) && ["draft", "pending_review", "matched"].includes(claim.status) && (
         <MissingQuestionCard
