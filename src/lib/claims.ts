@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { aiProvider, explainMatch, parseClaimText, PROMPT_VERSION } from "./ai";
 import { audit } from "./audit";
-import { claims, claimSplits, db, memberships, users } from "./db";
+import { claimEvidence, claims, claimSplits, db, memberships, users, type EvidenceKind } from "./db";
 import { DUPLICATE_THRESHOLD, findMatches } from "./matching";
 import { formatMoney, splitEven } from "./money";
 
@@ -59,6 +59,21 @@ export async function createClaim(workspaceId: string, actorId: string, c: NewCl
       status: lowConfidence ? "pending_review" : "matched",
     })
     .returning();
+
+  if (c.receiptKey || c.rawText) {
+    await db.insert(claimEvidence).values({
+      workspaceId,
+      claimId: claim.id,
+      kind: c.receiptKey ? "receipt" : "message",
+      source: c.source,
+      fileKey: c.receiptKey ?? null,
+      fileMime: c.receiptMime ?? null,
+      fileName: c.receiptName ?? null,
+      rawText: c.rawText ?? null,
+      extractJson: c.aiJson ?? null,
+      addedBy: actorId,
+    });
+  }
 
   if (c.splitUserIds?.length) {
     const parts = splitEven(c.amountCents, c.splitUserIds.length);
@@ -144,4 +159,31 @@ export async function claimFromText(workspaceId: string, userId: string, text: s
   });
   await audit(workspaceId, userId, "ai.parse_ok", "claim", claim.id, { provider: aiProvider(), confidence: parsed.confidence });
   return claim;
+}
+
+export type EvidenceExtract = { vendor?: string | null; amount_cents?: number; currency?: string; txn_date?: string | null };
+
+/**
+ * Attaches another piece of proof to an existing claim. Fills only blank claim fields from it;
+ * conflicting values are left for a human (see findContradictions).
+ */
+export async function addEvidence(
+  workspaceId: string,
+  actorId: string,
+  claim: typeof claims.$inferSelect,
+  e: { kind: EvidenceKind; source: "upload" | "slack" | "email" | "manual"; fileKey?: string; fileMime?: string; fileName?: string; rawText?: string | null; extract: EvidenceExtract & Record<string, unknown> },
+) {
+  const [row] = await db
+    .insert(claimEvidence)
+    .values({ workspaceId, claimId: claim.id, kind: e.kind, source: e.source, fileKey: e.fileKey, fileMime: e.fileMime, fileName: e.fileName, rawText: e.rawText ?? null, extractJson: e.extract, addedBy: actorId })
+    .returning();
+  const x = e.extract;
+  const fill = {
+    ...(!claim.vendor && x.vendor ? { vendor: x.vendor } : {}),
+    ...(!claim.amountCents && x.amount_cents ? { amountCents: x.amount_cents, currency: x.currency ?? claim.currency } : {}),
+    ...(!claim.txnDate && x.txn_date ? { txnDate: x.txn_date } : {}),
+  };
+  if (Object.keys(fill).length) await db.update(claims).set({ ...fill, updatedAt: new Date() }).where(eq(claims.id, claim.id));
+  await audit(workspaceId, actorId, "claim.evidence_added", "claim", claim.id, { kind: e.kind, filled: Object.keys(fill) });
+  return row;
 }

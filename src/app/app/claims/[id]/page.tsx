@@ -3,10 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon, FilePdfIcon, QuotesIcon, WarningIcon } from "@phosphor-icons/react/ssr";
 import { ClaimEditor } from "@/components/claims/claim-editor";
+import { EvidencePanel, type EvidenceRow } from "@/components/claims/evidence-panel";
 import { Confidence, Money, StatusPill } from "@/components/ui";
 import { requirePageCtx } from "@/lib/auth";
 import { LOW_CONFIDENCE, workspaceMembers } from "@/lib/claims";
-import { batches, batchItems, claims, claimSplits, db } from "@/lib/db";
+import { batches, batchItems, claimEvidence, claims, claimSplits, db } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
 
 export const metadata = { title: "Claim" };
@@ -23,11 +24,12 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
   const [claim] = await db.select().from(claims).where(and(eq(claims.id, id), eq(claims.workspaceId, ctx.workspace.id)));
   if (!claim) notFound();
 
-  const [members, splits, dupOf, batchRow] = await Promise.all([
+  const [members, splits, dupOf, batchRow, evidence_] = await Promise.all([
     workspaceMembers(ctx.workspace.id),
     db.select().from(claimSplits).where(eq(claimSplits.claimId, id)),
     claim.duplicateOfId ? db.select().from(claims).where(eq(claims.id, claim.duplicateOfId)).then((r) => r[0]) : null,
     db.select({ item: batchItems, batch: batches }).from(batchItems).innerJoin(batches, eq(batches.id, batchItems.batchId)).where(eq(batchItems.claimId, id)).then((r) => r.at(-1)),
+    db.select().from(claimEvidence).where(eq(claimEvidence.claimId, id)).orderBy(claimEvidence.createdAt),
   ]);
   const receipt = claim.receiptKey ? { src: `/api/v1/claims/${claim.id}/receipt`, mime: claim.receiptMime ?? "", filename: claim.receiptName ?? "receipt" } : null;
   const name = (uid: string) => members.find((m) => m.id === uid)?.name ?? "Unknown";
@@ -172,6 +174,22 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
               </ul>
             </section>
           )}
+
+          <EvidencePanel
+            claimId={claim.id}
+            canAdd={(ctx.isAdmin || claim.submitterId === ctx.user.id) && !["paid", "rejected"].includes(claim.status)}
+            rows={evidence_.map((e) => ({
+              id: e.id,
+              kind: e.kind,
+              source: e.source,
+              fileName: e.fileName,
+              fileMime: e.fileMime,
+              rawText: e.rawText,
+              extract: e.extractJson as EvidenceRow["extract"],
+              addedBy: e.addedBy ? name(e.addedBy) : "System",
+              createdAt: e.createdAt.toISOString(),
+            }))}
+          />
 
           <section aria-labelledby="settlement-h">
             <h2 id="settlement-h" className="mb-2 text-[15px] font-semibold tracking-[-0.015em]">

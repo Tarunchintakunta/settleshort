@@ -1,7 +1,7 @@
 // Demo seed: a fresh, isolated "Northbeam Labs" workspace per /demo visit so judges never collide.
 // No "server-only" import so scripts/seed.ts can reuse it.
 import { randomBytes } from "node:crypto";
-import { auditEvents, batches, batchItems, claims, claimSplits, db, memberships, users, workspaces } from "./db";
+import { auditEvents, batches, batchItems, claimEvidence, claims, claimSplits, db, memberships, users, workspaces } from "./db";
 
 const PEOPLE = [
   { key: "maya", name: "Maya Chen", role: "owner" as const },
@@ -68,6 +68,8 @@ export async function createDemoWorkspace() {
       })
       .returning();
     ids[key] = row.id;
+    if (v.rawText)
+      await db.insert(claimEvidence).values({ workspaceId: ws.id, claimId: row.id, kind: "message", source: v.source!, rawText: v.rawText, extractJson: row.aiJson, addedBy: row.submitterId, createdAt: row.createdAt });
   }
   await db.insert(claimSplits).values([
     { claimId: ids.c6, userId: u.sam, amountCents: 2134, shareBps: 3334 },

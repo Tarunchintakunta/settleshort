@@ -83,6 +83,29 @@ export const claims = pgTable(
   ],
 );
 
+export const EVIDENCE_KINDS = ["receipt", "invoice", "message", "declaration", "statement"] as const;
+export type EvidenceKind = (typeof EVIDENCE_KINDS)[number];
+
+/** Every piece of proof behind a claim: receipts, invoices, chat messages, declarations. */
+export const claimEvidence = pgTable(
+  "claim_evidence",
+  {
+    id: id(),
+    workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+    claimId: uuid("claim_id").notNull().references(() => claims.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: EVIDENCE_KINDS }).notNull(),
+    source: text("source", { enum: ["upload", "slack", "email", "manual"] }).notNull(),
+    fileKey: text("file_key"),
+    fileMime: text("file_mime"),
+    fileName: text("file_name"),
+    rawText: text("raw_text"),
+    extractJson: jsonb("extract_json"),
+    addedBy: uuid("added_by").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [index("claim_evidence_claim").on(t.claimId)],
+);
+
 export const claimSplits = pgTable("claim_splits", {
   id: id(),
   claimId: uuid("claim_id").notNull().references(() => claims.id, { onDelete: "cascade" }),
