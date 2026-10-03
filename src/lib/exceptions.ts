@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { releaseProblems } from "./approvals";
 import { factsFor } from "./claim-facts";
-import { batches, batchItems, claims, db, workspaces } from "./db";
+import { batches, batchItems, claimEvidence, claims, db, workspaces } from "./db";
 import { formatMoney } from "./money";
 
 export type Exception = {
@@ -21,7 +21,7 @@ export const STUCK_AFTER_DAYS = 2;
 /** Only what needs a decision: stuck, conflicting, unusually large or uncertain. Routine updates stay out. */
 export async function workspaceExceptions(ws: typeof workspaces.$inferSelect): Promise<Exception[]> {
   const stuckBefore = new Date(Date.now() - STUCK_AFTER_DAYS * DAY);
-  const [open, batchRows, missing] = await Promise.all([
+  const [open, batchRows, missing, declared] = await Promise.all([
     db.select().from(claims).where(and(eq(claims.workspaceId, ws.id), inArray(claims.status, ["pending_review", "matched", "in_batch", "failed", "partially_paid", "paid"]))),
     db.select().from(batches).where(and(eq(batches.workspaceId, ws.id), inArray(batches.status, ["awaiting_approval", "unknown", "partial", "failed"]))),
     db
@@ -29,6 +29,7 @@ export async function workspaceExceptions(ws: typeof workspaces.$inferSelect): P
       .from(batchItems)
       .innerJoin(batches, eq(batches.id, batchItems.batchId))
       .where(and(eq(batches.workspaceId, ws.id), isNotNull(batchItems.notReceivedAt))),
+    db.select({ claimId: claimEvidence.claimId }).from(claimEvidence).where(and(eq(claimEvidence.workspaceId, ws.id), eq(claimEvidence.kind, "declaration"))),
   ]);
   const facts = await factsFor(open);
   const out: Exception[] = [];
@@ -43,6 +44,8 @@ export async function workspaceExceptions(ws: typeof workspaces.$inferSelect): P
       out.push({ key: `stuck-${c.id}`, kind: "stuck", title: label(c), why: `Waiting for approval for over ${STUCK_AFTER_DAYS} days.`, action: "Approve or reject it", href: claimLink(c), at: c.createdAt });
     if (c.amountCents > ws.maxSingleCents && !["paid", "rejected"].includes(c.status))
       out.push({ key: `large-${c.id}`, kind: "large", title: label(c), why: `Above the ${formatMoney(ws.maxSingleCents, c.currency)} single-payout cap.`, action: "Check it, or raise the cap in Settings", href: claimLink(c), at: c.createdAt });
+    if (c.status === "pending_review" && declared.some((d) => d.claimId === c.id))
+      out.push({ key: `declared-${c.id}`, kind: "conflict", title: label(c), why: "No receipt: the payer signed a missing-receipt declaration.", action: "Read the declaration before approving", href: claimLink(c), at: c.updatedAt });
     if (c.status === "failed") out.push({ key: `failed-${c.id}`, kind: "payout", title: label(c), why: "PayPal couldn't pay it.", action: "Fix the receiver's PayPal email, then batch it again", href: claimLink(c), at: c.updatedAt });
     if (f.truth.key === "owes_back") out.push({ key: `back-${c.id}`, kind: "conflict", title: label(c), why: "A refund arrived after reimbursement.", action: "Record the money returned", href: claimLink(c), at: c.updatedAt });
     if (f.truth.key === "unclaimed") out.push({ key: `unclaimed-${c.id}`, kind: "payout", title: label(c), why: "The receiver hasn't accepted the PayPal payout.", action: "Ask them to accept it in PayPal", href: claimLink(c), at: c.updatedAt });

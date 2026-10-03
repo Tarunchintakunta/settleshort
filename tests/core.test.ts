@@ -119,3 +119,15 @@ describe("cross-person duplicates", () => {
     expect(m.score).toBeGreaterThanOrEqual(DUPLICATE_THRESHOLD);
   });
 });
+
+describe("receipt policy", () => {
+  const c = { amountCents: 6400, vendor: "Chipotle", txnDate: "2026-09-29", purpose: "Team lunch" };
+  it("asks for a receipt above the threshold when only a message exists", () => {
+    expect(missingQuestions(c, { kinds: ["message"], receiptRequiredCents: 2500 }).map((q) => q.field)).toEqual(["receipt"]);
+  });
+  it("accepts a receipt or an honest declaration, and small amounts", () => {
+    expect(missingQuestions(c, { kinds: ["message", "declaration"], receiptRequiredCents: 2500 })).toEqual([]);
+    expect(missingQuestions(c, { kinds: ["receipt"], receiptRequiredCents: 2500 })).toEqual([]);
+    expect(missingQuestions({ ...c, amountCents: 1200 }, { kinds: ["message"], receiptRequiredCents: 2500 })).toEqual([]);
+  });
+});

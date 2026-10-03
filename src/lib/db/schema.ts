@@ -30,6 +30,8 @@ export const workspaces = pgTable("workspaces", {
   maxSingleCents: integer("max_single_cents").notNull(),
   maxBatchCents: integer("max_batch_cents").notNull(),
   isDemo: integer("is_demo").notNull().default(0),
+  // Policy: claims at or above this need a receipt/invoice, or an honest missing-receipt declaration.
+  receiptRequiredCents: integer("receipt_required_cents").notNull().default(2500),
   // Approves claims submitted by, or paid to, admins (maker-checker for founders).
   alternateApproverId: uuid("alternate_approver_id"),
   createdAt: createdAt(),

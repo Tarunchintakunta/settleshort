@@ -13,6 +13,7 @@ export const PATCH = route(
         maxSingleCents: z.number().int().positive().max(10_000_000).optional(),
         maxBatchCents: z.number().int().positive().max(100_000_000).optional(),
         alternateApproverId: z.string().uuid().nullable().optional(),
+        receiptRequiredCents: z.number().int().nonnegative().max(10_000_000).optional(),
       }),
     );
     if (input.alternateApproverId) {

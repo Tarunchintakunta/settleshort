@@ -26,6 +26,7 @@ const VERBS: Record<string, string> = {
   "claim.duplicate_dismissed": "marked two claims as different expenses",
   "claim.evidence_added": "added evidence to a claim",
   "claim.corrected": "corrected a claim in plain words",
+  "claim.receipt_declared_missing": "declared a receipt missing",
   "claim.contradiction_found": "found evidence that disagrees",
   "claim.contradiction_accepted": "accepted a difference between pieces of evidence",
   "ai.extract_ok": "extracted a receipt with AI",

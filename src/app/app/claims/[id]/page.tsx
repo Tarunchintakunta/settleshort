@@ -97,7 +97,12 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
       </header>
 
       {(ctx.isAdmin || claim.submitterId === ctx.user.id) && ["draft", "pending_review", "matched"].includes(claim.status) && (
-        <MissingQuestionCard claimId={claim.id} questions={missingQuestions(claim)} />
+        <MissingQuestionCard
+          claimId={claim.id}
+          questions={missingQuestions(claim, { kinds: evidence_.map((e) => e.kind), receiptRequiredCents: ctx.workspace.receiptRequiredCents })}
+          canDeclare={[claim.submitterId, claim.payerUserId].includes(ctx.user.id)}
+          receiptRequired={formatMoney(ctx.workspace.receiptRequiredCents, claim.currency)}
+        />
       )}
       <ConflictsPanel claimId={claim.id} conflicts={conflicts} canResolve={ctx.isAdmin} />
 

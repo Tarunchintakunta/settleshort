@@ -1,0 +1,1 @@
+ALTER TABLE "workspaces" ADD COLUMN "receipt_required_cents" integer DEFAULT 2500 NOT NULL;

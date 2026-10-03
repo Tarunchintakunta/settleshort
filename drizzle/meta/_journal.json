@@ -85,6 +85,13 @@
       "when": 1791019146520,
       "tag": "0011_evidence_fingerprint",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791019380372,
+      "tag": "0012_receipt_policy",
+      "breakpoints": true
     }
   ]
 }

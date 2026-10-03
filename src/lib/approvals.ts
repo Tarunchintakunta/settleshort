@@ -32,7 +32,7 @@ export async function activeApproval(claimId: string) {
   return a ?? null;
 }
 
-export async function approveClaim(ws: { id: string; alternateApproverId: string | null }, approver: Approver, claimId: string) {
+export async function approveClaim(ws: { id: string; alternateApproverId: string | null; receiptRequiredCents: number }, approver: Approver, claimId: string) {
   const [claim] = await db.select().from(claims).where(and(eq(claims.id, claimId), eq(claims.workspaceId, ws.id)));
   if (!claim) fail(404, "not_found", "Claim not found");
   if (claim.status === "in_batch") {
@@ -43,7 +43,8 @@ export async function approveClaim(ws: { id: string; alternateApproverId: string
   const blocked = approvalBlocker(approver, { submitterId: claim.submitterId, payeeIds: (await payeesOf(claim)).map((p) => p.userId) }, ws.alternateApproverId);
   if (blocked) fail(403, blocked.code, blocked.message);
 
-  const missing = missingQuestions(claim);
+  const kinds = (await db.select({ k: claimEvidence.kind }).from(claimEvidence).where(eq(claimEvidence.claimId, claimId))).map((r) => r.k);
+  const missing = missingQuestions(claim, { kinds, receiptRequiredCents: ws.receiptRequiredCents });
   if (missing.length) fail(409, "missing_info", `Still needed before approval: ${missing.map((m) => m.question).join(" ")}`);
   const open = await openContradictions(claim);
   if (open.length) fail(409, "contradiction", `Resolve conflicting evidence first: ${open.map((c) => c.message).join("; ")}`);

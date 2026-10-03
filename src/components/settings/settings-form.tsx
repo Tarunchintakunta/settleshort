@@ -5,11 +5,11 @@ import { useState } from "react";
 import { Button, Field, inputCls } from "@/components/ui";
 import { api } from "@/lib/client";
 
-type Ws = { name: string; maxSingleCents: number; maxBatchCents: number; alternateApproverId: string | null };
+type Ws = { name: string; maxSingleCents: number; maxBatchCents: number; alternateApproverId: string | null; receiptRequiredCents: number };
 
 export function SettingsForm({ ws, isAdmin, members }: { ws: Ws; isAdmin: boolean; members: { id: string; name: string }[] }) {
   const router = useRouter();
-  const [f, setF] = useState({ name: ws.name, single: String(ws.maxSingleCents / 100), batch: String(ws.maxBatchCents / 100), alt: ws.alternateApproverId ?? "" });
+  const [f, setF] = useState({ name: ws.name, single: String(ws.maxSingleCents / 100), batch: String(ws.maxBatchCents / 100), alt: ws.alternateApproverId ?? "", receipt: String(ws.receiptRequiredCents / 100) });
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   return (
     <form
@@ -20,7 +20,7 @@ export function SettingsForm({ ws, isAdmin, members }: { ws: Ws; isAdmin: boolea
         try {
           await api("/workspaces/settings", {
             method: "PATCH",
-            json: { name: f.name, maxSingleCents: Math.round(Number(f.single) * 100), maxBatchCents: Math.round(Number(f.batch) * 100), alternateApproverId: f.alt || null },
+            json: { name: f.name, maxSingleCents: Math.round(Number(f.single) * 100), maxBatchCents: Math.round(Number(f.batch) * 100), alternateApproverId: f.alt || null, receiptRequiredCents: Math.round(Number(f.receipt) * 100) },
           });
           setMsg({ ok: true, text: "Saved" });
           router.refresh();
@@ -41,6 +41,9 @@ export function SettingsForm({ ws, isAdmin, members }: { ws: Ws; isAdmin: boolea
             <input inputMode="decimal" value={f.batch} onChange={(e) => setF({ ...f, batch: e.target.value })} className={`${inputCls} money`} />
           </Field>
         </div>
+        <Field label="Receipt required from" hint="At or above this, a message alone isn't enough: attach a receipt or sign a missing-receipt declaration.">
+          <input inputMode="decimal" value={f.receipt} onChange={(e) => setF({ ...f, receipt: e.target.value })} className={`${inputCls} money`} />
+        </Field>
         <Field label="Alternate approver" hint="Approves claims that admins submit or are reimbursed for. Nobody can approve their own claim.">
           <select value={f.alt} onChange={(e) => setF({ ...f, alt: e.target.value })} className={inputCls}>
             <option value="">None: another admin approves</option>
