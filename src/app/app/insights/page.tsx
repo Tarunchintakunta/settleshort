@@ -1,7 +1,7 @@
 import { asc, eq, inArray } from "drizzle-orm";
 import { PageHeader } from "@/components/ui";
 import { requirePageCtx } from "@/lib/auth";
-import { approvals, batches, batchItems, claims, db, ledgerEntries } from "@/lib/db";
+import { aiFeedback, approvals, batches, batchItems, claims, db, ledgerEntries } from "@/lib/db";
 import { obligationsForMany } from "@/lib/ledger";
 import { formatMoney } from "@/lib/money";
 import { TERMINAL } from "@/lib/payout-status";
@@ -25,12 +25,14 @@ export default async function Insights() {
   const { workspace: ws } = await requirePageCtx();
   const all = await db.select().from(claims).where(eq(claims.workspaceId, ws.id));
   const ids = all.map((c) => c.id);
-  const [appr, payouts, items, owed] = await Promise.all([
+  const [appr, payouts, items, owed, feedback] = await Promise.all([
     ids.length ? db.select().from(approvals).where(inArray(approvals.claimId, ids)).orderBy(asc(approvals.createdAt)) : [],
     db.select().from(ledgerEntries).where(eq(ledgerEntries.workspaceId, ws.id)).orderBy(asc(ledgerEntries.createdAt)),
     db.select({ status: batchItems.status }).from(batchItems).innerJoin(batches, eq(batches.id, batchItems.batchId)).where(eq(batches.workspaceId, ws.id)),
     obligationsForMany(all),
+    db.select().from(aiFeedback).where(eq(aiFeedback.workspaceId, ws.id)),
   ]);
+  const fb = (k: string) => feedback.filter((f) => f.kind === k).length;
 
   const firstApproval = new Map<string, Date>();
   for (const a of appr) if (!firstApproval.has(a.claimId)) firstApproval.set(a.claimId, a.createdAt);
@@ -77,6 +79,39 @@ export default async function Insights() {
           </div>
         ))}
       </div>
+
+      <section className="mt-10">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className="text-[15px] font-semibold tracking-[-0.015em]">People overruling the AI</h2>
+            <p className="text-sm text-muted">Each correction is kept with its reason and feeds the evaluation set. It never changes company rules by itself.</p>
+          </div>
+          <a href="/api/v1/ai-feedback" className="text-[13px] font-medium text-accent hover:underline">
+            Export as JSON Lines
+          </a>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[
+            { label: "Extracted fields corrected", n: fb("extraction") },
+            { label: "Duplicate flags overruled", n: fb("duplicate") },
+            { label: "Merchant categories overridden", n: fb("category") },
+          ].map((t) => (
+            <div key={t.label} className="rounded-[12px] border border-line bg-panel p-4 shadow-soft">
+              <p className="text-xs text-muted">{t.label}</p>
+              <p className="tnum mt-1 text-[22px] font-semibold">{t.n}</p>
+            </div>
+          ))}
+        </div>
+        <ul className="mt-4 divide-y divide-line rounded-[12px] border border-line bg-panel text-sm shadow-soft">
+          {feedback.slice(-8).reverse().map((f) => (
+            <li key={f.id} className="px-4 py-2.5">
+              <span className="text-muted">{f.kind}</span> · {f.subject}: <span className="line-through decoration-muted">{f.suggested}</span> → <b className="font-medium">{f.corrected}</b>
+              {f.reason && <span className="text-muted"> · &ldquo;{f.reason}&rdquo;</span>}
+            </li>
+          ))}
+          {!feedback.length && <li className="px-4 py-2.5 text-muted">No corrections yet.</li>}
+        </ul>
+      </section>
     </>
   );
 }

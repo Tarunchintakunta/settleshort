@@ -52,7 +52,15 @@ export function DuplicateChooser({ claimId, candidates, ambiguous, canDecide }: 
               <Button size="sm" variant="secondary" disabled={busy} onClick={() => run(() => api("/claims/merge", { json: { ids: [c.id, claimId] } }))}>
                 Same expense: merge into #{c.number}
               </Button>
-              <Button size="sm" variant="ghost" disabled={busy} onClick={() => run(() => api(`/claims/${claimId}/not-duplicate`, { json: { of: c.id } }))}>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={busy}
+                onClick={() => {
+                  const reason = prompt("Why are these different expenses? (kept with the decision)") ?? undefined;
+                  run(() => api(`/claims/${claimId}/not-duplicate`, { json: { of: c.id, reason } }));
+                }}
+              >
                 Different expense
               </Button>
             </div>
