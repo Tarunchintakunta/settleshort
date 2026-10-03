@@ -97,7 +97,7 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
                     </td>
                     <td className="px-5 py-3.5">
                       <Link href={`/app/claims/${claim.id}`} className="hover:underline">
-                        <span className="font-mono text-muted">#{claim.number}</span> {claim.vendor}
+                        <span className="tnum text-muted">#{claim.number}</span> {claim.vendor?.trim() || "Unknown vendor"}
                       </Link>
                       <div className="mt-1">
                         <Confidence value={claim.aiConfidence} />
@@ -114,10 +114,21 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
                   </tr>
                 ))}
               </tbody>
+              <tfoot className="border-t border-line-strong">
+                <tr>
+                  <th scope="row" colSpan={2} className="px-5 py-3.5 text-left text-[13px] font-medium text-ink-2">
+                    Total to {recipients} {recipients === 1 ? "person" : "people"}
+                  </th>
+                  <td className="px-5 py-3.5 text-right">
+                    <Money cents={batch.totalCents} currency={batch.currency} className="text-[15px] font-semibold" />
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
             </table>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line bg-sunken px-5 py-4">
-            <p className="text-xs text-muted">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line bg-panel px-5 py-4">
+            <p className="max-w-[46ch] text-xs leading-relaxed text-muted">
               {batch.paypalPayoutBatchId ? (
                 <>
                   PayPal batch <span className="font-mono text-ink">{batch.paypalPayoutBatchId}</span>, sender id <span className="font-mono">{batch.id.slice(0, 8)}</span>
