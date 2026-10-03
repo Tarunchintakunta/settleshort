@@ -118,9 +118,11 @@ export async function runMatching(workspaceId: string, claimId: string) {
         .where(and(eq(claimEvidence.workspaceId, workspaceId), ne(claimEvidence.claimId, claimId), inArray(claimEvidence.contentKey, keys)))
     : [];
   const sameIds = new Set(sameContent.map((s) => s.claimId));
+  const splitRows = await db.select().from(claimSplits).where(inArray(claimSplits.claimId, [claimId, ...others.map((o) => o.id)]));
+  const withPeople = <T extends { id: string }>(c: T) => ({ ...c, participants: splitRows.filter((s) => s.claimId === c.id).map((s) => s.userId) });
   const candidates = [
     ...others.filter((o) => sameIds.has(o.id)).map((o) => ({ id: o.id, number: o.number, score: 1, reasons: ["same receipt content from another channel"] })),
-    ...findMatches(claim, others).filter((m) => !sameIds.has(m.id)),
+    ...findMatches(withPeople(claim), others.map(withPeople)).filter((m) => !sameIds.has(m.id)),
   ].slice(0, 3);
   const ambiguous = isAmbiguous(candidates);
   const top = candidates[0];

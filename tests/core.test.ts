@@ -108,3 +108,14 @@ describe("fingerprint ignores guesses", () => {
     expect(contentKey({ vendor: "Chipotle", amount_cents: 6400, currency: "USD", txn_date: "2026-10-03", field_confidence: { date: 0.5 } })).toBeNull();
   });
 });
+
+describe("cross-person duplicates", () => {
+  it("flags two attendees claiming the same meal", () => {
+    const dev = { ...base, id: "d", payerUserId: "dev", participants: ["sam", "dev"] };
+    const sam = { ...base, id: "s", vendor: "Chipotle", payerUserId: "sam", participants: [] };
+    const [m] = findMatches(sam, [dev]);
+    expect(m.reasons).toContain("claimed by a different person");
+    expect(m.reasons).toContain("each was at the other's expense");
+    expect(m.score).toBeGreaterThanOrEqual(DUPLICATE_THRESHOLD);
+  });
+});

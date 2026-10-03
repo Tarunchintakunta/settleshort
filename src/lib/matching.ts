@@ -8,6 +8,8 @@ export type MatchInput = {
   currency: string;
   txnDate: string | null;
   payerUserId: string;
+  /** People the expense was for (splits). Lets us see two attendees claiming the same meal. */
+  participants?: string[];
 };
 
 export type MatchCandidate = { id: string; number?: number; score: number; reasons: string[] };
@@ -57,6 +59,11 @@ export function scorePair(a: MatchInput, b: MatchInput): MatchCandidate {
   else if (m >= 0.5) { score += 0.15; reasons.push("similar merchant"); }
 
   if (a.payerUserId === b.payerUserId) { score += 0.05; reasons.push("same payer"); }
+  else {
+    reasons.push("claimed by a different person");
+    // Each claimant was at the other's expense: the classic double-claimed team meal.
+    if (a.participants?.includes(b.payerUserId) || b.participants?.includes(a.payerUserId)) { score += 0.1; reasons.push("each was at the other's expense"); }
+  }
 
   return { id: b.id, number: b.number, score: Math.max(0, Math.min(1, Number(score.toFixed(2)))), reasons };
 }
