@@ -79,7 +79,7 @@ export function Pill({
   dot?: boolean;
 }) {
   return (
-    <span className={cx("inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium tracking-[-0.01em]", TONES[tone], className)}>
+    <span className={cx("inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium tracking-[-0.01em] whitespace-nowrap", TONES[tone], className)}>
       {dot && <span className={cx("size-1.5 shrink-0 rounded-full", DOTS[tone])} aria-hidden />}
       {children}
     </span>
