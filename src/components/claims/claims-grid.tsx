@@ -63,7 +63,7 @@ const selectable = (status?: string) => status === "pending_review" || status ==
 const FILTERS = [
   { key: "", label: "All" },
   { key: "pending_review", label: "Needs review" },
-  { key: "matched", label: "Ready" },
+  { key: "matched", label: "Approved" },
   { key: "in_batch", label: "In batch" },
   { key: "paid", label: "Paid" },
   { key: "rejected", label: "Rejected" },

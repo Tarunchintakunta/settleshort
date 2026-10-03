@@ -6,7 +6,7 @@ import { UserPlusIcon } from "@phosphor-icons/react";
 import { Button, Field, inputCls } from "@/components/ui";
 import { api } from "@/lib/client";
 
-type Member = { id: string; name: string; email: string; role: string; paypalEmail: string | null; membershipId: string };
+type Member = { id: string; name: string; email: string; role: string; paypalEmail: string | null; membershipId: string; canRelease: boolean };
 
 export function InviteForm() {
   const router = useRouter();
@@ -89,5 +89,37 @@ export function PaypalEmailCell({ m, canEdit }: { m: Member; canEdit: boolean })
       {state === "saved" && v === m.paypalEmail && <span className="text-xs text-success">Saved</span>}
       {!["idle", "saving", "saved"].includes(state) && <span className="text-xs text-danger">{state}</span>}
     </form>
+  );
+}
+
+/** Release authority: may send approved money to PayPal. Approving claims is separate. */
+export function ReleaseToggle({ m, canEdit }: { m: Member; canEdit: boolean }) {
+  const router = useRouter();
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  return (
+    <label className="inline-flex items-center gap-2 text-xs">
+      <input
+        type="checkbox"
+        checked={m.canRelease}
+        disabled={!canEdit || busy}
+        onChange={async (e) => {
+          setBusy(true);
+          setErr(null);
+          try {
+            await api(`/members/${m.membershipId}`, { method: "PATCH", json: { canRelease: e.target.checked } });
+            router.refresh();
+          } catch (x) {
+            setErr((x as Error).message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+        className="size-4 accent-[var(--accent)]"
+        aria-label={`Release authority for ${m.name}`}
+      />
+      <span className={m.canRelease ? "text-ink" : "text-muted"}>{m.canRelease ? "Can release" : "No"}</span>
+      {err && <span className="text-danger">{err}</span>}
+    </label>
   );
 }

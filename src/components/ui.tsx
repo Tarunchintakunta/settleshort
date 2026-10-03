@@ -50,7 +50,7 @@ const DOTS: Record<Tone, string> = {
 const STATUS: Record<string, [Tone, string]> = {
   draft: ["neutral", "Draft"],
   pending_review: ["warning", "Needs review"],
-  matched: ["accent", "Ready"],
+  matched: ["accent", "Approved"],
   in_batch: ["neutral", "In batch"],
   paid: ["success", "Paid"],
   failed: ["danger", "Failed"],

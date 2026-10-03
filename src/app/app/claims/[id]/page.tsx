@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon, FilePdfIcon, QuotesIcon, WarningIcon } from "@phosphor-icons/react/ssr";
@@ -7,7 +7,9 @@ import { EvidencePanel, type EvidenceRow } from "@/components/claims/evidence-pa
 import { Confidence, Money, StatusPill } from "@/components/ui";
 import { requirePageCtx } from "@/lib/auth";
 import { LOW_CONFIDENCE, workspaceMembers } from "@/lib/claims";
-import { batches, batchItems, claimEvidence, claims, claimSplits, db } from "@/lib/db";
+import { approvals, batches, batchItems, claimEvidence, claims, claimSplits, db } from "@/lib/db";
+import { payeesOf } from "@/lib/approvals";
+import { approvalBlocker } from "@/lib/policy";
 import { formatMoney } from "@/lib/money";
 
 export const metadata = { title: "Claim" };
@@ -24,13 +26,17 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
   const [claim] = await db.select().from(claims).where(and(eq(claims.id, id), eq(claims.workspaceId, ctx.workspace.id)));
   if (!claim) notFound();
 
-  const [members, splits, dupOf, batchRow, evidence_] = await Promise.all([
+  const [members, splits, dupOf, batchRow, evidence_, approvalRows] = await Promise.all([
     workspaceMembers(ctx.workspace.id),
     db.select().from(claimSplits).where(eq(claimSplits.claimId, id)),
     claim.duplicateOfId ? db.select().from(claims).where(eq(claims.id, claim.duplicateOfId)).then((r) => r[0]) : null,
     db.select({ item: batchItems, batch: batches }).from(batchItems).innerJoin(batches, eq(batches.id, batchItems.batchId)).where(eq(batchItems.claimId, id)).then((r) => r.at(-1)),
     db.select().from(claimEvidence).where(eq(claimEvidence.claimId, id)).orderBy(claimEvidence.createdAt),
+    db.select().from(approvals).where(eq(approvals.claimId, id)).orderBy(desc(approvals.createdAt)),
   ]);
+  const activeApproval = approvalRows.find((a) => !a.invalidatedAt);
+  const voided = !activeApproval ? approvalRows[0] : undefined;
+  const blocker = approvalBlocker({ id: ctx.user.id, role: ctx.role! }, { submitterId: claim.submitterId, payeeIds: payeesOf(claim).map((p) => p.userId) }, ctx.workspace.alternateApproverId);
   const receipt = claim.receiptKey ? { src: `/api/v1/claims/${claim.id}/receipt`, mime: claim.receiptMime ?? "", filename: claim.receiptName ?? "receipt" } : null;
   const name = (uid: string) => members.find((m) => m.id === uid)?.name ?? "Unknown";
   const ai = claim.aiJson as Ai | null;
@@ -146,7 +152,19 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
               isAdmin={ctx.isAdmin}
               canEdit={ctx.isAdmin || claim.submitterId === ctx.user.id}
               lowConfidence={claim.aiConfidence != null && claim.aiConfidence < LOW_CONFIDENCE}
+              approveBlocked={blocker?.message ?? null}
+              approvable={claim.status === "pending_review" || (claim.status === "in_batch" && !activeApproval && batchRow?.batch.status === "awaiting_approval")}
             />
+            {activeApproval ? (
+              <p className="mt-4 border-t border-line pt-4 text-[13px] text-ink-2">
+                Approved by <b className="text-ink">{name(activeApproval.approverId)}</b> on{" "}
+                {activeApproval.createdAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}. Changing the amount, recipient or evidence voids it.
+              </p>
+            ) : voided?.invalidReason ? (
+              <p className="mt-4 rounded-[8px] border border-warning/30 bg-warning-soft px-3 py-2 text-[13px] text-warning">
+                Approval by {name(voided.approverId)} was voided: {voided.invalidReason}. It needs a fresh approval.
+              </p>
+            ) : null}
           </section>
 
           {(ai?.line_items?.length ?? 0) > 0 && (
@@ -241,7 +259,7 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
                 </Link>
               ) : (
                 <p className="border-t border-line px-4 py-3 text-xs text-muted">
-                  {claim.status === "matched" ? "Ready to go into the next settlement batch." : claim.status === "rejected" ? "Rejected, so it won't be paid." : "Not in a settlement batch yet."}
+                  {claim.status === "matched" ? "Approved. Goes into the next settlement batch." : claim.status === "rejected" ? "Rejected, so it won't be paid." : "Not in a settlement batch yet."}
                 </p>
               )}
             </div>

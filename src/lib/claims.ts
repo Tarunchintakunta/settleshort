@@ -1,6 +1,7 @@
 import "server-only";
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { aiProvider, explainMatch, parseClaimText, PROMPT_VERSION } from "./ai";
+import { revalidateApproval } from "./approvals";
 import { audit } from "./audit";
 import { claimEvidence, claims, claimSplits, db, memberships, users, type EvidenceKind } from "./db";
 import { DUPLICATE_THRESHOLD, findMatches } from "./matching";
@@ -30,7 +31,7 @@ export type NewClaim = {
 
 export async function workspaceMembers(workspaceId: string) {
   return db
-    .select({ id: users.id, name: users.name, email: users.email, role: memberships.role, paypalEmail: memberships.paypalReceiverEmail, membershipId: memberships.id })
+    .select({ id: users.id, name: users.name, email: users.email, role: memberships.role, paypalEmail: memberships.paypalReceiverEmail, membershipId: memberships.id, canRelease: memberships.canRelease })
     .from(memberships)
     .innerJoin(users, eq(users.id, memberships.userId))
     .where(eq(memberships.workspaceId, workspaceId))
@@ -45,7 +46,6 @@ export async function createClaim(workspaceId: string, actorId: string, c: NewCl
     .from(claims)
     .where(eq(claims.workspaceId, workspaceId));
 
-  const lowConfidence = c.aiConfidence != null && c.aiConfidence < LOW_CONFIDENCE;
   const [claim] = await db
     .insert(claims)
     .values({
@@ -56,7 +56,7 @@ export async function createClaim(workspaceId: string, actorId: string, c: NewCl
       number: Number(next),
       workspaceId,
       submitterId: actorId,
-      status: lowConfidence ? "pending_review" : "matched",
+      status: "pending_review", // every claim waits for a human approval; AI never approves
     })
     .returning();
 
@@ -185,5 +185,6 @@ export async function addEvidence(
   };
   if (Object.keys(fill).length) await db.update(claims).set({ ...fill, updatedAt: new Date() }).where(eq(claims.id, claim.id));
   await audit(workspaceId, actorId, "claim.evidence_added", "claim", claim.id, { kind: e.kind, filled: Object.keys(fill) });
+  await revalidateApproval(workspaceId, claim.id, actorId);
   return row;
 }

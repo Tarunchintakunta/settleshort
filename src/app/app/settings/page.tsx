@@ -4,6 +4,7 @@ import { PageHeader, PROVIDER_LABEL } from "@/components/ui";
 import { SettingsForm } from "@/components/settings/settings-form";
 import { aiProvider } from "@/lib/ai";
 import { requirePageCtx } from "@/lib/auth";
+import { workspaceMembers } from "@/lib/claims";
 import { paypalMode } from "@/lib/paypal";
 
 export const metadata = { title: "Settings" };
@@ -22,6 +23,7 @@ function Status({ ok, title, body }: { ok: boolean; title: string; body: string 
 
 export default async function SettingsPage() {
   const ctx = await requirePageCtx();
+  const members = await workspaceMembers(ctx.workspace.id);
   const pp = paypalMode();
   const ai = aiProvider();
   return (
@@ -30,8 +32,8 @@ export default async function SettingsPage() {
       <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
         <section className="rounded-[12px] border border-line p-6 shadow-soft">
           <h2 className="mb-1 text-[15px] font-semibold tracking-[-0.015em]">Workspace and safety caps</h2>
-          <p className="mb-5 text-sm text-muted">Approve is blocked above these limits.</p>
-          <SettingsForm ws={ctx.workspace} isAdmin={ctx.isAdmin} />
+          <p className="mb-5 text-sm text-muted">Approve is blocked above these limits, and nobody approves their own claim.</p>
+          <SettingsForm ws={ctx.workspace} isAdmin={ctx.isAdmin} members={members} />
         </section>
         <div className="space-y-6">
           <section className="space-y-5 rounded-[12px] border border-line p-6 shadow-soft">

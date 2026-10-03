@@ -36,6 +36,13 @@
       "when": 1791017116261,
       "tag": "0004_webhook_events",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791017237365,
+      "tag": "0005_approvals",
+      "breakpoints": true
     }
   ]
 }

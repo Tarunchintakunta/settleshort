@@ -1,6 +1,7 @@
 import "server-only";
 import { and, eq, inArray } from "drizzle-orm";
 import { fail } from "./api";
+import { releaseProblems } from "./approvals";
 import { audit } from "./audit";
 import { batches, batchItems, claims, db, memberships, users, workspaces } from "./db";
 import { formatMoney } from "./money";
@@ -17,7 +18,9 @@ export async function createBatch(workspaceId: string, actorId: string, claimIds
 
   if (rows.length !== claimIds.length || new Set(claimIds).size !== claimIds.length) fail(404, "not_found", "Some claims were not found");
   const notReady = rows.filter((r) => r.claim.status !== "matched");
-  if (notReady.length) fail(409, "not_ready", `Only matched claims can be batched (#${notReady.map((r) => r.claim.number).join(", #")})`);
+  if (notReady.length) fail(409, "not_ready", `Only approved claims can be batched (#${notReady.map((r) => r.claim.number).join(", #")})`);
+  const problems = await releaseProblems(workspaceId, claimIds);
+  if (problems.length) fail(409, "approval_stale", problems.map((p) => `#${p.number}: ${p.problems.join("; ")}`).join(" · "));
   const currencies = new Set(rows.map((r) => r.claim.currency));
   if (currencies.size > 1) fail(400, "mixed_currency", "A batch must use a single currency");
   const noEmail = rows.filter((r) => !r.paypalEmail);
@@ -67,6 +70,13 @@ export async function approveBatch(workspaceId: string, actorId: string, batchId
   const [batch] = await db.select().from(batches).where(and(eq(batches.id, batchId), eq(batches.workspaceId, workspaceId)));
   if (!batch) fail(404, "not_found", "Batch not found");
   const items = await db.select().from(batchItems).where(eq(batchItems.batchId, batchId));
+
+  const [me] = await db.select().from(memberships).where(and(eq(memberships.workspaceId, workspaceId), eq(memberships.userId, actorId)));
+  if (!me?.canRelease) fail(403, "no_release_authority", "You can approve claims but not release money. Ask someone with release authority (Members page).");
+
+  // Final change check: anything that changed since each claim was approved blocks the release.
+  const problems = await releaseProblems(workspaceId, items.map((i) => i.claimId));
+  if (problems.length) fail(409, "changed_since_approval", `Re-approve before paying: ${problems.map((p) => `#${p.number} ${p.problems.join("; ")}`).join(" · ")}`);
 
   const overSingle = items.filter((i) => i.amountCents > ws.maxSingleCents);
   if (overSingle.length) fail(400, "cap_single", `Item over single-payout cap of ${formatMoney(ws.maxSingleCents, batch.currency)}`);

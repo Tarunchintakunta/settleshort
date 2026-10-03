@@ -18,6 +18,8 @@ const VERBS: Record<string, string> = {
   "claim.created": "submitted a claim",
   "claim.edited": "edited a claim",
   "claim.marked_ready": "marked a claim ready",
+  "claim.approved": "approved a claim",
+  "claim.approval_invalidated": "voided an approval after a material change",
   "claim.rejected": "rejected a claim",
   "claim.merged": "merged duplicate claims",
   "claim.duplicate_suspected": "flagged a likely duplicate",

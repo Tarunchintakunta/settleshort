@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -29,6 +30,8 @@ export const workspaces = pgTable("workspaces", {
   maxSingleCents: integer("max_single_cents").notNull(),
   maxBatchCents: integer("max_batch_cents").notNull(),
   isDemo: integer("is_demo").notNull().default(0),
+  // Approves claims submitted by, or paid to, admins (maker-checker for founders).
+  alternateApproverId: uuid("alternate_approver_id"),
   createdAt: createdAt(),
 });
 
@@ -40,6 +43,8 @@ export const memberships = pgTable(
     userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     role: text("role", { enum: ["owner", "admin", "member"] }).notNull(),
     paypalReceiverEmail: text("paypal_receiver_email"),
+    // Release authority: may send approved money to PayPal. Separate from approving claims.
+    canRelease: boolean("can_release").notNull().default(false),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("memberships_ws_user").on(t.workspaceId, t.userId)],
@@ -186,3 +191,21 @@ export const webhookEvents = pgTable("webhook_events", {
   id: text("id").primaryKey(),
   receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** A human sign-off on a claim, bound to a snapshot of what was approved. */
+export const approvals = pgTable(
+  "approvals",
+  {
+    id: id(),
+    workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+    claimId: uuid("claim_id").notNull().references(() => claims.id, { onDelete: "cascade" }),
+    approverId: uuid("approver_id").notNull().references(() => users.id),
+    onBehalfOfId: uuid("on_behalf_of_id").references(() => users.id),
+    snapshotHash: text("snapshot_hash").notNull(),
+    snapshotJson: jsonb("snapshot_json").notNull(),
+    invalidatedAt: timestamp("invalidated_at", { withTimezone: true }),
+    invalidReason: text("invalid_reason"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("approvals_claim").on(t.claimId)],
+);

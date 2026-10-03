@@ -1,7 +1,8 @@
 // Demo seed: a fresh, isolated "Northbeam Labs" workspace per /demo visit so judges never collide.
 // No "server-only" import so scripts/seed.ts can reuse it.
 import { randomBytes } from "node:crypto";
-import { auditEvents, batches, batchItems, claimEvidence, claims, claimSplits, db, memberships, users, workspaces } from "./db";
+import { approvals, auditEvents, batches, batchItems, claimEvidence, claims, claimSplits, db, memberships, users, workspaces } from "./db";
+import { hashSnapshot, type Snapshot } from "./policy";
 
 const PEOPLE = [
   { key: "maya", name: "Maya Chen", role: "owner" as const },
@@ -37,7 +38,7 @@ export async function createDemoWorkspace() {
   for (const p of PEOPLE) {
     const [row] = await db.insert(users).values({ email: `${p.key}+${tag}@demo.settleshort.app`, name: p.name }).returning();
     u[p.key] = row.id;
-    await db.insert(memberships).values({ workspaceId: ws.id, userId: row.id, role: p.role, paypalReceiverEmail: pp[p.key] });
+    await db.insert(memberships).values({ workspaceId: ws.id, userId: row.id, role: p.role, paypalReceiverEmail: pp[p.key], canRelease: p.role === "owner" });
   }
 
   type C = Partial<typeof claims.$inferInsert> & { key: string };
@@ -54,6 +55,7 @@ export async function createDemoWorkspace() {
   ];
 
   const ids: Record<string, string> = {};
+  const approvalRows: (typeof approvals.$inferInsert)[] = [];
   for (const [i, d] of defs.entries()) {
     const { key, ...v } = d;
     const [row] = await db
@@ -68,9 +70,15 @@ export async function createDemoWorkspace() {
       })
       .returning();
     ids[key] = row.id;
-    if (v.rawText)
-      await db.insert(claimEvidence).values({ workspaceId: ws.id, claimId: row.id, kind: "message", source: v.source!, rawText: v.rawText, extractJson: row.aiJson, addedBy: row.submitterId, createdAt: row.createdAt });
+    const ev = v.rawText
+      ? await db.insert(claimEvidence).values({ workspaceId: ws.id, claimId: row.id, kind: "message", source: v.source!, rawText: v.rawText, extractJson: row.aiJson, addedBy: row.submitterId, createdAt: row.createdAt }).returning()
+      : [];
+    if (["matched", "in_batch", "paid"].includes(row.status)) {
+      const snap: Snapshot = { amountCents: row.amountCents, currency: row.currency, payees: [{ userId: row.payerUserId, amountCents: row.amountCents }], evidenceIds: ev.map((e) => e.id) };
+      approvalRows.push({ workspaceId: ws.id, claimId: row.id, approverId: u.maya, snapshotHash: hashSnapshot(snap), snapshotJson: snap });
+    }
   }
+  await db.insert(approvals).values(approvalRows);
   await db.insert(claimSplits).values([
     { claimId: ids.c6, userId: u.sam, amountCents: 2134, shareBps: 3334 },
     { claimId: ids.c6, userId: u.dev, amountCents: 2133, shareBps: 3333 },

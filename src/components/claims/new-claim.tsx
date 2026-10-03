@@ -421,7 +421,7 @@ function Extraction({
               <Alert tone="success">
                 <span className="flex items-center gap-2">
                   <CheckIcon className="size-4 shrink-0" weight="bold" aria-hidden />
-                  {claim.status === "matched" ? "No duplicates. Ready for the next settlement batch." : "No duplicates. Waiting for a quick review because confidence is low."}
+                  No duplicates. Waiting for a human approval; AI never approves.
                 </span>
               </Alert>
             )}

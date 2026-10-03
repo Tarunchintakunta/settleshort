@@ -12,9 +12,13 @@ type Props = {
   isAdmin: boolean;
   canEdit: boolean;
   lowConfidence: boolean;
+  /** null = this viewer may approve; otherwise why not (maker-checker). */
+  approveBlocked: string | null;
+  /** Waiting for a (re-)approval: in review, or batched with a voided approval. */
+  approvable: boolean;
 };
 
-export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence }: Props) {
+export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence, approveBlocked, approvable }: Props) {
   const router = useRouter();
   const [f, setF] = useState({
     vendor: claim.vendor,
@@ -100,18 +104,26 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence }:
         </div>
       </fieldset>
 
-      {lowConfidence && editable && <Alert tone="warning">Extraction confidence is low. Check each field against the receipt before marking it ready.</Alert>}
+      {approveBlocked && approvable && isAdmin && <p className="text-xs text-muted">{approveBlocked}</p>}
+      {lowConfidence && editable && <Alert tone="warning">Extraction confidence is low. Check each field against the receipt before approving.</Alert>}
       {msg && <Alert tone={msg.ok ? "success" : "danger"}>{msg.text}</Alert>}
 
-      {editable && (
+      {(editable || (!approveBlocked && approvable)) && (
         <div className="flex flex-col gap-3 border-t border-line pt-5 sm:flex-row sm:items-start">
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" variant="secondary" disabled={busy}>
-              Save changes
-            </Button>
-            {isAdmin && claim.status === "pending_review" && (
-              <Button type="button" disabled={busy} onClick={() => run(() => patch({ markReady: true }), "Marked ready to settle")}>
-                <CheckIcon className="size-4" weight="bold" aria-hidden /> Mark ready
+            {editable && (
+              <Button type="submit" variant="secondary" disabled={busy}>
+                Save changes
+              </Button>
+            )}
+            {approvable && (isAdmin || !approveBlocked) && (
+              <Button
+                type="button"
+                disabled={busy || !!approveBlocked}
+                title={approveBlocked ?? undefined}
+                onClick={() => run(() => api(`/claims/${claim.id}`, { method: "PATCH", json: { markReady: true } }), "Approved")}
+              >
+                <CheckIcon className="size-4" weight="bold" aria-hidden /> Approve
               </Button>
             )}
             {isAdmin && claim.duplicateOfId && (

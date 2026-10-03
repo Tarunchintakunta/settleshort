@@ -1,5 +1,5 @@
 import { PageHeader, Pill } from "@/components/ui";
-import { InviteForm, PaypalEmailCell } from "@/components/settings/members-client";
+import { InviteForm, PaypalEmailCell, ReleaseToggle } from "@/components/settings/members-client";
 import { requirePageCtx } from "@/lib/auth";
 import { workspaceMembers } from "@/lib/claims";
 
@@ -8,10 +8,11 @@ export const metadata = { title: "Members" };
 export default async function MembersPage({ searchParams }: PageProps<"/app/members">) {
   const ctx = await requirePageCtx();
   const members = await workspaceMembers(ctx.workspace.id);
+  const canGrant = !!members.find((m) => m.id === ctx.user.id)?.canRelease;
   const welcome = (await searchParams).welcome;
   return (
     <>
-      <PageHeader title="Members" sub="Who submits claims, who approves, and where PayPal sends their reimbursements." />
+      <PageHeader title="Members" sub="Who submits claims, who approves them, who can release money, and where PayPal sends reimbursements." />
       {welcome && (
         <div className="rise mb-8 rounded-[12px] border border-accent/20 bg-accent-soft px-4 py-4 text-sm leading-relaxed text-ink-2">
           <b className="text-ink">Last step:</b> add your teammates and their PayPal sandbox emails, then create your first claim.
@@ -24,6 +25,7 @@ export default async function MembersPage({ searchParams }: PageProps<"/app/memb
               <th className="px-5 py-3 font-medium">Name</th>
               <th className="px-5 py-3 font-medium">Role</th>
               <th className="px-5 py-3 font-medium">PayPal receiver</th>
+              <th className="px-5 py-3 font-medium" title="May send approved money to PayPal">Release</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -47,6 +49,9 @@ export default async function MembersPage({ searchParams }: PageProps<"/app/memb
                 </td>
                 <td className="px-5 py-3.5">
                   <PaypalEmailCell m={m} canEdit={ctx.isAdmin} />
+                </td>
+                <td className="px-5 py-3.5">
+                  <ReleaseToggle m={m} canEdit={canGrant} />
                 </td>
               </tr>
             ))}
