@@ -72,6 +72,8 @@ export async function createDemoWorkspace() {
         // Created the evening after the expense, so ages, overdue approvals and submit-to-paid times are real.
         createdAt: v.txnDate ? new Date(`${v.txnDate}T18:00:00Z`) : new Date(Date.now() - 3 * 86_400_000),
         currency: "USD",
+        receiptCents: v.amountCents,
+        receiptCurrency: "USD",
         aiJson: v.aiConfidence ? { vendor: v.vendor, amount_cents: v.amountCents, currency: "USD", txn_date: v.txnDate, confidence: v.aiConfidence, provider: "simulator", seeded: true } : null,
       })
       .returning();
@@ -81,7 +83,7 @@ export async function createDemoWorkspace() {
       : [];
     if (["matched", "in_batch", "paid"].includes(row.status)) {
       const snap: Snapshot = { amountCents: row.amountCents, currency: row.currency, payees: [{ userId: row.payerUserId, amountCents: row.amountCents }], evidenceIds: ev.map((e) => e.id) };
-      approvalRows.push({ workspaceId: ws.id, claimId: row.id, approverId: u.maya, snapshotHash: hashSnapshot(snap), snapshotJson: snap });
+      approvalRows.push({ workspaceId: ws.id, claimId: row.id, approverId: u.maya, snapshotHash: hashSnapshot(snap), snapshotJson: snap, createdAt: new Date(row.createdAt.getTime() + 5 * 3_600_000) });
     }
   }
   await db.insert(approvals).values(approvalRows);

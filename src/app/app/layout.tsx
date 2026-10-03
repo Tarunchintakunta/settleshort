@@ -44,7 +44,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
             </p>
           </div>
         </div>
-        <SideNav counts={{ "/app/claims": review.n, "/app/batches": awaiting.n, "/app/exceptions": exceptions.length }} hide={ctx.isAdmin ? [] : ["/app/exceptions"]} />
+        <SideNav counts={{ "/app/claims": review.n, "/app/batches": awaiting.n, "/app/exceptions": exceptions.length }} hide={ctx.isAdmin ? [] : ["/app/exceptions", "/app/exports"]} />
         <div className="mt-auto hidden space-y-3 md:block">
           <div className="space-y-2.5 rounded-[12px] border border-line bg-panel p-3 text-xs shadow-soft">
             <p className="text-[11px] font-medium tracking-[0.12em] text-muted uppercase">System</p>
