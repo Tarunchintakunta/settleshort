@@ -20,6 +20,9 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
   passwordHash: text("password_hash"), // null = invited, not signed up yet
+  // Invited people claim the account only with this one-time link token (SHA-256 stored, never the token).
+  inviteTokenHash: text("invite_token_hash"),
+  inviteExpiresAt: timestamp("invite_expires_at", { withTimezone: true }),
   createdAt: createdAt(),
 });
 

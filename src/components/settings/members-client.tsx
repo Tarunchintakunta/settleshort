@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { UserPlusIcon } from "@phosphor-icons/react";
 import { Button, Field, inputCls } from "@/components/ui";
+import { CopyButton } from "@/components/copy-button";
 import { api } from "@/lib/client";
 
 type Member = { id: string; name: string; email: string; role: string; paypalEmail: string | null; membershipId: string; canRelease: boolean; paypalVerifiedAt: Date | string | null; approvalLimitCents: number | null; escalatesToUserId: string | null; offboardedAt: Date | string | null };
@@ -11,7 +12,7 @@ type Member = { id: string; name: string; email: string; role: string; paypalEma
 export function InviteForm() {
   const router = useRouter();
   const [f, setF] = useState({ name: "", email: "", paypalEmail: "", role: "member" });
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string; link?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   return (
     <section className="rounded-[12px] border border-line p-6 shadow-soft">
@@ -25,8 +26,12 @@ export function InviteForm() {
           setBusy(true);
           setMsg(null);
           try {
-            await api("/members/invite", { json: f });
-            setMsg({ ok: true, text: `${f.name} added. They sign up with ${f.email} to log in.` });
+            const r = await api<{ inviteUrl: string | null }>("/members/invite", { json: f });
+            setMsg(
+              r.inviteUrl
+                ? { ok: true, text: `${f.name} added. Send them this one-time link (valid 14 days) to set a password:`, link: r.inviteUrl }
+                : { ok: true, text: `${f.name} added. They already have an account and can sign in now.` },
+            );
             setF({ name: "", email: "", paypalEmail: "", role: "member" });
             router.refresh();
           } catch (err) {
@@ -54,6 +59,12 @@ export function InviteForm() {
         <div className="sm:col-span-2 flex items-center gap-3">
           <Button disabled={busy}>Add member</Button>
           {msg && <p className={`text-sm ${msg.ok ? "text-success" : "text-danger"}`}>{msg.text}</p>}
+          {msg?.link && (
+            <div className="flex items-center gap-2">
+              <code className="min-w-0 flex-1 truncate rounded-[6px] bg-sunken px-2 py-1 text-xs">{msg.link}</code>
+              <CopyButton text={msg.link} label="Copy link" />
+            </div>
+          )}
         </div>
       </form>
     </section>
