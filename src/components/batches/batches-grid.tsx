@@ -25,20 +25,21 @@ const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString("en-US"
 
 const cols: ColDef<GridBatch>[] = [
   { field: "name", headerName: "Batch", flex: 1.4, minWidth: 160 },
-  { field: "status", headerName: "Status", width: 150, cellRenderer: (p: CustomCellRendererProps<GridBatch>) => <StatusPill status={p.value} /> },
-  { headerName: "Payouts", width: 110, valueGetter: (p) => `${p.data!.paid}/${p.data!.items} paid`, comparator: (_a, _b, x, y) => x.data!.items - y.data!.items },
+  { field: "status", headerName: "Status", minWidth: 175, flex: 1, cellRenderer: (p: CustomCellRendererProps<GridBatch>) => <StatusPill status={p.value} /> },
+  { headerName: "Payouts", minWidth: 105, flex: 0.6, valueGetter: (p) => `${p.data!.paid}/${p.data!.items} paid`, comparator: (_a, _b, x, y) => x.data!.items - y.data!.items },
   {
     field: "totalCents",
     headerName: "Total",
-    width: 130,
+    minWidth: 110,
+    flex: 0.7,
     type: "rightAligned",
     cellClass: "tabular-nums font-medium",
     valueFormatter: (p) => formatMoney(p.value, p.data!.currency),
   },
   { field: "paypalPayoutBatchId", headerName: "PayPal batch id", flex: 1, minWidth: 150, cellClass: "font-mono text-xs", valueFormatter: (p) => p.value ?? "Not sent" },
-  { field: "mode", headerName: "Mode", width: 110, valueFormatter: (p) => (p.value === "sandbox" ? "Sandbox" : p.value === "simulated" ? "Simulated" : "") },
-  { field: "createdAt", headerName: "Created", width: 140, valueFormatter: (p) => when(p.value), sort: "desc" },
-  { field: "approvedAt", headerName: "Approved", width: 140, valueFormatter: (p) => when(p.value) },
+  { field: "mode", headerName: "Mode", minWidth: 100, flex: 0.6, valueFormatter: (p) => (p.value === "sandbox" ? "Sandbox" : p.value === "simulated" ? "Simulated" : "") },
+  { field: "createdAt", headerName: "Created", minWidth: 130, flex: 0.8, valueFormatter: (p) => when(p.value), sort: "desc" },
+  { field: "approvedAt", headerName: "Approved", minWidth: 130, flex: 0.8, valueFormatter: (p) => when(p.value) },
 ];
 
 export function BatchesGrid({ rows }: { rows: GridBatch[] }) {
