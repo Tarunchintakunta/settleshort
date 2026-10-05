@@ -1,7 +1,7 @@
 import { and, asc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon, CheckIcon, WarningIcon } from "@phosphor-icons/react/ssr";
+import { ArrowLeftIcon, CheckIcon, MinusIcon, WarningIcon, XIcon } from "@phosphor-icons/react/ssr";
 import { BatchActions } from "@/components/batches/batch-actions";
 import { Confidence, cx, Money, Pill, StatusPill } from "@/components/ui";
 import { requirePageCtx } from "@/lib/auth";
@@ -11,6 +11,7 @@ import { releaseProblems } from "@/lib/approvals";
 import { unverifiedReceivers } from "@/lib/batches";
 import { formatMoney } from "@/lib/money";
 import { paypalMode } from "@/lib/paypal";
+import { claimTitle } from "@/lib/title";
 
 export const metadata = { title: "Batch" };
 
@@ -50,14 +51,33 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
   const recipients = new Set(items.map((i) => i.item.receiverEmail)).size;
 
   const at = (action: string) => events.find((e) => e.action === action)?.createdAt;
-  const done = ["completed", "partial", "failed"].includes(batch.status);
-  const timeline = [
-    { label: "Batch created", at: batch.createdAt, done: true },
-    { label: "Approved by a human", at: batch.approvedAt, done: !!batch.approvedAt },
-    ...(at("payout.uncertain") ? [{ label: "PayPal outcome unknown, held", at: at("payout.uncertain"), done: true }] : []),
-    { label: at("payout.verified") ? "Verified with PayPal, not resent" : "Sent to PayPal Payouts", at: at("payout.verified") ?? at("payout.created"), done: !!batch.paypalPayoutBatchId },
-    { label: batch.status === "failed" ? "Failed" : batch.status === "partial" ? "Partially paid" : "Paid", at: at(`batch.${batch.status}`), done },
+  type StepState = "done" | "failed" | "skipped" | "todo";
+  const failed = batch.status === "failed";
+  const sent = !!batch.paypalPayoutBatchId;
+  const timeline: { label: string; at: Date | null | undefined; state: StepState }[] = [
+    { label: "Batch created", at: batch.createdAt, state: "done" },
+    { label: "Approved by a human", at: batch.approvedAt, state: batch.approvedAt ? "done" : "todo" },
+    ...(at("payout.uncertain") ? [{ label: "PayPal outcome unknown, held", at: at("payout.uncertain"), state: "done" as const }] : []),
+    sent
+      ? { label: at("payout.verified") ? "Verified with PayPal, not resent" : "Sent to PayPal Payouts", at: at("payout.verified") ?? at("payout.created"), state: "done" }
+      : failed
+        ? { label: "Rejected by PayPal", at: at("payout.failed"), state: "failed" }
+        : { label: "Sent to PayPal Payouts", at: null, state: "todo" },
+    failed
+      ? { label: "Failed, nothing paid", at: at("batch.failed") ?? at("payout.failed"), state: "failed" }
+      : batch.status === "partial"
+        ? { label: "Partially paid", at: at("batch.partial"), state: "failed" }
+        : { label: "Paid", at: at("batch.completed"), state: batch.status === "completed" ? "done" : "todo" },
   ];
+  // A failed step makes every later unreached step "skipped" (grey), not pending.
+  const firstFail = timeline.findIndex((t) => t.state === "failed");
+  if (firstFail >= 0) timeline.forEach((t, i) => i > firstFail && t.state === "todo" && (t.state = "skipped"));
+  const DOT: Record<StepState, string> = {
+    done: "border-success bg-success text-on-success",
+    failed: "border-danger bg-danger text-on-accent",
+    skipped: "border-line-strong bg-sunken text-muted",
+    todo: "border-line-strong bg-panel text-transparent",
+  };
 
   return (
     <>
@@ -127,7 +147,7 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
       ) : (
         batch.errorMessage && batch.status === "failed" && (
           <div role="alert" className="mb-6 rounded-[12px] border border-danger/25 bg-danger-soft p-4 text-sm text-danger">
-            <b>PayPal error:</b> {batch.errorMessage}. Nothing was paid and the claims were released, so you can batch them again.
+            <b>PayPal error:</b> {batch.errorMessage.replace(/[.\s]+$/, "")}. Nothing was paid and the claims were released, so you can batch them again.
           </div>
         )
       )}
@@ -151,12 +171,12 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
                       <p className="font-medium">{item.receiverName}</p>
                       <p className="max-w-[150px] truncate text-xs text-muted sm:max-w-none" title={item.receiverEmail}>{item.receiverEmail}</p>
                       <Link href={`/app/claims/${claim.id}`} className="mt-1 block text-xs text-ink-2 hover:underline sm:hidden">
-                        #{claim.number} {claim.vendor?.trim() || "Unknown vendor"}
+                        #{claim.number} {claimTitle(claim)}
                       </Link>
                     </td>
                     <td className="hidden px-5 py-3.5 sm:table-cell">
                       <Link href={`/app/claims/${claim.id}`} className="hover:underline">
-                        <span className="tnum text-muted">#{claim.number}</span> {claim.vendor?.trim() || "Unknown vendor"}
+                        <span className="tnum text-muted">#{claim.number}</span> {claimTitle(claim)}
                       </Link>
                       <div className="mt-1">
                         <Confidence value={claim.aiConfidence} />
@@ -207,21 +227,19 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
             {timeline.map((t, i) => (
               <li key={t.label} className="relative flex gap-3 pb-6 last:pb-0">
                 {i < timeline.length - 1 && (
-                  <span className={cx("absolute top-5 left-[9px] h-[calc(100%-12px)] w-px", t.done ? "bg-success/50" : "bg-line")} aria-hidden />
+                  <span className={cx("absolute top-5 left-[9px] h-[calc(100%-12px)] w-px", t.state === "done" ? "bg-success/50" : t.state === "failed" ? "bg-danger/40" : "bg-line")} aria-hidden />
                 )}
-                <span
-                  className={cx(
-                    "relative z-10 mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border",
-                    t.done ? "border-success bg-success text-on-success" : "border-line-strong bg-panel text-transparent",
-                  )}
-                  aria-hidden
-                >
-                  <CheckIcon className="size-3" weight="bold" />
+                <span className={cx("relative z-10 mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border", DOT[t.state])} aria-hidden>
+                  {t.state === "failed" ? <XIcon className="size-3" weight="bold" /> : t.state === "skipped" ? <MinusIcon className="size-3" weight="bold" /> : <CheckIcon className="size-3" weight="bold" />}
                 </span>
                 <div>
-                  <p className={cx("text-sm", t.done ? "font-medium" : "text-muted")}>{t.label}</p>
+                  <p className={cx("text-sm", t.state === "done" && "font-medium", t.state === "failed" && "font-medium text-danger", (t.state === "todo" || t.state === "skipped") && "text-muted")}>
+                    {t.label}
+                    <span className="sr-only"> ({t.state === "todo" ? "not yet" : t.state})</span>
+                  </p>
                   {t.at && <p className="tnum text-xs text-muted">{t.at.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}</p>}
-                  {i === 1 && !t.done && <p className="text-xs text-muted">Requires an owner or admin</p>}
+                  {i === 1 && t.state === "todo" && <p className="text-xs text-muted">Requires an owner or admin</p>}
+                  {t.state === "skipped" && <p className="text-xs text-muted">Skipped</p>}
                 </div>
               </li>
             ))}

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowDownIcon, CpuIcon, GitMergeIcon, GaugeIcon, PlusIcon, QuotesIcon } from "@phosphor-icons/react/ssr";
-import { CopyButton } from "@/components/copy-button";
 import { HowItWorks } from "@/components/marketing/HowItWorks";
 import { DemoLink, wrap } from "@/components/marketing/Nav";
 import { Reveal } from "@/components/marketing/Reveal";
@@ -53,24 +52,6 @@ const PAYPAL = [
   ["Sandbox only", "The client refuses the live endpoint in code. Without keys, a labelled payout simulator runs."],
 ];
 
-const PAYLOAD = `POST /v1/payments/payouts
-PayPal-Request-Id: c4f672da-…
-
-{
-  "sender_batch_header": {
-    "sender_batch_id": "c4f672da-…",
-    "email_subject": "You were paid via SettleShort"
-  },
-  "items": [
-    {
-      "recipient_type": "EMAIL",
-      "receiver": "dev@northbeam.test",
-      "amount": { "value": "186.50", "currency": "USD" },
-      "note": "#3 Nopa"
-    }
-  ]
-}`;
-
 const FAQ = [
   {
     q: "Is this real money?",
@@ -98,30 +79,41 @@ export default function Home() {
   return (
     <>
       {/* Hero */}
-      <section className={`${wrap} pt-14 sm:pt-20`}>
-        <div className="max-w-[880px]">
-          <h1 className="rise text-[42px] font-semibold leading-[1.02] tracking-[-0.035em] text-ink sm:text-[60px] lg:text-[68px]">
-            Receipt in. Settled out. <span className="text-accent sm:block">One approve.</span>
-          </h1>
-          <p className="rise mt-6 max-w-[540px] text-lg leading-relaxed text-ink-2" style={{ animationDelay: "60ms" }}>
-            SettleShort reads receipts and expense messages, catches duplicates, and pays your team through PayPal after an admin approves.
-          </p>
-          <div className="rise mt-8 flex flex-wrap items-center gap-3" style={{ animationDelay: "120ms" }}>
-            <DemoLink />
-            <a
-              href="#how"
-              className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-[8px] border border-line bg-panel px-5 text-[15px] font-medium text-ink transition-colors hover:border-line-strong hover:bg-sunken"
-            >
-              How it works <ArrowDownIcon size={16} aria-hidden />
-            </a>
+      <section className="pt-20 sm:pt-28">
+        <div className={wrap}>
+          <div className="max-w-[880px]">
+            <h1 className="rise text-[42px] font-semibold leading-[1.02] tracking-[-0.035em] text-ink sm:text-[60px] lg:text-[68px]">
+              Receipt in. Settled out. <span className="text-accent sm:block">One approve.</span>
+            </h1>
+            <p className="rise mt-7 max-w-[540px] text-lg leading-relaxed text-ink-2" style={{ animationDelay: "60ms" }}>
+              SettleShort reads receipts and expense messages, catches duplicates, and pays your team through PayPal after an admin approves.
+            </p>
+            <div className="rise mt-9 flex flex-wrap items-center gap-3" style={{ animationDelay: "120ms" }}>
+              <DemoLink />
+              <a
+                href="#how"
+                className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-[8px] border border-line bg-panel px-5 text-[15px] font-medium text-ink transition-colors hover:border-line-strong hover:bg-sunken"
+              >
+                How it works <ArrowDownIcon size={16} aria-hidden />
+              </a>
+            </div>
           </div>
         </div>
-        <div className="rise mt-10 sm:mt-12" style={{ animationDelay: "180ms" }}>
+        {/* Wider than the text column so the product reads at full size. Phones get a readable close-up instead. */}
+        <div className="rise mx-auto mt-14 w-full max-w-[1360px] px-4 sm:mt-16 sm:px-6" style={{ animationDelay: "180ms" }}>
           <Shot
+            className="hidden sm:block"
             src="/marketing/extraction.png"
             alt="SettleShort reading a $186.50 Nopa receipt: each extracted field (vendor, total, date, tax, tip, card) sits beside the receipt with the quoted text it came from, and a warning says it is likely a duplicate of claim #3."
-            sizes="(min-width: 1240px) 1152px, calc(100vw - 32px)"
+            sizes="(min-width: 1360px) 1312px, calc(100vw - 48px)"
             preload
+          />
+          <Shot
+            className="sm:hidden"
+            src="/marketing/extraction.png"
+            alt="Close-up of SettleShort's extracted fields, each with the receipt text it came from."
+            sizes="calc(100vw - 32px)"
+            crop="aspect-[4/5] [&_img]:object-[100%_40%]"
           />
         </div>
       </section>
@@ -235,15 +227,18 @@ export default function Home() {
             <p className="mt-10 text-sm text-muted">On the roadmap, not built yet: Venmo payouts and Hyperwallet.</p>
           </div>
           <Reveal className="min-w-0 lg:col-span-6" delay={0.1}>
-            <figure className="max-w-full overflow-hidden rounded-[12px] border border-line bg-panel shadow-soft">
-              <figcaption className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5 text-[13px] text-muted sm:px-5">
-                What SettleShort sends when a batch is approved
-                <CopyButton text={PAYLOAD} label="Copy example payload" />
-              </figcaption>
-              <pre tabIndex={0} aria-label="Example PayPal Payouts request" className="overflow-x-auto bg-sunken p-5 font-mono text-[12.5px] leading-[1.7] text-ink-2">
-                {PAYLOAD}
-              </pre>
-            </figure>
+            <Shot
+              src="/marketing/approve.png"
+              alt="The Approve & Pay confirmation: pay 3 people $287.55 through PayPal Payouts, only after an admin confirms."
+              sizes="(min-width: 1024px) 560px, calc(100vw - 32px)"
+            />
+            <p className="mt-4 text-sm text-muted">
+              Want the exact request?{" "}
+              <a href="/docs" className="font-medium text-accent hover:underline">
+                See the API docs
+              </a>
+              .
+            </p>
           </Reveal>
         </div>
       </section>

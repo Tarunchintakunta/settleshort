@@ -1,4 +1,5 @@
 import "server-only";
+import { namesSplitWith } from "./title";
 import os from "node:os";
 import { currencyFromSymbol, toCents } from "./money";
 import type { AiMember, ReceiptExtract, TextClaim } from "./ai";
@@ -127,7 +128,11 @@ export function parseTextLocal(text: string, members: AiMember[], today: string)
   const amt = text.match(/(?:[$₹€£]|rs\.?\s?)\s?([\d,]+(?:\.\d{1,2})?)|([\d,]+(?:\.\d{1,2})?)\s?(?:usd|inr|dollars|bucks|rupees|rs)\b/i);
   const cents = amt ? toCents(amt[1] ?? amt[2]) : null;
   const mentions = [...text.matchAll(/@(\w+)/g)].map((m) => m[1].toLowerCase());
-  const payees = members.filter((m) => mentions.includes(m.handle.toLowerCase())).map((m) => m.name);
+  // "split with Asha and Ravi": plain names count too; members resolve to their full name, others are kept as written.
+  const named = namesSplitWith(text);
+  const byHandle = (h: string) => members.find((m) => m.handle.toLowerCase() === h.toLowerCase() || m.name.toLowerCase() === h.toLowerCase());
+  const mentioned = members.filter((m) => mentions.includes(m.handle.toLowerCase())).map((m) => m.name);
+  const payees = [...new Set([...mentioned, ...named.map((n) => byHandle(n)?.name ?? n)])];
   const vendor =
     text.match(/\b(?:at|from)\s+([A-Z][\w'&]*(?:\s+[A-Z][\w'&]*)*)/)?.[1] ??
     text.match(/\bfor\s+([A-Z][\w'&]*(?:\s+[A-Z][\w'&]*)*)/)?.[1] ??
@@ -137,14 +142,14 @@ export function parseTextLocal(text: string, members: AiMember[], today: string)
   const explicit = findDate(text)?.iso ?? null;
   const yesterday = /yesterday/i.test(text);
   const txn_date = explicit ?? (yesterday ? new Date(Date.parse(today) - 86_400_000).toISOString().slice(0, 10) : today);
-  const confident = cents !== null && payees.length === mentions.length;
+  const confident = cents !== null && mentioned.length === mentions.length;
   return {
     amount_cents: cents ?? 0,
     currency: currencyFromSymbol(text) ?? (/\b(rs|rupees|inr)\b/i.test(text) ? "INR" : "USD"),
     vendor,
     payee_names: payees,
     payer_name: null,
-    includes_payer: /\b(me|myself)\b/i.test(text),
+    includes_payer: /\b(me|myself)\b/i.test(text) || named.length > 0,
     txn_date,
     note: text.slice(0, 200),
     confidence: confident ? (vendor ? 0.84 : 0.72) : 0.4,
@@ -153,7 +158,7 @@ export function parseTextLocal(text: string, members: AiMember[], today: string)
       vendor: vendor ? 0.75 : 0.2,
       date: explicit || yesterday || /\btoday\b/i.test(text) ? 0.85 : 0.5,
       currency: currencyFromSymbol(text) ? 0.9 : 0.5,
-      payees: payees.length === mentions.length ? 0.85 : 0.3,
+      payees: mentioned.length === mentions.length ? 0.85 : 0.3,
     },
   };
 }

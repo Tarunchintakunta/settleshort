@@ -6,6 +6,7 @@ import { requirePageCtx } from "@/lib/auth";
 import { factsFor } from "@/lib/claim-facts";
 import { claimPayments, claims, db, ledgerEntries } from "@/lib/db";
 import { obligationsForMany } from "@/lib/ledger";
+import { claimTitle } from "@/lib/title";
 
 export const metadata = { title: "My money" };
 
@@ -76,7 +77,7 @@ export default async function MyMoney() {
                   <tr key={c.id}>
                     <td className="px-5 py-3.5">
                       <Link href={`/app/claims/${c.id}`} className="hover:underline">
-                        <span className="tnum text-muted">#{c.number}</span> {c.vendor || "Untitled claim"}
+                        <span className="tnum text-muted">#{c.number}</span> {claimTitle(c)}
                       </Link>
                     </td>
                     <td className="px-5 py-3.5">

@@ -22,6 +22,7 @@ export type ClaimFacts = {
 
 export type Truth = { key: string; label: string; detail: string; tone: Tone };
 
+// Labels follow the one app vocabulary: Draft, Needs review, Approved, In batch, Paid, Failed (plus rarer exception states).
 /** One status a person can trust, distinguishing every stage between submitted and confirmed received. */
 export function truthfulStatus(f: ClaimFacts): Truth {
   if (f.status === "rejected") return { key: "rejected", label: "Rejected", detail: "This claim won't be paid.", tone: "neutral" };
@@ -31,7 +32,7 @@ export function truthfulStatus(f: ClaimFacts): Truth {
   if (f.status === "pending_review")
     return f.flagged
       ? { key: "needs_review", label: "Needs review", detail: "Something needs a human look before it can be approved.", tone: "warning" }
-      : { key: "submitted", label: "Submitted", detail: "Waiting for an approver.", tone: "accent" };
+      : { key: "submitted", label: "Needs review", detail: "Waiting for an approver.", tone: "accent" };
   if (f.money === "owes_back") return { key: "owes_back", label: "Refund owed back", detail: "A refund arrived after reimbursement; the difference is owed to the company.", tone: "warning" };
   if (f.notReceivedAt && f.status === "paid") return { key: "investigating", label: "Under investigation", detail: "PayPal reports it paid, but the money hasn't arrived. Finance is checking.", tone: "danger" };
   if (f.status === "paid")
@@ -41,13 +42,13 @@ export function truthfulStatus(f: ClaimFacts): Truth {
         ? { key: "settled", label: "Settled", detail: "Nothing was owed to employees.", tone: "success" }
         : { key: "paid", label: "Paid", detail: "PayPal completed the payout. Waiting for the receiver to confirm.", tone: "success" };
   if (f.status === "partially_paid") return { key: "partially_paid", label: "Partially paid", detail: "Part of the money has been repaid; the rest is still owed.", tone: "warning" };
-  if (f.status === "failed") return { key: "failed", label: "Payout failed", detail: "PayPal couldn't pay it. It's owed again and goes into the next batch.", tone: "danger" };
+  if (f.status === "failed") return { key: "failed", label: "Failed", detail: "PayPal couldn't pay it. It's owed again and goes into the next batch.", tone: "danger" };
   if (f.status === "matched") return { key: "approved", label: "Approved", detail: "Approved; waiting to be scheduled into a payout batch.", tone: "accent" };
   if (f.status === "in_batch" && f.batch) {
     if (f.itemStatuses.includes("UNCLAIMED")) return { key: "unclaimed", label: "Unclaimed at PayPal", detail: "PayPal sent it, but the receiver hasn't accepted it in their PayPal account.", tone: "warning" };
-    if (f.batch.status === "awaiting_approval") return { key: "scheduled", label: "Scheduled", detail: "In a batch waiting for someone with release authority.", tone: "accent" };
+    if (f.batch.status === "awaiting_approval") return { key: "scheduled", label: "In batch", detail: "In a batch waiting for someone with release authority.", tone: "accent" };
     if (f.batch.status === "unknown") return { key: "verifying", label: "Verifying with PayPal", detail: "PayPal didn't answer in time. Nothing will be resent until the outcome is known.", tone: "warning" };
-    return { key: "processing", label: "Processing", detail: "Sent to PayPal; waiting for PayPal to finish.", tone: "accent" };
+    return { key: "processing", label: "In batch", detail: "Sent to PayPal; waiting for PayPal to finish.", tone: "accent" };
   }
   return { key: f.status, label: f.status.replace(/_/g, " "), detail: "", tone: "neutral" };
 }

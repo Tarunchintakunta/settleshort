@@ -5,6 +5,7 @@ import { ButtonLink, Empty, PageHeader } from "@/components/ui";
 import { requirePageCtx } from "@/lib/auth";
 import { factsFor } from "@/lib/claim-facts";
 import { claims, db, users } from "@/lib/db";
+import { claimTitle } from "@/lib/title";
 
 export const metadata = { title: "Claims" };
 
@@ -37,6 +38,7 @@ export default async function ClaimsPage() {
             number: c.number,
             txnDate: c.txnDate,
             vendor: c.vendor,
+            title: claimTitle(c),
             amountCents: c.amountCents,
             currency: c.currency,
             payer,

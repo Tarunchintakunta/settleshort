@@ -7,6 +7,7 @@ import { requirePageCtx } from "@/lib/auth";
 import { batches, batchItems, claims, db } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
 import { waitingOn } from "@/lib/escalations";
+import { claimTitle } from "@/lib/title";
 
 export const metadata = { title: "Overview" };
 
@@ -108,7 +109,7 @@ export default async function Dashboard() {
                   <Link href={`/app/claims/${c.id}`} className="flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-sunken">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">
-                        <span className="tnum text-muted">#{c.number}</span> {c.vendor?.trim() || "Unknown vendor"}
+                        <span className="tnum text-muted">#{c.number}</span> {claimTitle(c)}
                       </p>
                       <p className="mt-0.5 text-[13px] text-ink-2">{blocker.why}</p>
                       <p className="text-[13px] font-medium text-accent">{blocker.action}</p>

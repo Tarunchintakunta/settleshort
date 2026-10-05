@@ -22,6 +22,25 @@ function receivers() {
 }
 
 /**
+ * Self-reset for /demo: throwaway demo workspaces older than a day are deleted (everything in them cascades),
+ * then their throwaway users. Only rows created by createDemoWorkspace match: is_demo = 1 AND a random-tag slug,
+ * and users whose email is name+tag@demo.settleshort.app. Real workspaces and the fixed seeded team never match.
+ */
+export async function purgeOldDemoWorkspaces(maxAgeMs = 86_400_000) {
+  const { and, eq, like, lt, notExists, sql } = await import("drizzle-orm");
+  const gone = await db
+    .delete(workspaces)
+    .where(and(eq(workspaces.isDemo, 1), like(workspaces.slug, "northbeam-demo-%"), sql`${workspaces.slug} <> 'northbeam-demo-team'`, lt(workspaces.createdAt, new Date(Date.now() - maxAgeMs))))
+    .returning({ id: workspaces.id });
+  if (gone.length)
+    await db
+      .delete(users)
+      .where(and(like(users.email, "%+%@demo.settleshort.app"), notExists(db.select().from(memberships).where(eq(memberships.userId, users.id)))))
+      .catch((e) => console.warn("[demo] user cleanup skipped:", e instanceof Error ? e.message : e));
+  return gone.length;
+}
+
+/**
  * Default: a throwaway workspace per /demo click (random emails, no passwords).
  * With `login`, the one fixed team judges sign into: maya/sam/rita@demo.settleshort.app share that password.
  */

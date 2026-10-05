@@ -8,6 +8,7 @@ import { workspaceMembers } from "@/lib/claims";
 import { approvals, auditEvents, batches, batchItems, claimEvidence, claims, db, ledgerEntries } from "@/lib/db";
 import { obligationsFor } from "@/lib/ledger";
 import { formatMoney } from "@/lib/money";
+import { claimTitle } from "@/lib/title";
 
 const when = (d: Date | null | undefined) => (d ? d.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }) : "");
 
@@ -45,7 +46,7 @@ export async function ClosureRecord({ id, workspace, back = true }: { id: string
             {workspace.name} · closure record · generated {when(new Date())}
           </p>
           <h1 className="mt-1 text-[24px] font-semibold tracking-[-0.03em]">
-            #{claim.number} {claim.vendor || "Untitled claim"}
+            #{claim.number} {claimTitle(claim)}
           </h1>
           <p className="text-muted">
             {claim.txnDate ?? "No date"} · submitted by {name(claim.submitterId)} · status: {truth.label}
