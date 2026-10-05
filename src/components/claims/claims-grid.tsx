@@ -2,6 +2,7 @@
 
 import { AgGridReact, type CustomCellRendererProps } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz, type ColDef, type GridApi } from "ag-grid-community";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { GitMergeIcon, MagnifyingGlassIcon, StackIcon } from "@phosphor-icons/react";
@@ -16,6 +17,8 @@ export type GridClaim = {
   number: number;
   txnDate: string | null;
   vendor: string;
+  /** Vendor, or a generated title when there's none yet (see lib/title.ts). */
+  title: string;
   amountCents: number;
   currency: string;
   payer: string;
@@ -88,11 +91,15 @@ export function ClaimsGrid({ rows, isAdmin }: { rows: GridClaim[]; isAdmin: bool
         field: "vendor",
         flex: 1.6,
         minWidth: 160,
+        autoHeight: true,
+        getQuickFilterText: (p) => p.data?.title ?? "",
+        cellClass: "flex items-center py-1.5",
         cellRenderer: (p: CustomCellRendererProps<GridClaim>) => (
-          <span className="inline-flex min-w-0 items-center">
-            <span className="truncate">{p.value || <span className="text-muted">Untitled</span>}</span>
+          <span className="inline-flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 leading-tight">
+            <span className="truncate">{p.data?.title}</span>
+            {!p.value && <Pill tone="warning">Add vendor</Pill>}
             {p.data?.duplicate && (
-              <Pill tone="warning" dot className="ml-2 shrink-0">
+              <Pill tone="warning" dot>
                 Duplicate?
               </Pill>
             )}
@@ -131,6 +138,11 @@ export function ClaimsGrid({ rows, isAdmin }: { rows: GridClaim[]; isAdmin: bool
   );
 
   const shown = useMemo(() => (status ? rows.filter((r) => r.status === status) : rows), [rows, status]);
+  // Cards don't use the grid's quick filter, so apply the same search here.
+  const visible = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    return t ? shown.filter((r) => `${r.title} ${r.payer} ${r.number}`.toLowerCase().includes(t)) : shown;
+  }, [shown, q]);
   const ready = selected.filter((s) => ["matched", "partially_paid", "failed"].includes(s.status));
 
   async function run(fn: () => Promise<unknown>) {
@@ -220,7 +232,42 @@ export function ClaimsGrid({ rows, isAdmin }: { rows: GridClaim[]; isAdmin: bool
         </div>
       )}
 
-      <div style={{ height: Math.min(640, 46 + Math.max(shown.length, 4) * 52) }}>
+      {/* Phones and small tablets: cards instead of a grid that hides most columns. */}
+      <ul className="space-y-2 md:hidden" aria-label="Claims">
+        {visible.length ? (
+          visible.map((c) => (
+            <li key={c.id}>
+              <Link href={`/app/claims/${c.id}`} className="block rounded-[12px] border border-line bg-panel p-4 shadow-soft transition-colors active:bg-sunken">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="min-w-0 font-medium break-words">
+                    <span className="tnum mr-1.5 text-muted">#{c.number}</span>
+                    {c.title}
+                  </p>
+                  <span className="money shrink-0 font-semibold">{formatMoney(c.amountCents, c.currency)}</span>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <Pill tone={c.truth.tone} dot>
+                    {c.truth.label}
+                  </Pill>
+                  {c.duplicate && (
+                    <Pill tone="warning" dot>
+                      Duplicate?
+                    </Pill>
+                  )}
+                  {!c.vendor && <Pill tone="warning">Add vendor</Pill>}
+                </div>
+                <p className="mt-2 text-xs text-muted">
+                  {c.payer} · {c.txnDate ? new Date(c.txnDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "No date"}
+                </p>
+              </Link>
+            </li>
+          ))
+        ) : (
+          <li className="rounded-[12px] border border-dashed border-line-strong px-4 py-10 text-center text-sm text-muted">No claims match this filter</li>
+        )}
+      </ul>
+
+      <div className="hidden md:block">
         <AgGridReact<GridClaim>
           theme={gridTheme}
           rowData={shown}
@@ -244,12 +291,17 @@ export function ClaimsGrid({ rows, isAdmin }: { rows: GridClaim[]; isAdmin: bool
           }}
           rowClass="cursor-pointer"
           overlayNoRowsTemplate="No claims match this filter"
+          // The page scrolls, the grid doesn't: one scrollbar.
+          domLayout="autoHeight"
+          pagination
+          paginationPageSize={25}
+          paginationPageSizeSelector={false}
           animateRows
         />
       </div>
       {isAdmin && (
-        <p className="mt-3 text-xs leading-relaxed text-muted">
-          Select ready claims to build a settlement batch, or two look-alikes to merge them. Claims already in a batch, paid or rejected are locked; hover a checkbox to see why.
+        <p className="mt-3 hidden text-xs leading-relaxed text-muted md:block">
+          Select ready claims to build a settlement batch, or two look-alikes to merge them. Claims already in a batch, paid or rejected are locked; tap or hover a checkbox to see why.
         </p>
       )}
     </div>

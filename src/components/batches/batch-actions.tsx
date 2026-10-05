@@ -23,6 +23,7 @@ export function BatchActions({ batch, recipients, isAdmin, blocked, mode }: Prop
   const [error, setError] = useState<string | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const total = formatMoney(batch.totalCents, batch.currency);
+  const confirmed = typed.trim().toUpperCase() === "APPROVE";
 
   useEffect(() => {
     if (open) dialog.current?.showModal();
@@ -45,7 +46,7 @@ export function BatchActions({ batch, recipients, isAdmin, blocked, mode }: Prop
     setBusy(true);
     setError(null);
     try {
-      await api(`/batches/${batch.id}/approve`, { json: { confirm: typed } });
+      await api(`/batches/${batch.id}/approve`, { json: { confirm: "APPROVE" } });
       setOpen(false);
       router.refresh();
     } catch (e) {
@@ -106,7 +107,7 @@ export function BatchActions({ batch, recipients, isAdmin, blocked, mode }: Prop
           className="p-6 sm:p-8"
           onSubmit={(e) => {
             e.preventDefault();
-            if (typed === "APPROVE") approve();
+            if (confirmed) approve();
           }}
         >
           <div className="mb-5 inline-flex rounded-full bg-success-soft p-3 text-success">
@@ -120,7 +121,7 @@ export function BatchActions({ batch, recipients, isAdmin, blocked, mode }: Prop
             This sends <b className="text-ink">{batch.name}</b> to PayPal Payouts{mode === "sandbox" ? " in sandbox" : " (simulator)"}. Once PayPal accepts it, it can&apos;t be undone.
           </p>
           <label className="mt-6 block text-sm font-medium" htmlFor="confirm">
-            Type <span className="font-mono tracking-[0.14em]">APPROVE</span> to confirm
+            Type <span className="font-mono tracking-[0.14em]">approve</span> to confirm (any case)
           </label>
           <input id="confirm" autoFocus autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} className={cx(inputCls, "mt-2 h-12 text-center font-mono text-[15px] tracking-[0.28em]")} />
           {error && (
@@ -132,7 +133,7 @@ export function BatchActions({ batch, recipients, isAdmin, blocked, mode }: Prop
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="approve" disabled={typed !== "APPROVE" || busy}>
+            <Button type="submit" variant="approve" disabled={!confirmed || busy}>
               {busy ? "Sending to PayPal…" : `Approve & Pay ${total}`}
             </Button>
           </div>

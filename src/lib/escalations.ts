@@ -6,6 +6,7 @@ import { missingQuestions } from "./evidence";
 import { claimEvidence, claimPayments, claims, db, memberships, users, workspaces } from "./db";
 import { formatMoney } from "./money";
 import { blockerFor, escalationTarget, type Blocker } from "./reminders";
+import { claimTitle } from "./title";
 
 type Ws = typeof workspaces.$inferSelect;
 const DAY = 86_400_000;
@@ -74,7 +75,7 @@ export async function runEscalations(ws: Ws) {
     if (!won) continue;
     const [u] = await db.select({ name: users.name }).from(users).where(eq(users.id, target));
     const days = Math.floor((Date.now() - c.createdAt.getTime()) / DAY);
-    const context = `#${c.number} ${c.vendor || "Untitled"} ${formatMoney(c.amountCents, c.currency)} has waited ${days} days. ${blocker.why}. Next step: ${blocker.action}.`;
+    const context = `#${c.number} ${c.vendor ? `${c.vendor} ${formatMoney(c.amountCents, c.currency)}` : claimTitle(c)} has waited ${days} days. ${blocker.why}. Next step: ${blocker.action}.`;
     await audit(ws.id, null, "claim.escalated", "claim", c.id, { to: u?.name, context });
     await notify(`Escalated to ${u?.name}: ${context}`);
     moved++;

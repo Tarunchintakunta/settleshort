@@ -1,0 +1,1 @@
+ALTER TABLE "claims" ADD COLUMN "attendee_names" jsonb DEFAULT '[]'::jsonb NOT NULL;

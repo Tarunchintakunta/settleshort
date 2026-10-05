@@ -6,6 +6,7 @@ import { ArrowClockwiseIcon, ArrowRightIcon, ChatTextIcon, CheckIcon, FilePdfIco
 import { Alert, Button, ButtonLink, Confidence, cx, PROVIDER_LABEL, tabBtn, tabTrack } from "@/components/ui";
 import { api, uploadFile } from "@/lib/client";
 import { formatMoney } from "@/lib/money";
+import { claimTitle } from "@/lib/title";
 import { uncertainFields } from "@/lib/evidence";
 
 type Claim = {
@@ -20,6 +21,9 @@ type Claim = {
   status: string;
   aiConfidence: number | null;
   duplicateOfId: string | null;
+  rawText?: string | null;
+  note?: string;
+  purpose?: string;
   aiJson: {
     provider?: string;
     evidence?: Record<string, string>;
@@ -111,7 +115,7 @@ export function NewClaim({ provider, claimCount }: { provider: string; claimCoun
     reset();
     setSource({ kind: "text", text: t });
     try {
-      setClaim(await api<Claim>("/claims/from-text", { json: { text: t } }));
+      setClaim(await api<Claim>("/claims/from-text", { json: { text: t, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone } }));
     } catch (e) {
       setError((e as Error).message);
     }
@@ -300,7 +304,7 @@ function Extraction({
   const unsure = uncertainFields(claim?.aiJson?.field_confidence);
   const fields: { k: string; v: string; q?: string; big?: boolean; m?: boolean; f?: string }[] = claim
     ? [
-        { k: "Vendor", v: claim.vendor?.trim() || "Unknown vendor", q: ev.vendor, f: "vendor" },
+        { k: "Vendor", v: claim.vendor?.trim() || "Add vendor (needed before approval)", q: ev.vendor, f: claim.vendor?.trim() ? "vendor" : "vendor-missing" },
         { k: "Total", v: formatMoney(claim.amountCents, claim.currency), q: ev.total, big: true, m: true, f: "amount" },
         { k: "Date", v: claim.txnDate ? new Date(claim.txnDate + "T00:00:00").toLocaleDateString("en-US", { dateStyle: "medium" }) : "Not found", q: ev.date, f: "date" },
         ...(claim.taxCents ? [{ k: "Tax", v: formatMoney(claim.taxCents, claim.currency), q: ev.tax, m: true, f: "tax" }] : []),
@@ -380,7 +384,7 @@ function Extraction({
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
                 <p className="text-sm font-medium">
                   Claim <span className="tnum">#{claim.number}</span>
-                  <span className="text-muted"> · {claim.vendor?.trim() || "Unknown vendor"}</span>
+                  <span className="text-muted"> · {claimTitle(claim)}</span>
                 </p>
                 <Confidence value={claim.aiConfidence} provider={isText && claim.aiJson?.provider === "local" ? "parser" : claim.aiJson?.provider} />
               </div>
@@ -395,7 +399,7 @@ function Extraction({
                   >
                     <dt className="text-[12px] font-medium tracking-[0.04em] text-muted uppercase">{f.k}</dt>
                     <dd className="min-w-0">
-                      <span className={cx(f.big ? "text-[28px] leading-none font-semibold" : "text-sm font-medium", f.m ? "money" : "break-words", f.f && unsure.includes(f.f) && "text-warning")}>{f.v}</span>
+                      <span className={cx(f.big ? "text-[28px] leading-none font-semibold" : "text-sm font-medium", f.m ? "money" : "break-words", f.f && unsure.includes(f.f) && "text-warning", f.f === "vendor-missing" && "text-muted italic")}>{f.v}</span>
                       {f.f && unsure.includes(f.f) && (
                         <span className="ml-2 inline-flex rounded-full bg-warning-soft px-2 py-0.5 align-middle text-[11px] font-medium text-warning">AI unsure, check this</span>
                       )}

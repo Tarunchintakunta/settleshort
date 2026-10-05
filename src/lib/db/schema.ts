@@ -119,6 +119,8 @@ export const claims = pgTable(
     // "mapping" = filled from a confirmed merchant rule; "human" = set by a person on this claim.
     categorySource: text("category_source"),
     rawText: text("raw_text"),
+    // People named in the message who aren't workspace members yet ("split with Asha and Ravi"). Shown, never paid.
+    attendeeNames: jsonb("attendee_names").$type<string[]>().notNull().default([]),
     // S3 object key only (receipts/{workspaceId}/{claimId}/{uuid}.{ext}); viewed via short-lived presigned GET URLs.
     receiptKey: text("receipt_key"),
     receiptMime: text("receipt_mime"),

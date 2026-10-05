@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { ChatTextIcon, FileIcon, PaperclipIcon } from "@phosphor-icons/react";
 import { Alert, Button, inputCls, Money } from "@/components/ui";
 import { api, uploadFile } from "@/lib/client";
+import { ReceiptPreview } from "./receipt-preview";
 
 export type EvidenceRow = {
   id: string;
@@ -78,6 +79,9 @@ export function EvidencePanel({
         {rows.map((r) => (
           <li key={r.id} className="flex items-start justify-between gap-3 px-4 py-3">
             <div className="flex min-w-0 gap-2.5">
+              {r.fileMime?.startsWith("image/") && !(r.privateFile && r.addedById !== viewerId) && (
+                <ReceiptPreview thumb src={`/api/v1/claims/${claimId}/evidence/${r.id}`} alt={r.fileName ?? "Evidence image"} />
+              )}
               {r.fileName ? <FileIcon className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /> : <ChatTextIcon className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />}
               <div className="min-w-0">
                 <p className="font-medium">

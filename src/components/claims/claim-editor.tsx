@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { CheckIcon, XIcon } from "@phosphor-icons/react";
 import { Alert, Button, Field, inputCls } from "@/components/ui";
 import { CATEGORIES } from "@/lib/categories";
 import { api } from "@/lib/client";
@@ -171,38 +170,16 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence, a
           </div>
         </div>
       )}
-      {approveBlocked && approvable && isAdmin && <p className="text-xs text-muted">{approveBlocked}</p>}
       {lowConfidence && editable && <Alert tone="warning">Extraction confidence is low. Check each field against the receipt before approving.</Alert>}
       {msg && <Alert tone={msg.ok ? "success" : "danger"}>{msg.text}</Alert>}
 
-      {(editable || (!approveBlocked && approvable)) && (
+      {/* Approve and Reject live in the claim header (see ClaimActions). */}
+      {(editable || (!approveBlocked && approvable && claim.status === "pending_review")) && (
         <div className="flex flex-col gap-3 border-t border-line pt-5 sm:flex-row sm:items-start">
           <div className="flex flex-wrap gap-2">
             {editable && (
               <Button type="submit" variant="secondary" disabled={busy}>
                 Save changes
-              </Button>
-            )}
-            {approvable && (isAdmin || !approveBlocked) && (
-              <Button
-                type="button"
-                disabled={busy || !!approveBlocked}
-                title={approveBlocked ?? undefined}
-                onClick={async () => {
-                  setBusy(true);
-                  setMsg(null);
-                  try {
-                    const r = await api<{ approvalNeeded: string | null }>(`/claims/${claim.id}`, { method: "PATCH", json: { markReady: true } });
-                    setMsg({ ok: true, text: r.approvalNeeded ? `Signed off. Still needs ${r.approvalNeeded}.` : "Approved" });
-                    router.refresh();
-                  } catch (e) {
-                    setMsg({ ok: false, text: (e as Error).message });
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                <CheckIcon className="size-4" weight="bold" aria-hidden /> Approve
               </Button>
             )}
             {approvable && !approveBlocked && claim.status === "pending_review" && !adjust && (
@@ -211,20 +188,6 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence, a
               </Button>
             )}
           </div>
-          {isAdmin && (
-            <Button
-              type="button"
-              variant="danger"
-              className="sm:ml-auto"
-              disabled={busy}
-              onClick={() => {
-                const reason = prompt("Reason for rejecting (optional)") ?? undefined;
-                run(() => api(`/claims/${claim.id}/reject`, { json: { reason } }), "Claim rejected");
-              }}
-            >
-              <XIcon className="size-4" aria-hidden /> Reject
-            </Button>
-          )}
         </div>
       )}
     </form>

@@ -7,6 +7,7 @@ import { claimEvidence, claimLines, claims, claimSplits, db, memberships, mercha
 import { DUPLICATE_THRESHOLD, findMapping, findMatches, isAmbiguous } from "./matching";
 import { contentKey } from "./evidence";
 import { formatMoney, splitEven } from "./money";
+import { namesSplitWith } from "./title";
 
 export const LOW_CONFIDENCE = 0.55;
 
@@ -29,6 +30,7 @@ export type NewClaim = {
   aiConfidence?: number | null;
   payerUserId: string;
   splitUserIds?: string[];
+  attendeeNames?: string[];
 };
 
 export async function workspaceMembers(workspaceId: string) {
@@ -167,16 +169,33 @@ export async function getClaimsByIds(workspaceId: string, ids: string[]) {
   return db.select().from(claims).where(and(eq(claims.workspaceId, workspaceId), inArray(claims.id, ids)));
 }
 
-export async function claimFromText(workspaceId: string, userId: string, text: string, source: "manual" | "slack" | "email") {
+/** Today's date (YYYY-MM-DD) where the user is, not in UTC: 00:30 IST on Oct 5 is still Oct 4 in UTC. */
+export function todayIn(timeZone?: string, now = new Date()) {
+  try {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: timeZone || process.env.APP_TIMEZONE || "UTC", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+  } catch {
+    return now.toISOString().slice(0, 10); // unknown zone name
+  }
+}
+
+export async function claimFromText(workspaceId: string, userId: string, text: string, source: "manual" | "slack" | "email", timeZone?: string) {
   const members = await workspaceMembers(workspaceId);
   const parsed = await parseClaimText(
     text,
     members.map((m) => ({ id: m.id, name: m.name, handle: handleOf(m.name) })),
-    new Date().toISOString().slice(0, 10),
+    todayIn(timeZone),
   );
-  const byName = (n: string) => members.find((m) => m.name.toLowerCase() === n.toLowerCase() || handleOf(m.name) === n.toLowerCase());
-  const payer = (parsed.payer_name && byName(parsed.payer_name)?.id) || userId;
-  const split = new Set(parsed.payee_names.map((n) => byName(n)?.id).filter(Boolean) as string[]);
+  const byName = (raw: string) => {
+    const n = raw.replace(/^@/, "").trim().toLowerCase();
+    return members.find((m) => m.name.toLowerCase() === n || handleOf(m.name) === n);
+  };
+  // Guard against a model "resolving" Asha to some other member: a person counts only if the message names them.
+  const said = (n: string) => !!handleOf(n) && new RegExp(`(^|[^\\w])@?${handleOf(n).replace(/[^\w]/g, "")}\\b`, "i").test(text);
+  const payer = (parsed.payer_name && said(parsed.payer_name) && byName(parsed.payer_name)?.id) || userId;
+  const names = [...parsed.payee_names.filter(said), ...namesSplitWith(text)];
+  const split = new Set(names.map((n) => byName(n)?.id).filter(Boolean) as string[]);
+  // Named people who aren't members yet are kept on the claim instead of silently dropped.
+  const attendeeNames = [...new Set(names.filter((n) => !byName(n)).map((n) => n.replace(/^@/, "").trim()).filter(Boolean))];
   if (parsed.includes_payer) split.add(payer);
   const claim = await createClaim(workspaceId, userId, {
     source,
@@ -190,6 +209,7 @@ export async function claimFromText(workspaceId: string, userId: string, text: s
     aiConfidence: parsed.confidence,
     payerUserId: payer,
     splitUserIds: [...split],
+    attendeeNames,
   });
   await audit(workspaceId, userId, "ai.parse_ok", "claim", claim.id, { provider: aiProvider(), confidence: parsed.confidence });
   return claim;

@@ -7,7 +7,7 @@ import { EvidencePanel, type EvidenceRow } from "@/components/claims/evidence-pa
 import { Confidence, cx, Money, StatusPill } from "@/components/ui";
 import { requirePageCtx } from "@/lib/auth";
 import { LOW_CONFIDENCE, workspaceMembers } from "@/lib/claims";
-import { approvals, batches, batchItems, claimEvidence, claimPayments, claims, claimSplits, contexts, db, fixRequests, investigations, ledgerEntries } from "@/lib/db";
+import { approvals, auditEvents, batches, batchItems, claimEvidence, claimPayments, claims, claimSplits, contexts, db, fixRequests, investigations, ledgerEntries, users } from "@/lib/db";
 import { linesFor, obligationsFor } from "@/lib/ledger";
 import { LinesCard } from "@/components/claims/lines-card";
 import { CurrencyCard } from "@/components/claims/currency-card";
@@ -33,6 +33,11 @@ import { FIELD_LABEL, FIELD_UNSURE, missingQuestions, suggestPurposes, uncertain
 import { decisionBrief } from "@/lib/brief";
 import { normalizeMerchant } from "@/lib/matching";
 import { formatMoney } from "@/lib/money";
+import { claimTitle } from "@/lib/title";
+import { describe } from "@/lib/activity";
+import { ClaimActions } from "@/components/claims/claim-actions";
+import { ReceiptPreview } from "@/components/claims/receipt-preview";
+import { CaretDownIcon } from "@phosphor-icons/react/ssr";
 
 export const metadata = { title: "Claim" };
 
@@ -92,6 +97,15 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
   });
 
   const approvableNow = claim.status === "pending_review" && !blocker;
+  const approvable = claim.status === "pending_review" || (claim.status === "in_batch" && !activeApproval && batchRow?.batch.status === "awaiting_approval");
+  const title = claimTitle(claim);
+  const trail = await db
+    .select({ e: auditEvents, actor: users.name })
+    .from(auditEvents)
+    .leftJoin(users, eq(users.id, auditEvents.actorId))
+    .where(and(eq(auditEvents.workspaceId, ctx.workspace.id), eq(auditEvents.entityId, claim.id)))
+    .orderBy(desc(auditEvents.createdAt))
+    .limit(5);
   const waiting = blockerFor(truth, {
     missing: missingQuestions(claim, { kinds: evidence_.map((e) => e.kind), receiptRequiredCents: ctx.workspace.receiptRequiredCents }).map((q) => q.question),
     contradictions: conflicts.map((c) => c.message),
@@ -124,32 +138,57 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
       })
     : null;
 
+  const actions = { claimId: claim.id, canApprove: approvable && (ctx.isAdmin || !blocker), approveBlocked: blocker?.message ?? null, canReject: ctx.isAdmin && ["draft", "pending_review", "matched"].includes(claim.status) };
+  const attendees = (claim.attendeeNames ?? []).filter(Boolean);
+
   return (
     <>
-      <Link href="/app/claims" className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-muted transition-colors hover:text-ink">
-        <ArrowLeftIcon className="size-3.5" aria-hidden /> Claims
-      </Link>
-      <Link href={`/app/claims/${claim.id}/record`} className="mb-6 ml-4 inline-flex text-[13px] text-muted transition-colors hover:text-ink">
-        Closure record
-      </Link>
+      <div className="mb-4 flex flex-wrap gap-x-4 gap-y-1">
+        <Link href="/app/claims" className="inline-flex min-h-11 items-center gap-1.5 text-[13px] text-muted transition-colors hover:text-ink md:min-h-0">
+          <ArrowLeftIcon className="size-3.5" aria-hidden /> Claims
+        </Link>
+        <Link href={`/app/claims/${claim.id}/record`} className="inline-flex min-h-11 items-center text-[13px] text-muted transition-colors hover:text-ink md:min-h-0">
+          Closure record
+        </Link>
+      </div>
 
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-6">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <Pill tone={truth.tone} dot>
-              {truth.label}
-            </Pill>
-            <span className="text-[13px] text-muted">
-              <span className="font-mono">#{claim.number}</span> from {name(claim.submitterId)} via {SOURCE[claim.source]}
-            </span>
+      {/* Sticky summary: what it is, how much, where it stands, and the decision. */}
+      <header className="sticky top-0 z-20 -mx-4 mb-8 border-b border-line bg-panel/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 md:-mx-10 md:px-10">
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <Pill tone={truth.tone} dot>
+                {truth.label}
+              </Pill>
+              <span className="text-[13px] text-muted">
+                <span className="font-mono">#{claim.number}</span> from {name(claim.submitterId)} via {SOURCE[claim.source]}
+              </span>
+            </div>
+            <h1 className="mt-1.5 break-words text-[22px] font-semibold tracking-[-0.03em] sm:text-[26px]">
+              {title}
+              {!claim.vendor.trim() && <span className="ml-2 align-middle text-[13px] font-medium tracking-normal text-warning">Add vendor</span>}
+            </h1>
+            <p className="mt-0.5 text-[13px] text-muted">
+              Reimburses {name(claim.payerUserId)}
+              {splits.length > 0 && <> · split with {splits.map((x) => name(x.userId)).join(", ")}</>}
+              {attendees.length > 0 && <> · also with {attendees.join(", ")} (not in this workspace)</>}
+            </p>
           </div>
-          <h1 className="mt-3 break-words text-[26px] font-semibold tracking-[-0.03em] sm:text-[28px]">{claim.vendor || "Untitled claim"}</h1>
-        </div>
-        <div className="text-left sm:text-right">
-          <Money cents={claim.amountCents} currency={claim.currency} className="text-[40px] leading-none font-semibold sm:text-[44px]" />
-          <p className="mt-1 text-[13px] text-muted">Reimburses {name(claim.payerUserId)}</p>
+          <div className="flex flex-wrap items-center gap-4">
+            <Money cents={claim.amountCents} currency={claim.currency} className="text-[30px] leading-none font-semibold sm:text-[36px]" />
+            <div className="hidden flex-col items-end md:flex">
+              <ClaimActions {...actions} variant="inline" />
+            </div>
+          </div>
         </div>
       </header>
+
+      {/* Phones: the decision stays under the thumb, above the tab bar. */}
+      {(actions.canApprove || actions.canReject) && (
+        <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-line bg-panel/95 px-4 py-2.5 backdrop-blur md:hidden">
+          <ClaimActions {...actions} variant="bar" />
+        </div>
+      )}
 
       {brief && (
         <section aria-labelledby="brief-h" className="rise mb-8 rounded-[12px] border border-line bg-panel p-5 shadow-soft">
@@ -223,62 +262,67 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
         </section>
       )}
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-        <div className="space-y-6 lg:sticky lg:top-6 lg:self-start">
-          {receipt ? (
-            <div className="flex min-h-[320px] items-center justify-center overflow-hidden rounded-[12px] border border-line bg-sunken p-5 shadow-[inset_0_1px_0_rgb(255_255_255/0.4)]">
-              {receipt.mime.startsWith("image/") ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={receipt.src} alt={`Receipt ${receipt.filename}`} className="max-h-[560px] w-auto rounded-[8px] shadow-pop" />
-              ) : (
-                <a href={receipt.src} target="_blank" className="flex flex-col items-center gap-3 text-muted hover:text-ink">
-                  <FilePdfIcon className="size-14" weight="light" aria-hidden />
-                  <span className="text-sm">Open {receipt.filename}</span>
-                </a>
-              )}
-            </div>
-          ) : claim.rawText ? (
-            <div className="rounded-[12px] border border-line bg-panel p-5 shadow-soft">
-              <p className="text-[11px] font-medium tracking-[0.12em] text-muted uppercase">Original message</p>
-              <p className="mt-3 text-[15px] leading-relaxed">{claim.rawText}</p>
-            </div>
-          ) : null}
-
-          {(evidence.length > 0 || ai) && (
-            <section>
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-[15px] font-semibold tracking-[-0.015em]">What was read</h2>
-                <Confidence value={claim.aiConfidence} provider={ai?.provider} />
+      {/* Receipt and what was read, side by side. */}
+      {(receipt || claim.rawText || evidence.length > 0 || ai) && (
+        <div className="mb-10 grid gap-6 lg:grid-cols-2">
+          <div>
+            {receipt ? (
+              <div className="flex min-h-[320px] items-center justify-center overflow-hidden rounded-[12px] border border-line bg-sunken p-5 shadow-[inset_0_1px_0_rgb(255_255_255/0.4)]">
+                {receipt.mime.startsWith("image/") ? (
+                  <ReceiptPreview src={receipt.src} alt={`Receipt ${receipt.filename}`} />
+                ) : (
+                  <a href={receipt.src} target="_blank" className="flex flex-col items-center gap-3 text-muted hover:text-ink">
+                    <FilePdfIcon className="size-14" weight="light" aria-hidden />
+                    <span className="text-sm">Open {receipt.filename}</span>
+                  </a>
+                )}
               </div>
-              {evidence.length > 0 && (
-                <ul className="space-y-2">
-                  {evidence.map(([k, v]) => (
-                    <li key={k} className="rounded-[8px] border border-line bg-sunken/70 px-3 py-2.5">
-                      <p className="flex justify-between text-[11px] font-medium tracking-[0.08em] text-muted uppercase">
-                        {k}
-                        {ai?.field_confidence?.[k === "total" ? "amount" : k] != null && (
-                          <span className={cx("tnum font-mono normal-case tracking-normal", ai.field_confidence[k === "total" ? "amount" : k] < FIELD_UNSURE && "text-warning")}>
-                            {Math.round(ai.field_confidence[k === "total" ? "amount" : k] * 100)}% sure
-                          </span>
-                        )}
-                      </p>
-                      <p className="mt-1 flex items-start gap-1.5 font-mono text-[13px] leading-relaxed text-ink">
-                        <QuotesIcon className="mt-0.5 size-3 shrink-0 text-muted" weight="fill" aria-hidden />
-                        <span className="break-words">{v}</span>
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <details className="mt-3 text-[13px]">
-                <summary className="cursor-pointer text-muted hover:text-ink">Raw extraction JSON</summary>
-                <pre className="mt-2 max-h-72 overflow-auto rounded-[8px] border border-line bg-sunken p-3 font-mono text-[11.5px] leading-relaxed">{JSON.stringify({ ...ai, ocr_text: undefined, match }, null, 2)}</pre>
-                {ai?.ocr_text && <pre className="mt-2 max-h-48 overflow-auto rounded-[8px] border border-line bg-sunken p-3 font-mono text-[11.5px] leading-relaxed">{ai.ocr_text}</pre>}
-              </details>
-            </section>
-          )}
+            ) : claim.rawText ? (
+              <div className="rounded-[12px] border border-line bg-panel p-5 shadow-soft">
+                <p className="text-[11px] font-medium tracking-[0.12em] text-muted uppercase">Original message</p>
+                <p className="mt-3 text-[15px] leading-relaxed">{claim.rawText}</p>
+              </div>
+            ) : null}
+          </div>
+          <div>
+            {(evidence.length > 0 || ai) && (
+              <section>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-[15px] font-semibold tracking-[-0.015em]">What was read</h2>
+                  <Confidence value={claim.aiConfidence} provider={ai?.provider} />
+                </div>
+                {evidence.length > 0 && (
+                  <ul className="space-y-2">
+                    {evidence.map(([k, v]) => (
+                      <li key={k} className="rounded-[8px] border border-line bg-sunken/70 px-3 py-2.5">
+                        <p className="flex justify-between text-[11px] font-medium tracking-[0.08em] text-muted uppercase">
+                          {k}
+                          {ai?.field_confidence?.[k === "total" ? "amount" : k] != null && (
+                            <span className={cx("tnum font-mono normal-case tracking-normal", ai.field_confidence[k === "total" ? "amount" : k] < FIELD_UNSURE && "text-warning")}>
+                              {Math.round(ai.field_confidence[k === "total" ? "amount" : k] * 100)}% sure
+                            </span>
+                          )}
+                        </p>
+                        <p className="mt-1 flex items-start gap-1.5 font-mono text-[13px] leading-relaxed text-ink">
+                          <QuotesIcon className="mt-0.5 size-3 shrink-0 text-muted" weight="fill" aria-hidden />
+                          <span className="break-words">{v}</span>
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <details className="mt-3 text-[13px]">
+                  <summary className="cursor-pointer text-muted hover:text-ink">Raw extraction JSON</summary>
+                  <pre className="mt-2 max-h-72 overflow-auto rounded-[8px] border border-line bg-sunken p-3 font-mono text-[11.5px] leading-relaxed">{JSON.stringify({ ...ai, ocr_text: undefined, match }, null, 2)}</pre>
+                  {ai?.ocr_text && <pre className="mt-2 max-h-48 overflow-auto rounded-[8px] border border-line bg-sunken p-3 font-mono text-[11.5px] leading-relaxed">{ai.ocr_text}</pre>}
+                </details>
+              </section>
+            )}
+          </div>
         </div>
+      )}
 
+      <div className="grid gap-8 pb-20 md:pb-0 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <div className="space-y-8">
           <section className="rounded-[12px] border border-line p-5 shadow-soft sm:p-6">
             <h2 className="mb-5 text-[15px] font-semibold tracking-[-0.015em]">Details</h2>
@@ -290,7 +334,7 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
               lowConfidence={claim.aiConfidence != null && claim.aiConfidence < LOW_CONFIDENCE}
               approveBlocked={blocker?.message ?? null}
               uncertain={uncertainFields(ai?.field_confidence)}
-              approvable={claim.status === "pending_review" || (claim.status === "in_batch" && !activeApproval && batchRow?.batch.status === "awaiting_approval")}
+              approvable={approvable}
             />
             {activeApproval ? (
               <p className="mt-4 border-t border-line pt-4 text-[13px] text-ink-2">
@@ -323,47 +367,6 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
             </p>
           )}
 
-          <CurrencyCard
-            claimId={claim.id}
-            receipt={{ cents: claim.receiptCents ?? claim.amountCents, currency: claim.receiptCurrency ?? claim.currency }}
-            charged={claim.chargedCents != null ? { cents: claim.chargedCents, currency: claim.chargedCurrency ?? claim.currency } : null}
-            reimbursed={{ cents: claim.amountCents, currency: claim.currency }}
-            fx={{ rate: claim.fxRate, source: claim.fxSource, at: claim.fxAt?.toISOString() ?? null }}
-            canEdit={(ctx.isAdmin || claim.submitterId === ctx.user.id) && ["draft", "pending_review", "matched"].includes(claim.status)}
-          />
-
-          <TrackingCard
-            claimId={claim.id}
-            kind={claim.kind}
-            depositStatus={claim.depositStatus}
-            depositNote={claim.depositNote}
-            recoverableClient={claim.recoverableClient}
-            recoveryStatus={claim.recoveryStatus}
-            recoveryRef={claim.recoveryRef}
-            canEdit={(ctx.isAdmin || claim.submitterId === ctx.user.id) && claim.status !== "rejected"}
-            isAdmin={ctx.isAdmin}
-          />
-
-          <MoneyTimeline truth={truth} steps={claimTimeline(facts)}>
-            {waiting && (
-              <div className="mt-4 border-t border-line pt-4 text-[13px]">
-                <p>
-                  <span className="text-muted">Waiting on the {waiting.waitingOn}:</span> {waiting.why}
-                </p>
-                <p className="font-medium text-accent">{waiting.action}</p>
-                {claim.escalatedToUserId && (
-                  <p className="mt-1 text-xs text-warning">
-                    Escalated to {name(claim.escalatedToUserId)} on {claim.escalatedAt?.toLocaleDateString("en-US", { dateStyle: "medium" })}
-                  </p>
-                )}
-                <RemindButton claimId={claim.id} />
-              </div>
-            )}
-            {myPaid.map((i) => (
-              <ConfirmReceipt key={i.id} itemId={i.id} amount={formatMoney(i.amountCents, i.currency)} />
-            ))}
-          </MoneyTimeline>
-
           <EvidencePanel
             claimId={claim.id}
             viewerId={ctx.user.id}
@@ -394,31 +397,54 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
               createdAt: e.createdAt.toISOString(),
             }))}
           />
+        </div>
 
-          <section aria-labelledby="settlement-h">
-            <h2 id="settlement-h" className="mb-2 text-[15px] font-semibold tracking-[-0.015em]">
-              Settlement
-            </h2>
-            <SettlementCard
-              claimId={claim.id}
-              currency={claim.currency}
-              totalCents={claim.amountCents}
-              o={obligations}
-              payments={payments}
-              entries={ledger.map((e) => ({ id: e.id, kind: e.kind, userId: e.userId, amountCents: e.amountCents, reference: e.reference, createdAt: e.createdAt.toISOString() }))}
-              members={members}
-              participants={splits.map((x) => name(x.userId))}
-              participantIds={splits.map((x) => x.userId)}
-              budgetOwnerId={claim.budgetOwnerUserId}
-              canEditPeople={(ctx.isAdmin || claim.submitterId === ctx.user.id) && !["paid", "rejected"].includes(claim.status)}
-              approvedBy={activeApproval ? name(activeApproval.approverId) : null}
-              canEditFunding={(ctx.isAdmin || claim.submitterId === ctx.user.id) && ["draft", "pending_review", "matched"].includes(claim.status)}
-              canRecord={ctx.isAdmin && ["matched", "partially_paid", "paid", "failed"].includes(claim.status)}
-              advanceOptions={(await advancesWithSpend(ctx.workspace.id))
-                .filter((a) => a.status === "open" && a.currency === claim.currency)
-                .map((a) => ({ id: a.id, label: `${name(a.userId)}: ${a.purpose} (${formatMoney(a.leftCents, a.currency)} left)` }))}
-            />
-            <div className="mt-3 overflow-hidden rounded-[12px] border border-line bg-panel shadow-soft">
+        <div className="space-y-4">
+          <MoneyTimeline truth={truth} steps={claimTimeline(facts)}>
+            {waiting && (
+              <div className="mt-4 border-t border-line pt-4 text-[13px]">
+                <p>
+                  <span className="text-muted">Waiting on the {waiting.waitingOn}:</span> {waiting.why}
+                </p>
+                <p className="font-medium text-accent">{waiting.action}</p>
+                {claim.escalatedToUserId && (
+                  <p className="mt-1 text-xs text-warning">
+                    Escalated to {name(claim.escalatedToUserId)} on {claim.escalatedAt?.toLocaleDateString("en-US", { dateStyle: "medium" })}
+                  </p>
+                )}
+                <RemindButton claimId={claim.id} />
+              </div>
+            )}
+            {myPaid.map((i) => (
+              <ConfirmReceipt key={i.id} itemId={i.id} amount={formatMoney(i.amountCents, i.currency)} />
+            ))}
+          </MoneyTimeline>
+
+          <section aria-labelledby="trail-h" className="rounded-[12px] border border-line bg-panel p-4 shadow-soft">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 id="trail-h" className="text-[15px] font-semibold tracking-[-0.015em]">
+                Audit trail
+              </h2>
+              <Link href="/app/activity?type=claim" className="inline-flex min-h-11 items-center text-[13px] text-accent hover:underline md:min-h-0">
+                View all
+              </Link>
+            </div>
+            {trail.length ? (
+              <ol className="space-y-2.5">
+                {trail.map(({ e, actor }) => (
+                  <li key={e.id} className="text-[13px] leading-snug">
+                    <span className="font-medium">{actor ?? "System"}</span> <span className="text-ink-2">{describe(e.action)}</span>
+                    <span className="tnum block text-xs text-muted">{e.createdAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}</span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="text-[13px] text-muted">No events yet.</p>
+            )}
+          </section>
+
+          <section aria-label="Payout batch">
+            <div className="overflow-hidden rounded-[12px] border border-line bg-panel shadow-soft">
               {batchRow ? (
                 <Link
                   href={`/app/batches/${batchRow.batch.id}`}
@@ -438,6 +464,69 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
               )}
             </div>
           </section>
+
+          <details className="group rounded-[12px] border border-line bg-panel shadow-soft">
+            <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 text-[15px] font-semibold tracking-[-0.015em] [&::-webkit-details-marker]:hidden">
+              Settlement details
+              <CaretDownIcon className="size-4 text-muted transition-transform group-open:rotate-180" aria-hidden />
+            </summary>
+            <div className="border-t border-line p-4">
+              <SettlementCard
+                claimId={claim.id}
+                currency={claim.currency}
+                totalCents={claim.amountCents}
+                o={obligations}
+                payments={payments}
+                entries={ledger.map((e) => ({ id: e.id, kind: e.kind, userId: e.userId, amountCents: e.amountCents, reference: e.reference, createdAt: e.createdAt.toISOString() }))}
+                members={members}
+                participants={splits.map((x) => name(x.userId))}
+                participantIds={splits.map((x) => x.userId)}
+                budgetOwnerId={claim.budgetOwnerUserId}
+                canEditPeople={(ctx.isAdmin || claim.submitterId === ctx.user.id) && !["paid", "rejected"].includes(claim.status)}
+                approvedBy={activeApproval ? name(activeApproval.approverId) : null}
+                canEditFunding={(ctx.isAdmin || claim.submitterId === ctx.user.id) && ["draft", "pending_review", "matched"].includes(claim.status)}
+                canRecord={ctx.isAdmin && ["matched", "partially_paid", "paid", "failed"].includes(claim.status)}
+                advanceOptions={(await advancesWithSpend(ctx.workspace.id))
+                  .filter((a) => a.status === "open" && a.currency === claim.currency)
+                  .map((a) => ({ id: a.id, label: `${name(a.userId)}: ${a.purpose} (${formatMoney(a.leftCents, a.currency)} left)` }))}
+              />
+            </div>
+          </details>
+          <details className="group rounded-[12px] border border-line bg-panel shadow-soft">
+            <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 text-[15px] font-semibold tracking-[-0.015em] [&::-webkit-details-marker]:hidden">
+              Currency and conversion
+              <CaretDownIcon className="size-4 text-muted transition-transform group-open:rotate-180" aria-hidden />
+            </summary>
+            <div className="border-t border-line p-4">
+              <CurrencyCard
+                claimId={claim.id}
+                receipt={{ cents: claim.receiptCents ?? claim.amountCents, currency: claim.receiptCurrency ?? claim.currency }}
+                charged={claim.chargedCents != null ? { cents: claim.chargedCents, currency: claim.chargedCurrency ?? claim.currency } : null}
+                reimbursed={{ cents: claim.amountCents, currency: claim.currency }}
+                fx={{ rate: claim.fxRate, source: claim.fxSource, at: claim.fxAt?.toISOString() ?? null }}
+                canEdit={(ctx.isAdmin || claim.submitterId === ctx.user.id) && ["draft", "pending_review", "matched"].includes(claim.status)}
+              />
+            </div>
+          </details>
+          <details className="group rounded-[12px] border border-line bg-panel shadow-soft">
+            <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 text-[15px] font-semibold tracking-[-0.015em] [&::-webkit-details-marker]:hidden">
+              Deposit and client billing
+              <CaretDownIcon className="size-4 text-muted transition-transform group-open:rotate-180" aria-hidden />
+            </summary>
+            <div className="border-t border-line p-4">
+              <TrackingCard
+                claimId={claim.id}
+                kind={claim.kind}
+                depositStatus={claim.depositStatus}
+                depositNote={claim.depositNote}
+                recoverableClient={claim.recoverableClient}
+                recoveryStatus={claim.recoveryStatus}
+                recoveryRef={claim.recoveryRef}
+                canEdit={(ctx.isAdmin || claim.submitterId === ctx.user.id) && claim.status !== "rejected"}
+                isAdmin={ctx.isAdmin}
+              />
+            </div>
+          </details>
         </div>
       </div>
     </>
