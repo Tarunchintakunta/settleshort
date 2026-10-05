@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { ChatTextIcon, FileIcon, PaperclipIcon } from "@phosphor-icons/react";
 import { Alert, Button, inputCls, Money } from "@/components/ui";
-import { api } from "@/lib/client";
+import { api, uploadFile } from "@/lib/client";
 
 export type EvidenceRow = {
   id: string;
@@ -214,10 +214,7 @@ export function EvidencePanel({
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (!f) return;
-                const fd = new FormData();
-                fd.append("file", f);
-                fd.append("kind", kind);
-                run(() => api(`/claims/${claimId}/evidence`, { method: "POST", body: fd }));
+                run(async () => api(`/claims/${claimId}/evidence`, { json: { ...(await uploadFile(`/claims/${claimId}/evidence/upload-url`, f)), kind } }));
                 e.target.value = "";
               }}
             />

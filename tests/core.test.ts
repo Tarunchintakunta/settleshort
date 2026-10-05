@@ -30,6 +30,13 @@ describe("matching", () => {
     expect(findMatches(base, [{ ...base, id: "b", amountCents: 9000 }])).toEqual([]);
     expect(findMatches(base, [{ ...base, id: "c", currency: "INR" }])).toEqual([]);
   });
+  it("matches within 1% and 3 days, not beyond", () => {
+    const near = { ...base, id: "b", amountCents: 6440, txnDate: "2026-09-23" };
+    expect(findMatches({ ...base, amountCents: 640000 }, [{ ...near, amountCents: 646400 }])[0].reasons).toContain("amount within tolerance");
+    expect(findMatches(base, [near])[0].reasons).toContain("dates 3d apart");
+    expect(findMatches(base, [{ ...near, txnDate: "2026-09-24" }])[0]?.reasons ?? []).not.toContain("dates 4d apart");
+    expect(findMatches({ ...base, amountCents: 640000 }, [{ ...base, id: "c", amountCents: 647000 }])).toEqual([]);
+  });
   it("normalizes merchants", () => {
     expect(normalizeMerchant("The Coffee Shop, Inc.")).toBe("coffee shop");
   });

@@ -29,7 +29,7 @@ export type GridClaim = {
 };
 
 // Grid colors come from the app's CSS tokens, so light and dark mode both follow.
-const theme = themeQuartz.withParams({
+export const gridTheme = themeQuartz.withParams({
   fontFamily: "var(--font-geist-sans)",
   backgroundColor: "var(--panel)",
   foregroundColor: "var(--ink)",
@@ -222,7 +222,7 @@ export function ClaimsGrid({ rows, isAdmin }: { rows: GridClaim[]; isAdmin: bool
 
       <div style={{ height: Math.min(640, 46 + Math.max(shown.length, 4) * 52) }}>
         <AgGridReact<GridClaim>
-          theme={theme}
+          theme={gridTheme}
           rowData={shown}
           columnDefs={cols}
           defaultColDef={{ resizable: false, sortable: true }}

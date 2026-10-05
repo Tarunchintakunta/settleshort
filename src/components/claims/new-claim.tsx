@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowClockwiseIcon, ArrowRightIcon, ChatTextIcon, CheckIcon, FilePdfIcon, QuotesIcon, ReceiptIcon, UploadSimpleIcon, WarningCircleIcon, WarningIcon } from "@phosphor-icons/react";
 import { Alert, Button, ButtonLink, Confidence, cx, PROVIDER_LABEL, tabBtn, tabTrack } from "@/components/ui";
-import { api } from "@/lib/client";
+import { api, uploadFile } from "@/lib/client";
 import { formatMoney } from "@/lib/money";
 import { uncertainFields } from "@/lib/evidence";
 
@@ -84,9 +84,7 @@ export function NewClaim({ provider, claimCount }: { provider: string; claimCoun
     reset();
     setSource(file.type === "application/pdf" ? { kind: "pdf", name: file.name } : { kind: "image", url: URL.createObjectURL(file), name: file.name });
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const r = await api<{ claim: Claim }>("/claims/upload", { method: "POST", body: fd });
+      const r = await api<{ claim: Claim }>("/claims/upload", { json: await uploadFile("/claims/upload-url", file) });
       setClaim(r.claim);
     } catch (e) {
       setError((e as Error).message);
@@ -101,9 +99,7 @@ export function NewClaim({ provider, claimCount }: { provider: string; claimCoun
     setSource(path.endsWith(".pdf") ? { kind: "pdf", name } : { kind: "image", url: path, name });
     try {
       const blob = await (await fetch(path)).blob();
-      const fd = new FormData();
-      fd.append("file", new File([blob], name, { type: blob.type }));
-      const r = await api<{ claim: Claim }>("/claims/upload", { method: "POST", body: fd });
+      const r = await api<{ claim: Claim }>("/claims/upload", { json: await uploadFile("/claims/upload-url", new File([blob], name, { type: blob.type })) });
       setClaim(r.claim);
     } catch (e) {
       setError((e as Error).message);

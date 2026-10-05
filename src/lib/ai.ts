@@ -50,8 +50,8 @@ payee_names = people the expense was for (resolve @mentions against the member l
 
 const client = () => (process.env.OPENAI_API_KEY ? new OpenAI() : null);
 export type AiProviderName = "claude" | "openai" | "local";
-/** Claude when ANTHROPIC_API_KEY is set, else OpenAI, else keyless local OCR + parser. */
-export const aiProvider = (): AiProviderName => (process.env.ANTHROPIC_API_KEY ? "claude" : process.env.OPENAI_API_KEY ? "openai" : "local");
+/** OpenAI when OPENAI_API_KEY is set, else Claude, else keyless local OCR + parser. */
+export const aiProvider = (): AiProviderName => (process.env.OPENAI_API_KEY ? "openai" : process.env.ANTHROPIC_API_KEY ? "claude" : "local");
 const nonEmptyEvidence = (e: Record<string, string>) => Object.fromEntries(Object.entries(e).filter(([, v]) => v));
 
 async function chatJson(model: string, system: string, content: OpenAI.Chat.ChatCompletionContentPart[] | string) {

@@ -1,7 +1,7 @@
 import { desc, eq, sql } from "drizzle-orm";
-import Link from "next/link";
 import { StackIcon } from "@phosphor-icons/react/ssr";
-import { ButtonLink, Empty, Money, PageHeader, StatusPill } from "@/components/ui";
+import { BatchesGrid } from "@/components/batches/batches-grid";
+import { ButtonLink, Empty, PageHeader } from "@/components/ui";
 import { requirePageCtx } from "@/lib/auth";
 import { batches, batchItems, db } from "@/lib/db";
 
@@ -10,7 +10,11 @@ export const metadata = { title: "Batches" };
 export default async function BatchesPage() {
   const ctx = await requirePageCtx();
   const rows = await db
-    .select({ b: batches, n: sql<number>`count(${batchItems.id})::int` })
+    .select({
+      b: batches,
+      n: sql<number>`count(${batchItems.id})::int`,
+      paid: sql<number>`count(*) filter (where ${batchItems.status} = 'SUCCESS')::int`,
+    })
     .from(batches)
     .leftJoin(batchItems, eq(batchItems.batchId, batches.id))
     .where(eq(batches.workspaceId, ctx.workspace.id))
@@ -21,21 +25,21 @@ export default async function BatchesPage() {
     <>
       <PageHeader title="Settlement batches" sub="Group ready claims, review, then one human Approve sends them to PayPal Payouts." />
       {rows.length ? (
-        <div className="divide-y divide-line overflow-hidden rounded-[12px] border border-line shadow-soft">
-          {rows.map(({ b, n }) => (
-            <Link key={b.id} href={`/app/batches/${b.id}`} className="flex flex-wrap items-center gap-4 px-5 py-4 transition-colors hover:bg-sunken">
-              <div className="min-w-0 flex-1">
-                <p className="font-medium tracking-[-0.015em]">{b.name}</p>
-                <p className="mt-0.5 text-xs text-muted">
-                  {n} claims, created {b.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                  {b.paypalPayoutBatchId && <span className="ml-2 font-mono">{b.paypalPayoutBatchId}</span>}
-                </p>
-              </div>
-              <StatusPill status={b.status} />
-              <Money cents={b.totalCents} currency={b.currency} className="shrink-0 text-right text-lg font-semibold" />
-            </Link>
-          ))}
-        </div>
+        <BatchesGrid
+          rows={rows.map(({ b, n, paid }) => ({
+            id: b.id,
+            name: b.name,
+            items: n,
+            paid,
+            status: b.status,
+            totalCents: b.totalCents,
+            currency: b.currency,
+            paypalPayoutBatchId: b.paypalPayoutBatchId,
+            mode: b.paypalMode,
+            createdAt: b.createdAt.toISOString(),
+            approvedAt: b.approvedAt?.toISOString() ?? null,
+          }))}
+        />
       ) : (
         <Empty
           icon={<StackIcon className="size-5" aria-hidden />}

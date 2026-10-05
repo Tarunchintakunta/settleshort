@@ -1,18 +1,22 @@
-import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { aiProvider } from "@/lib/ai";
+import { z } from "zod";
+import { aiProvider, extractReceipt } from "@/lib/ai";
 import { fail, route } from "@/lib/api";
 import { audit } from "@/lib/audit";
 import { createClaim } from "@/lib/claims";
 import { aiJobs, db } from "@/lib/db";
-import { readFileField, rejectSameFile, storeAndExtract } from "@/lib/intake";
+import { readUploaded, rejectSameFile } from "@/lib/intake";
 
-// Server-side upload: validate, store the original in S3, extract with AI, create the claim.
+// Step 2 of a new receipt: { key, name } after the browser PUT the file to S3 (see upload-url).
+// The server re-reads the object, checks it, extracts with AI and creates the claim.
 // Extraction runs inline (a few seconds) and is recorded as an ai_job so GET /claims/jobs/:id works.
 export const POST = route(async (req, ctx) => {
-  const { file: f, buf, hash } = await readFileField(await req.formData());
-  await rejectSameFile(ctx.workspace.id, hash);
-  const claimId = randomUUID(); // known up front so the S3 key can include it
+  const input = await req.json().catch(() => ({}));
+  // Key layout is receipts/{workspaceId}/{claimId}/{uuid}.{ext}; readUploaded re-checks the full prefix.
+  const claimId = z.uuid().catch("").parse(String((input as { key?: unknown }).key ?? "").split("/")[2]);
+  if (!claimId) fail(400, "invalid_input", "Upload key is not valid");
+  const { key, file: f, buf, hash } = await readUploaded(ctx.workspace.id, claimId, input);
+  await rejectSameFile(ctx.workspace.id, hash, key);
 
   const [job] = await db
     .insert(aiJobs)
@@ -20,7 +24,7 @@ export const POST = route(async (req, ctx) => {
     .returning();
 
   try {
-    const { key, extract: x, rawText } = await storeAndExtract(ctx.workspace.id, claimId, f, buf);
+    const { extract: x, rawText } = await extractReceipt(buf, f.type);
     const claim = await createClaim(ctx.workspace.id, ctx.user.id, {
       id: claimId,
       source: "upload",

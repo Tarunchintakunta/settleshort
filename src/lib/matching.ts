@@ -51,7 +51,7 @@ export function scorePair(a: MatchInput, b: MatchInput): MatchCandidate {
   else return { id: b.id, number: b.number, score: 0, reasons: ["amount differs"] };
 
   const d = daysApart(a.txnDate, b.txnDate);
-  if (d !== null && d <= 2) { score += 0.25; reasons.push(d === 0 ? "same date" : `dates ${Math.round(d)}d apart`); }
+  if (d !== null && d <= 3) { score += 0.25; reasons.push(d === 0 ? "same date" : `dates ${Math.round(d)}d apart`); }
   else if (d !== null) score -= 0.2;
 
   const m = merchantSimilarity(a.vendor, b.vendor);
