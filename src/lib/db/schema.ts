@@ -451,3 +451,33 @@ export const advances = pgTable(
   },
   (t) => [index("advances_ws").on(t.workspaceId)],
 );
+
+/** Server-side sessions. The cookie holds a random token; only its SHA-256 is stored, so a DB leak can't sign anyone in. */
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: id(),
+    tokenHash: text("token_hash").notNull().unique(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("sessions_user").on(t.userId)],
+);
+
+/** In-app notifications. Email copies are best-effort and only sent when SMTP is configured. */
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: id(),
+    workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    body: text("body").notNull().default(""),
+    href: text("href"),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("notifications_user_created").on(t.userId, sql`${t.createdAt} desc`)],
+);

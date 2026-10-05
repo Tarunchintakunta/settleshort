@@ -2,6 +2,7 @@
 // No "server-only" import so scripts/seed.ts can reuse it.
 import { randomBytes } from "node:crypto";
 import { approvals, auditEvents, contexts, ledgerEntries, batches, batchItems, claimEvidence, claims, claimSplits, db, memberships, users, workspaces } from "./db";
+import { hashPassword } from "./password";
 import { hashSnapshot, type Snapshot } from "./policy";
 
 const PEOPLE = [
@@ -20,8 +21,13 @@ function receivers() {
   );
 }
 
-export async function createDemoWorkspace() {
-  const tag = randomBytes(4).toString("hex");
+/**
+ * Default: a throwaway workspace per /demo click (random emails, no passwords).
+ * With `login`, the one fixed team judges sign into: maya/sam/rita@demo.settleshort.app share that password.
+ */
+export async function createDemoWorkspace(login?: { password: string }) {
+  const tag = login ? "team" : randomBytes(4).toString("hex");
+  const passwordHash = login ? await hashPassword(login.password) : null;
   const pp = receivers();
   const [ws] = await db
     .insert(workspaces)
@@ -36,7 +42,7 @@ export async function createDemoWorkspace() {
 
   const u: Record<string, string> = {};
   for (const p of PEOPLE) {
-    const [row] = await db.insert(users).values({ email: `${p.key}+${tag}@demo.settleshort.app`, name: p.name }).returning();
+    const [row] = await db.insert(users).values({ email: login ? `${p.key}@demo.settleshort.app` : `${p.key}+${tag}@demo.settleshort.app`, name: p.name, passwordHash }).returning();
     u[p.key] = row.id;
     await db.insert(memberships).values({ workspaceId: ws.id, userId: row.id, role: p.role, paypalReceiverEmail: pp[p.key], canRelease: p.role === "owner", paypalVerifiedAt: new Date() });
   }
