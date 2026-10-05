@@ -1,4 +1,4 @@
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, isNull } from "drizzle-orm";
 import Link from "next/link";
 import { SignOutIcon } from "@phosphor-icons/react/ssr";
 import { logout } from "@/app/(auth)/actions";
@@ -6,17 +6,18 @@ import { SideNav } from "@/components/app/sidebar";
 import { cx, Logo, PROVIDER_LABEL } from "@/components/ui";
 import { aiProvider } from "@/lib/ai";
 import { requirePageCtx } from "@/lib/auth";
-import { batches, claims, db } from "@/lib/db";
+import { batches, claims, db, notifications } from "@/lib/db";
 import { paypalMode } from "@/lib/paypal";
 import { workspaceExceptions } from "@/lib/exceptions";
 
 export default async function AppLayout({ children }: LayoutProps<"/app">) {
   const ctx = await requirePageCtx();
-  const [[review], [awaiting], exceptions] = await Promise.all([
+  const [[review], [awaiting], exceptions, [unread]] = await Promise.all([
     db.select({ n: count() }).from(claims).where(and(eq(claims.workspaceId, ctx.workspace.id), eq(claims.status, "pending_review"))),
     db.select({ n: count() }).from(batches).where(and(eq(batches.workspaceId, ctx.workspace.id), eq(batches.status, "awaiting_approval"))),
     // ponytail: recomputed per page load; cache or count in SQL once workspaces have thousands of open claims.
     ctx.isAdmin ? workspaceExceptions(ctx.workspace) : Promise.resolve([]),
+    db.select({ n: count() }).from(notifications).where(and(eq(notifications.userId, ctx.user.id), eq(notifications.workspaceId, ctx.workspace.id), isNull(notifications.readAt))),
   ]);
   const pp = paypalMode();
   const ai = aiProvider();
@@ -44,7 +45,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
             </p>
           </div>
         </div>
-        <SideNav counts={{ "/app/claims": review.n, "/app/batches": awaiting.n, "/app/exceptions": exceptions.length }} hide={ctx.isAdmin ? [] : ["/app/exceptions", "/app/exports"]} />
+        <SideNav counts={{ "/app/claims": review.n, "/app/batches": awaiting.n, "/app/exceptions": exceptions.length, "/app/notifications": unread.n }} hide={ctx.isAdmin ? [] : ["/app/exceptions", "/app/exports"]} />
         <div className="mt-auto hidden space-y-3 md:block">
           <div className="space-y-2.5 rounded-[12px] border border-line bg-panel p-3 text-xs shadow-soft">
             <p className="text-[11px] font-medium tracking-[0.12em] text-muted uppercase">System</p>
