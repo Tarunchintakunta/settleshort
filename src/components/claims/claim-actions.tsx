@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { CheckIcon, XIcon } from "@phosphor-icons/react";
 import { Button, cx } from "@/components/ui";
 import { api } from "@/lib/client";
+import { getRiskAck } from "@/components/claims/risk-signals";
 
 const UNDO_SECONDS = 5;
 
@@ -16,6 +17,8 @@ type Props = {
   /** Why this viewer can't approve right now (maker-checker), or null. */
   approveBlocked: string | null;
   canReject: boolean;
+  /** High soft-fraud signal present: Approve needs "I reviewed these signals" ticked first. */
+  needsRiskAck?: boolean;
   /** "bar": fixed bottom bar for phones. "inline": the sticky header on larger screens. */
   variant: "bar" | "inline";
 };
@@ -24,7 +27,7 @@ type Props = {
  * Approve / Reject for the claim header. Approve waits five seconds with an Undo before anything is sent,
  * so a mis-tap never approves; the server-side approval rules are unchanged.
  */
-export function ClaimActions({ claimId, canApprove, approveBlocked, canReject, variant }: Props) {
+export function ClaimActions({ claimId, canApprove, approveBlocked, canReject, needsRiskAck, variant }: Props) {
   const router = useRouter();
   const [left, setLeft] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
@@ -36,7 +39,10 @@ export function ClaimActions({ claimId, canApprove, approveBlocked, canReject, v
   async function send() {
     setBusy(true);
     try {
-      const r = await api<{ approvalNeeded: string | null }>(`/claims/${claimId}`, { method: "PATCH", json: { markReady: true } });
+      const r = await api<{ approvalNeeded: string | null }>(`/claims/${claimId}`, {
+        method: "PATCH",
+        json: { markReady: true, ...(needsRiskAck && { riskAcknowledged: getRiskAck(claimId).acknowledged, riskNote: getRiskAck(claimId).note.trim() || undefined }) },
+      });
       setMsg({ ok: true, text: r.approvalNeeded ? `Signed off. Still needs ${r.approvalNeeded}.` : "Approved" });
       router.refresh();
     } catch (e) {
@@ -48,6 +54,11 @@ export function ClaimActions({ claimId, canApprove, approveBlocked, canReject, v
 
   function startApprove() {
     setMsg(null);
+    if (needsRiskAck && !getRiskAck(claimId).acknowledged) {
+      setMsg({ ok: false, text: "Review the risk signals and tick \"I reviewed these signals\" before approving." });
+      document.getElementById("risk-signals")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     const until = Date.now() + UNDO_SECONDS * 1000;
     setLeft(UNDO_SECONDS);
     timer.current = setInterval(() => {

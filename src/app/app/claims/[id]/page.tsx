@@ -24,7 +24,9 @@ import { ConfirmReceipt } from "@/components/claims/confirm-receipt";
 import { factsFor } from "@/lib/claim-facts";
 import { claimTimeline } from "@/lib/status";
 import { Pill } from "@/components/ui";
-import { openContradictions, payeesOf } from "@/lib/approvals";
+import { openContradictions, payeesOf, riskSignalsFor } from "@/lib/approvals";
+import { RiskSignals } from "@/components/claims/risk-signals";
+import { hasHighRisk } from "@/lib/risk";
 import { ConflictsPanel } from "@/components/claims/conflicts-panel";
 import { DuplicateChooser } from "@/components/claims/duplicate-chooser";
 import { MissingQuestionCard } from "@/components/claims/missing-question";
@@ -66,12 +68,14 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
   const { facts, truth } = (await factsFor([claim])).get(claim.id)!;
   const conflicts = await openContradictions(claim);
   const lineInfo = await linesFor(claim);
-  const [ctxRows, fixRows, invRows, saas] = await Promise.all([
+  const [ctxRows, fixRows, invRows, saas, riskMap] = await Promise.all([
     db.select().from(contexts).where(eq(contexts.workspaceId, ctx.workspace.id)),
     db.select().from(fixRequests).where(eq(fixRequests.claimId, id)),
     db.select().from(investigations).where(eq(investigations.claimId, id)).orderBy(desc(investigations.createdAt)),
     saasFindings(ctx.workspace.id),
+    riskSignalsFor(ctx.workspace.id, [id]),
   ]);
+  const risk = riskMap.get(id) ?? [];
   const name = (uid: string) => members.find((m) => m.id === uid)?.name ?? "Unknown";
   const saasNotes = [
     ...saas.personal.filter((p) => p.claimIds.includes(id)).map((p) => `${name(p.payerUserId)} has paid for ${p.vendor} personally in ${p.months.join(", ")}. Move it to the company card or a company account.`),
@@ -138,7 +142,7 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
       })
     : null;
 
-  const actions = { claimId: claim.id, canApprove: approvable && (ctx.isAdmin || !blocker), approveBlocked: blocker?.message ?? null, canReject: ctx.isAdmin && ["draft", "pending_review", "matched"].includes(claim.status) };
+  const actions = { claimId: claim.id, canApprove: approvable && (ctx.isAdmin || !blocker), approveBlocked: blocker?.message ?? null, canReject: ctx.isAdmin && ["draft", "pending_review", "matched"].includes(claim.status), needsRiskAck: hasHighRisk(risk) };
   const attendees = (claim.attendeeNames ?? []).filter(Boolean);
 
   return (
@@ -190,6 +194,8 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
         </div>
       )}
 
+      {/* Phones: receipt first (order-first), then the brief and anything that needs a decision. */}
+      <div className="flex flex-col">
       {brief && (
         <section aria-labelledby="brief-h" className="rise mb-8 rounded-[12px] border border-line bg-panel p-5 shadow-soft">
           <p id="brief-h" className="text-[11px] font-medium tracking-[0.12em] text-muted uppercase">
@@ -225,6 +231,7 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
           </div>
         </section>
       )}
+      {["pending_review", "matched", "in_batch"].includes(claim.status) && <RiskSignals claimId={claim.id} signals={risk} canAcknowledge={actions.canApprove} />}
 
       {(ctx.isAdmin || claim.submitterId === ctx.user.id) && ["draft", "pending_review", "matched"].includes(claim.status) && (
         <MissingQuestionCard
@@ -264,7 +271,7 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
 
       {/* Receipt and what was read, side by side. */}
       {(receipt || claim.rawText || evidence.length > 0 || ai) && (
-        <div className="mb-10 grid gap-6 lg:grid-cols-2">
+        <div className="order-first mb-10 grid gap-6 md:order-none lg:grid-cols-2">
           <div>
             {receipt ? (
               <div className="flex min-h-[320px] items-center justify-center overflow-hidden rounded-[12px] border border-line bg-sunken p-5 shadow-[inset_0_1px_0_rgb(255_255_255/0.4)]">
@@ -321,6 +328,7 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
           </div>
         </div>
       )}
+      </div>
 
       <div className="grid gap-8 pb-20 md:pb-0 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <div className="space-y-8">
