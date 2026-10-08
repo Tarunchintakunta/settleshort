@@ -5,6 +5,7 @@ import { audit } from "./audit";
 import { approvals, batches, batchItems, claimEvidence, claims, db, delegations, fixRequests, memberships, users } from "./db";
 import { findContradictions, missingQuestions, type EvidenceFacts } from "./evidence";
 import { obligationsFor } from "./ledger";
+import { hasHighRisk, riskSignals, toRiskClaim, type RiskSignal } from "./risk";
 import { activeDelegations, approvalBlocker, approvalOutcome, diffSnapshots, hashSnapshot, type Approver, type Snapshot } from "./policy";
 
 type Claim = typeof claims.$inferSelect;
@@ -51,7 +52,16 @@ export async function authorityOf(workspaceId: string, userId: string) {
   ];
 }
 
-export async function approveClaim(ws: WsPolicy, approver: Approver, claimId: string) {
+/** Soft fraud signals for each given claim, checked against every claim in the workspace. */
+export async function riskSignalsFor(workspaceId: string, ids?: string[]): Promise<Map<string, RiskSignal[]>> {
+  const all = (await db.select().from(claims).where(eq(claims.workspaceId, workspaceId))).map(toRiskClaim);
+  return new Map(all.filter((c) => !ids || ids.includes(c.id)).map((c) => [c.id, riskSignals(c, all)]));
+}
+
+/** riskAcknowledged: the approver ticked "I reviewed these signals". Required when any High signal is present. */
+export type RiskAck = { riskAcknowledged?: boolean; riskNote?: string };
+
+export async function approveClaim(ws: WsPolicy, approver: Approver, claimId: string, ack: RiskAck = {}) {
   const [claim] = await db.select().from(claims).where(and(eq(claims.id, claimId), eq(claims.workspaceId, ws.id)));
   if (!claim) fail(404, "not_found", "Claim not found");
   if (claim.status === "in_batch") {
@@ -79,6 +89,10 @@ export async function approveClaim(ws: WsPolicy, approver: Approver, claimId: st
   if (fixes.length) fail(409, "fix_requested", `Waiting on a requested fix: ${fixes.map((f) => f.message).join("; ")}`);
   const open = await openContradictions(claim);
   if (open.length) fail(409, "contradiction", `Resolve conflicting evidence first: ${open.map((c) => c.message).join("; ")}`);
+  const risk = (await riskSignalsFor(ws.id, [claimId])).get(claimId) ?? [];
+  const override = hasHighRisk(risk);
+  if (override && !ack.riskAcknowledged)
+    fail(400, "risk_unacknowledged", `Review the risk signals first: ${risk.filter((r) => r.severity === "high").map((r) => r.message).join("; ")}. Tick "I reviewed these signals" to approve anyway.`);
 
   const snap = await currentSnapshot(claim);
   const hash = hashSnapshot(snap);
@@ -105,6 +119,8 @@ export async function approveClaim(ws: WsPolicy, approver: Approver, claimId: st
     .where(eq(claims.id, claimId))
     .returning();
   await audit(ws.id, approver.id, "claim.approved", "claim", claimId, { amount: snap.amountCents, currency: snap.currency, on_behalf_of: best.onBehalfOf ?? undefined });
+  // Snapshot of what the approver saw, for the audit trail.
+  if (override) await audit(ws.id, approver.id, "claim.risk_override", "claim", claimId, { note: ack.riskNote || undefined, signals: risk });
   return { ...updated, approvalNeeded: null };
 }
 

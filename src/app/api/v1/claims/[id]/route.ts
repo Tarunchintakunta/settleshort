@@ -46,13 +46,15 @@ const Patch = z.object({
   // Why a person overrules the AI or a rule; kept with the feedback record.
   reason: z.string().trim().max(300).optional(),
   markReady: z.boolean().optional(), // human approval -> matched (see approveClaim)
+  riskAcknowledged: z.boolean().optional(),
+  riskNote: z.string().trim().max(500).optional(),
 });
 
 export const PATCH = route<{ id: string }>(async (req, ctx, { id }) => {
   const c = await load(ctx.workspace.id, id);
-  const { markReady, categoryRule, reason, ...fields } = await body(req, Patch);
+  const { markReady, categoryRule, reason, riskAcknowledged, riskNote, ...fields } = await body(req, Patch);
   const approveOnly = markReady && Object.values(fields).every((v) => v === undefined);
-  if (approveOnly) return approveClaim(ctx.workspace, { id: ctx.user.id, role: ctx.role! }, id);
+  if (approveOnly) return approveClaim(ctx.workspace, { id: ctx.user.id, role: ctx.role! }, id, { riskAcknowledged, riskNote });
   if (!["draft", "pending_review", "matched"].includes(c.status)) fail(409, "locked", `Claim is ${c.status} and can no longer be edited`);
   if (fields.payerUserId && !ctx.isAdmin) fail(403, "forbidden", "Admins only");
   if (categoryRule === "always" && !ctx.isAdmin) fail(403, "forbidden", "Only admins change merchant rules");
@@ -79,6 +81,6 @@ export const PATCH = route<{ id: string }>(async (req, ctx, { id }) => {
       .onConflictDoUpdate({ target: [merchantMappings.workspaceId, merchantMappings.merchantKey], set: { category: fields.category, confirmedBy: ctx.user.id, updatedAt: new Date() } });
     await audit(ctx.workspace.id, ctx.user.id, "merchant_rule.saved", "merchant_mapping", merchantKey, { merchant: c.vendor, category: fields.category });
   }
-  if (markReady) return approveClaim(ctx.workspace, { id: ctx.user.id, role: ctx.role! }, id);
+  if (markReady) return approveClaim(ctx.workspace, { id: ctx.user.id, role: ctx.role! }, id, { riskAcknowledged, riskNote });
   return Object.keys(changes).length ? runMatching(ctx.workspace.id, id) : c;
 });

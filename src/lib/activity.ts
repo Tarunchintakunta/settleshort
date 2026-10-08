@@ -19,6 +19,7 @@ const VERBS: Record<string, string> = {
   "claim.edited": "edited a claim",
   "claim.marked_ready": "marked a claim ready",
   "claim.approved": "approved a claim",
+  "claim.risk_override": "approved with soft-fraud override",
   "claim.fix_requested": "asked for a specific fix",
   "investigation.resolved": "resolved a missing-payout investigation",
   "claim.tracking_updated": "updated deposit or client-billing tracking",

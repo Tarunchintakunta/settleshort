@@ -27,6 +27,8 @@ export type GridClaim = {
   provider?: string;
   status: string;
   duplicate: boolean;
+  /** Claim numbers behind a High/Medium soft-fraud signal (see lib/risk.ts). */
+  riskRefs: number[];
   /** Truthful status label (see lib/status.ts). */
   truth: { label: string; tone: "neutral" | "accent" | "success" | "warning" | "danger" };
 };
@@ -63,6 +65,22 @@ const LOCKED_REASON: Record<string, string> = {
   rejected: "Rejected claims can't be batched",
   draft: "Finish the draft before batching",
 };
+const SOURCE_LABEL = (s: string) => (s === "slack" ? "Slack" : s === "upload" ? "Receipt" : s === "manual" ? "Message" : s[0].toUpperCase() + s.slice(1));
+const shortDate = (d: string | null) => (d ? new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "No date");
+
+/** One amber chip for the matcher's duplicate flag or a soft-fraud signal; the tooltip names the look-alikes. */
+function DupChip({ c }: { c: GridClaim }) {
+  if (!c.duplicate && !c.riskRefs.length) return null;
+  const why = c.riskRefs.length ? `Looks like ${c.riskRefs.map((n) => `#${n}`).join(", ")}` : "Possible duplicate";
+  return (
+    <span title={why} aria-label={`Duplicate? ${why}`}>
+      <Pill tone="warning" dot>
+        Duplicate?
+      </Pill>
+    </span>
+  );
+}
+
 const selectable = (status?: string) => ["pending_review", "matched", "partially_paid", "failed"].includes(status ?? "");
 
 const FILTERS = [
@@ -86,7 +104,7 @@ export function ClaimsGrid({ rows, isAdmin }: { rows: GridClaim[]; isAdmin: bool
   const cols = useMemo<ColDef<GridClaim>[]>(
     () => [
       { field: "number", headerName: "#", width: 60, cellClass: "tnum text-muted", valueFormatter: (p) => `${p.value}` },
-      { field: "txnDate", headerName: "Date", width: 92, cellClass: "tnum text-ink-2", valueFormatter: (p) => (p.value ? new Date(p.value + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "No date") },
+      { field: "txnDate", headerName: "Date", width: 92, cellClass: "tnum text-ink-2", valueFormatter: (p) => shortDate(p.value) },
       {
         field: "vendor",
         flex: 1.6,
@@ -98,11 +116,7 @@ export function ClaimsGrid({ rows, isAdmin }: { rows: GridClaim[]; isAdmin: bool
           <span className="inline-flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 leading-tight">
             <span className="truncate">{p.data?.title}</span>
             {!p.value && <Pill tone="warning">Add vendor</Pill>}
-            {p.data?.duplicate && (
-              <Pill tone="warning" dot>
-                Duplicate?
-              </Pill>
-            )}
+            {p.data && <DupChip c={p.data} />}
           </span>
         ),
       },
@@ -115,7 +129,7 @@ export function ClaimsGrid({ rows, isAdmin }: { rows: GridClaim[]; isAdmin: bool
         valueFormatter: (p) => formatMoney(p.value, p.data!.currency),
       },
       { field: "payer", headerName: "Paid by", flex: 1, minWidth: 112 },
-      { field: "source", width: 84, valueFormatter: (p) => (p.value === "slack" ? "Slack" : p.value[0].toUpperCase() + p.value.slice(1)) },
+      { field: "source", width: 84, valueFormatter: (p) => SOURCE_LABEL(p.value) },
       {
         field: "aiConfidence",
         headerName: "Confidence",
@@ -159,10 +173,15 @@ export function ClaimsGrid({ rows, isAdmin }: { rows: GridClaim[]; isAdmin: bool
 
   return (
     <div>
-      <div className="mb-3 flex flex-col gap-2 rounded-[12px] border border-line bg-panel p-2 shadow-soft sm:flex-row sm:items-center">
-        <div className="flex flex-wrap gap-0.5 rounded-[10px] bg-sunken p-1" role="tablist" aria-label="Filter by status">
+      <div className="sticky top-0 z-10 mb-3 flex flex-col gap-2 rounded-[12px] border border-line bg-panel p-2 shadow-soft sm:flex-row sm:items-center md:static">
+        {/* Phones: one scrollable row of chips; the fade on the right says there's more. */}
+        <div
+          className="flex min-w-0 gap-0.5 overflow-x-auto rounded-[10px] bg-sunken p-1 pr-8 md:pr-1 [mask-image:linear-gradient(to_right,black_85%,transparent)] [scrollbar-width:none] md:flex-wrap md:overflow-visible md:[mask-image:none]"
+          role="tablist"
+          aria-label="Filter by status"
+        >
           {FILTERS.map((f) => (
-            <button key={f.key} role="tab" aria-selected={status === f.key} onClick={() => setStatus(f.key)} className={tabBtn(status === f.key)}>
+            <button key={f.key} role="tab" className={cx(tabBtn(status === f.key), "min-h-11 shrink-0 whitespace-nowrap md:min-h-0")} aria-selected={status === f.key} onClick={() => setStatus(f.key)}>
               {f.label}
               <span className="tnum ml-1.5 opacity-60">{f.key ? rows.filter((r) => r.status === f.key).length : rows.length}</span>
             </button>
@@ -237,28 +256,30 @@ export function ClaimsGrid({ rows, isAdmin }: { rows: GridClaim[]; isAdmin: bool
         {visible.length ? (
           visible.map((c) => (
             <li key={c.id}>
-              <Link href={`/app/claims/${c.id}`} className="block rounded-[12px] border border-line bg-panel p-4 shadow-soft transition-colors active:bg-sunken">
+              <Link href={`/app/claims/${c.id}`} className="block min-h-[72px] rounded-[12px] border border-line bg-panel p-4 shadow-soft transition-colors active:bg-sunken">
                 <div className="flex items-start justify-between gap-3">
                   <p className="min-w-0 font-medium break-words">
                     <span className="tnum mr-1.5 text-muted">#{c.number}</span>
                     {c.title}
                   </p>
-                  <span className="money shrink-0 font-semibold">{formatMoney(c.amountCents, c.currency)}</span>
+                  <span className="money shrink-0 text-right font-semibold">{formatMoney(c.amountCents, c.currency)}</span>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   <Pill tone={c.truth.tone} dot>
                     {c.truth.label}
                   </Pill>
-                  {c.duplicate && (
-                    <Pill tone="warning" dot>
-                      Duplicate?
-                    </Pill>
-                  )}
-                  {!c.vendor && <Pill tone="warning">Add vendor</Pill>}
+                  <DupChip c={c} />
+                  <span className="text-xs text-muted">{SOURCE_LABEL(c.source)}</span>
                 </div>
-                <p className="mt-2 text-xs text-muted">
-                  {c.payer} · {c.txnDate ? new Date(c.txnDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "No date"}
+                <p className="mt-2 flex flex-wrap items-center gap-x-1.5 text-xs text-muted">
+                  <span>{c.payer}</span>·<span className="tnum">{shortDate(c.txnDate)}</span>
+                  {c.aiConfidence != null && (
+                    <>
+                      ·<span className="tnum">{Math.round(c.aiConfidence * 100)}% sure</span>
+                    </>
+                  )}
                 </p>
+                {!c.vendor && <p className="mt-1.5 text-xs font-medium text-warning">Needs vendor</p>}
               </Link>
             </li>
           ))
@@ -301,7 +322,7 @@ export function ClaimsGrid({ rows, isAdmin }: { rows: GridClaim[]; isAdmin: bool
       </div>
       {isAdmin && (
         <p className="mt-3 hidden text-xs leading-relaxed text-muted md:block">
-          Select ready claims to build a settlement batch, or two look-alikes to merge them. Claims already in a batch, paid or rejected are locked; tap or hover a checkbox to see why.
+          Select ready claims to build a settlement batch, or two look-alikes to merge them. Claims already in a batch, paid or rejected are locked; hover a checkbox to see why.
         </p>
       )}
     </div>

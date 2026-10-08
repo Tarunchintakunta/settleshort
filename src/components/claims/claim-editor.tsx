@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Alert, Button, Field, inputCls } from "@/components/ui";
 import { CATEGORIES } from "@/lib/categories";
 import { api } from "@/lib/client";
+import { getRiskAck } from "@/components/claims/risk-signals";
 
 type Props = {
   claim: { id: string; vendor: string; amountCents: number; currency: string; txnDate: string | null; note: string; purpose: string; category: string | null; categorySource: string | null; payerUserId: string; status: string; duplicateOfId: string | null };
@@ -157,7 +158,7 @@ export function ClaimEditor({ claim, members, isAdmin, canEdit, lowConfidence, a
               disabled={busy || !adjust.amount || adjust.note.trim().length < 3}
               onClick={() =>
                 run(
-                  () => api(`/claims/${claim.id}/adjust`, { json: { approvedCents: Math.round(Number(adjust.amount) * 100), reasonCode: adjust.reason, note: adjust.note.trim() } }),
+                  () => api(`/claims/${claim.id}/adjust`, { json: { approvedCents: Math.round(Number(adjust.amount) * 100), reasonCode: adjust.reason, note: adjust.note.trim(), riskAcknowledged: getRiskAck(claim.id).acknowledged, riskNote: getRiskAck(claim.id).note.trim() || undefined } }),
                   "Approved the adjusted amount",
                 ).then(() => setAdjust(null))
               }

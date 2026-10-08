@@ -1,6 +1,7 @@
 import "server-only";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
-import { releaseProblems } from "./approvals";
+import { releaseProblems, riskSignalsFor } from "./approvals";
+import { flaggedRisk } from "./risk";
 import { factsFor } from "./claim-facts";
 import { batches, batchItems, claimEvidence, claims, db, memberships, users, workspaces } from "./db";
 import { obligationsForMany } from "./ledger";
@@ -9,7 +10,7 @@ import { formatMoney } from "./money";
 
 export type Exception = {
   key: string;
-  kind: "stuck" | "conflict" | "large" | "payout" | "spend";
+  kind: "stuck" | "conflict" | "large" | "payout" | "spend" | "risk";
   title: string;
   why: string;
   action: string;
@@ -46,13 +47,16 @@ export async function workspaceExceptions(ws: typeof workspaces.$inferSelect): P
       .where(and(eq(batches.workspaceId, ws.id), isNotNull(batchItems.notReceivedAt))),
     db.select({ claimId: claimEvidence.claimId }).from(claimEvidence).where(and(eq(claimEvidence.workspaceId, ws.id), eq(claimEvidence.kind, "declaration"))),
   ]);
-  const facts = await factsFor(open);
+  const [facts, risk] = await Promise.all([factsFor(open), riskSignalsFor(ws.id)]);
   const out: Exception[] = [];
   const claimLink = (c: typeof claims.$inferSelect) => `/app/claims/${c.id}`;
   const label = (c: typeof claims.$inferSelect) => `#${c.number} ${c.vendor || "Untitled"} · ${formatMoney(c.amountCents, c.currency)}`;
 
   for (const c of open) {
     const f = facts.get(c.id)!;
+    const flagged = c.status === "pending_review" ? flaggedRisk(risk.get(c.id) ?? []) : [];
+    if (flagged.length)
+      out.push({ key: `risk-${c.id}`, kind: "risk", title: label(c), why: flagged.map((s) => s.message).join(". ") + ".", action: "Review the risk signals", href: claimLink(c), at: c.updatedAt });
     if (c.status === "pending_review" && c.duplicateOfId)
       out.push({ key: `dup-${c.id}`, kind: "conflict", title: label(c), why: "Looks like a duplicate of another claim.", action: "Merge it or approve it as separate", href: claimLink(c), at: c.updatedAt });
     else if (c.status === "pending_review" && c.createdAt < stuckBefore)

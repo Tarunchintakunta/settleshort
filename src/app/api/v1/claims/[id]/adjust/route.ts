@@ -11,9 +11,15 @@ const REASON = { personal: "Personal item", over_policy: "Over policy", missing_
 
 // Adjust-and-approve: approve a lower amount with a reason code the claimant sees (blueprint E4).
 export const POST = route<{ id: string }>(async (req, ctx, { id }) => {
-  const { approvedCents, reasonCode, note } = await body(
+  const { approvedCents, reasonCode, note, riskAcknowledged, riskNote } = await body(
     req,
-    z.object({ approvedCents: z.number().int().min(0), reasonCode: z.enum(Object.keys(REASON) as [keyof typeof REASON]), note: z.string().trim().min(3).max(300) }),
+    z.object({
+      approvedCents: z.number().int().min(0),
+      reasonCode: z.enum(Object.keys(REASON) as [keyof typeof REASON]),
+      note: z.string().trim().min(3).max(300),
+      riskAcknowledged: z.boolean().optional(),
+      riskNote: z.string().trim().max(500).optional(),
+    }),
   );
   const [c] = await db.select().from(claims).where(and(eq(claims.id, id), eq(claims.workspaceId, ctx.workspace.id)));
   if (!c) fail(404, "not_found", "Claim not found");
@@ -25,7 +31,7 @@ export const POST = route<{ id: string }>(async (req, ctx, { id }) => {
   const adjustmentReason = `${REASON[reasonCode]}: ${note}`;
   await db.update(claims).set({ adjustmentCents, adjustmentReason, updatedAt: new Date() }).where(eq(claims.id, id));
   try {
-    const approved = await approveClaim(ctx.workspace, { id: ctx.user.id, role: ctx.role! }, id);
+    const approved = await approveClaim(ctx.workspace, { id: ctx.user.id, role: ctx.role! }, id, { riskAcknowledged, riskNote });
     await audit(ctx.workspace.id, ctx.user.id, "claim.adjusted", "claim", id, { approved: formatMoney(approvedCents, c!.currency), reduced_by: formatMoney(adjustmentCents, c!.currency), reason: adjustmentReason });
     return approved;
   } catch (e) {

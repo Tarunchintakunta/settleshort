@@ -3,6 +3,8 @@ import { PlusIcon, TrayIcon } from "@phosphor-icons/react/ssr";
 import { ClaimsGrid } from "@/components/claims/claims-grid";
 import { ButtonLink, Empty, PageHeader } from "@/components/ui";
 import { requirePageCtx } from "@/lib/auth";
+import { riskSignalsFor } from "@/lib/approvals";
+import { flaggedRisk } from "@/lib/risk";
 import { factsFor } from "@/lib/claim-facts";
 import { claims, db, users } from "@/lib/db";
 import { claimTitle } from "@/lib/title";
@@ -17,7 +19,9 @@ export default async function ClaimsPage() {
     .innerJoin(users, eq(users.id, claims.payerUserId))
     .where(eq(claims.workspaceId, ctx.workspace.id))
     .orderBy(desc(claims.number));
-  const facts = await factsFor(rows.map((r) => r.c));
+  const [facts, risk] = await Promise.all([factsFor(rows.map((r) => r.c)), riskSignalsFor(ctx.workspace.id)]);
+  // Claim numbers behind any High or Medium soft-fraud signal; drives the "Duplicate?" chip and its tooltip.
+  const riskRefs = (id: string) => [...new Set(flaggedRisk(risk.get(id) ?? []).flatMap((s) => s.related.map((r) => r.number)))];
 
   return (
     <>
@@ -47,6 +51,7 @@ export default async function ClaimsPage() {
             provider: (c.aiJson as { provider?: string } | null)?.provider,
             status: c.status,
             duplicate: !!c.duplicateOfId && c.status === "pending_review",
+            riskRefs: ["paid", "rejected"].includes(c.status) ? [] : riskRefs(c.id),
             truth: { label: facts.get(c.id)!.truth.label, tone: facts.get(c.id)!.truth.tone },
           }))}
         />
