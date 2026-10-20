@@ -47,3 +47,4 @@ next-env.d.ts
 
 # any env file, whatever the name
 *.env
+.pnpm-store/

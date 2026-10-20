@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowDownIcon, CpuIcon, GitMergeIcon, GaugeIcon, PlusIcon, QuotesIcon } from "@phosphor-icons/react/ssr";
+import { CpuIcon, GitMergeIcon, GaugeIcon, PlusIcon, QuotesIcon } from "@phosphor-icons/react/ssr";
 import { HowItWorks } from "@/components/marketing/HowItWorks";
+import { Hero } from "@/components/marketing/hero/Hero";
 import { DemoLink, wrap } from "@/components/marketing/Nav";
 import { Reveal } from "@/components/marketing/Reveal";
 import { Shot } from "@/components/marketing/Shot";
+
+export const dynamic = "force-static";
 
 export const metadata: Metadata = {
   title: { absolute: "SettleShort: Receipt in. Settled out. One approve." },
@@ -78,46 +81,9 @@ const FAQ = [
 export default function Home() {
   return (
     <>
-      {/* Hero */}
-      <section className="pt-20 sm:pt-28">
-        <div className={wrap}>
-          <div className="max-w-[880px]">
-            <h1 className="rise text-[42px] font-semibold leading-[1.02] tracking-[-0.035em] text-ink sm:text-[60px] lg:text-[68px]">
-              Receipt in. Settled out. <span className="text-accent sm:block">One approve.</span>
-            </h1>
-            <p className="rise mt-7 max-w-[540px] text-lg leading-relaxed text-ink-2" style={{ animationDelay: "60ms" }}>
-              SettleShort reads receipts and expense messages, catches duplicates, and pays your team through PayPal after an admin approves.
-            </p>
-            <div className="rise mt-9 flex flex-wrap items-center gap-3" style={{ animationDelay: "120ms" }}>
-              <DemoLink />
-              <a
-                href="#how"
-                className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-[8px] border border-line bg-panel px-5 text-[15px] font-medium text-ink transition-colors hover:border-line-strong hover:bg-sunken"
-              >
-                How it works <ArrowDownIcon size={16} aria-hidden />
-              </a>
-            </div>
-          </div>
-        </div>
-        {/* Wider than the text column so the product reads at full size. Phones get a readable close-up instead. */}
-        <div className="rise mx-auto mt-14 w-full max-w-[1360px] px-4 sm:mt-16 sm:px-6" style={{ animationDelay: "180ms" }}>
-          <Shot
-            className="hidden sm:block"
-            src="/marketing/extraction.png"
-            alt="SettleShort reading a $186.50 Nopa receipt: each extracted field (vendor, total, date, tax, tip, card) sits beside the receipt with the quoted text it came from, and a warning says it is likely a duplicate of claim #3."
-            sizes="(min-width: 1360px) 1312px, calc(100vw - 48px)"
-            preload
-          />
-          <Shot
-            className="sm:hidden"
-            src="/marketing/extraction.png"
-            alt="Close-up of SettleShort's extracted fields, each with the receipt text it came from."
-            sizes="calc(100vw - 32px)"
-            crop="aspect-[4/5] [&_img]:object-[100%_40%]"
-          />
-        </div>
-      </section>
+      <Hero />
 
+      <main id="main" className="min-w-0 flex-1">
       {/* Problem */}
       <section className={`${wrap} py-20 sm:py-28`} aria-labelledby="problem">
         <h2 id="problem" className="sr-only">
@@ -291,6 +257,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      </main>
     </>
   );
 }
