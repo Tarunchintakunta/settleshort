@@ -1,7 +1,22 @@
 "use client";
 
 import { AgGridReact, type CustomCellRendererProps } from "ag-grid-react";
-import { AllCommunityModule, ModuleRegistry, themeQuartz, type ColDef, type GridApi } from "ag-grid-community";
+import {
+  CellStyleModule,
+  ClientSideRowModelModule,
+  ModuleRegistry,
+  PaginationModule,
+  QuickFilterModule,
+  RowApiModule,
+  RowAutoHeightModule,
+  RowSelectionModule,
+  RowStyleModule,
+  TooltipModule,
+  ValidationModule,
+  themeQuartz,
+  type ColDef,
+  type GridApi,
+} from "ag-grid-community";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
@@ -10,7 +25,18 @@ import { Alert, Button, Confidence, cx, inputCls, Pill, PROVIDER_LABEL, tabBtn }
 import { api } from "@/lib/client";
 import { formatMoney } from "@/lib/money";
 
-ModuleRegistry.registerModules([AllCommunityModule]);
+ModuleRegistry.registerModules([
+  CellStyleModule,
+  ClientSideRowModelModule,
+  PaginationModule,
+  QuickFilterModule,
+  RowApiModule,
+  RowAutoHeightModule,
+  RowSelectionModule,
+  RowStyleModule,
+  TooltipModule,
+  ...(process.env.NODE_ENV !== "production" ? [ValidationModule] : []),
+]);
 
 export type GridClaim = {
   id: string;
@@ -134,7 +160,7 @@ export function ClaimsGrid({ rows, isAdmin }: { rows: GridClaim[]; isAdmin: bool
         field: "aiConfidence",
         headerName: "Confidence",
         width: 118,
-        tooltipValueGetter: (p) => (p.data?.aiConfidence == null ? undefined : `Extracted by ${PROVIDER_LABEL[p.data.provider ?? ""] ?? "AI"}`),
+        tooltip: (p) => (p.data?.aiConfidence == null ? undefined : `Extracted by ${PROVIDER_LABEL[p.data.provider ?? ""] ?? "AI"}`),
         cellRenderer: (p: CustomCellRendererProps<GridClaim>) => <Confidence value={p.value} />,
       },
       {
@@ -300,7 +326,7 @@ export function ClaimsGrid({ rows, isAdmin }: { rows: GridClaim[]; isAdmin: bool
           selectionColumnDef={{
             width: 44,
             headerTooltip: "Select claims in review or ready",
-            tooltipValueGetter: (p) => (selectable(p.data?.status) ? undefined : (LOCKED_REASON[p.data?.status ?? ""] ?? "Can't be selected")),
+            tooltip: (p) => (selectable(p.data?.status) ? undefined : (LOCKED_REASON[p.data?.status ?? ""] ?? "Can't be selected")),
           }}
           tooltipShowDelay={250}
           onGridReady={(e) => (gridApi.current = e.api)}
