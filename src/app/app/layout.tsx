@@ -79,23 +79,26 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
       <MobileNav counts={allCounts} hide={hide} userName={ctx.user.name} />
       <main className="min-w-0 flex-1 pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:py-2 md:pr-2 md:pb-2">
         <div className="min-h-full bg-panel px-4 py-7 sm:px-6 md:min-h-[calc(100dvh-16px)] md:rounded-[12px] md:border md:border-line md:px-10 md:py-10 md:shadow-soft">
-          {ctx.workspace.isDemo ? (
-            <p className="mx-auto mb-8 flex max-w-[1100px] items-start gap-2.5 rounded-[10px] border border-accent/25 bg-accent-soft px-3.5 py-2.5 text-[13px] leading-relaxed text-ink-2">
-              <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-accent" aria-hidden />
-              <span>
-                <b className="font-medium text-ink">Demo workspace.</b> The company, people and claims are sample data, separate from every real workspace, and deleted after a day.{" "}
-                <Link href="/signup" className="font-medium text-accent underline underline-offset-2">
-                  Create your own workspace
-                </Link>
-              </span>
-            </p>
-          ) : null}
-          {pp !== "sandbox" && (
-            <p className="mx-auto mb-8 flex max-w-[1100px] items-start gap-2.5 rounded-[10px] border border-warning/30 bg-warning-soft px-3.5 py-2.5 text-[13px] leading-relaxed text-ink-2">
-              <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-warning" aria-hidden />
-              <span>
-                PayPal simulator active. Add <span className="font-mono">PAYPAL_CLIENT_ID</span> and <span className="font-mono">PAYPAL_CLIENT_SECRET</span> to send real sandbox payouts. No real money moves in either mode.
-              </span>
+          {(ctx.workspace.isDemo || pp !== "sandbox") && (
+            <p className="mx-auto mb-6 flex max-w-[1100px] flex-wrap items-center gap-x-3 gap-y-1 rounded-[10px] border border-line bg-sunken px-3.5 py-2 text-[13px] leading-relaxed text-ink-2">
+              {ctx.workspace.isDemo && (
+                <span>
+                  <span className="mr-2 inline-block size-1.5 rounded-full bg-accent align-middle" aria-hidden />
+                  <b className="font-medium text-ink">Demo workspace</b>, sample data, reset daily.{" "}
+                  <Link href="/signup" className="font-medium text-accent underline underline-offset-2">
+                    Create your own
+                  </Link>
+                </span>
+              )}
+              {pp !== "sandbox" && (
+                <span>
+                  <span className="mr-2 inline-block size-1.5 rounded-full bg-warning align-middle" aria-hidden />
+                  PayPal simulator: no real money moves.{" "}
+                  <Link href="/app/settings/integrations" className="font-medium text-accent underline underline-offset-2">
+                    Connect sandbox
+                  </Link>
+                </span>
+              )}
             </p>
           )}
           <div className="mx-auto max-w-[1100px]">{children}</div>
