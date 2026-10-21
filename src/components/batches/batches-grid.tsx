@@ -23,6 +23,8 @@ export type GridBatch = {
 };
 
 const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "");
+// Cards render on the server too, so their date must not depend on the server's clock zone.
+const whenDay = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 
 const cols: ColDef<GridBatch>[] = [
   { field: "name", headerName: "Batch", flex: 1.2, minWidth: 130 },
@@ -59,7 +61,7 @@ export function BatchesGrid({ rows }: { rows: GridBatch[] }) {
                 <span className="tnum">
                   {b.paid}/{b.items} paid
                 </span>
-                <span className="tnum">{when(b.createdAt)}</span>
+                <span className="tnum">{whenDay(b.createdAt)}</span>
               </div>
               {b.paypalPayoutBatchId && <p className="mt-2 font-mono text-[11px] text-muted">{b.paypalPayoutBatchId}</p>}
             </Link>
