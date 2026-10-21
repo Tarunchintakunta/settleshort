@@ -21,6 +21,19 @@ function mailer() {
   return (transport = nodemailer.createTransport({ host: SMTP_HOST, port, secure: port === 465, auth: { user: SMTP_USER, pass: SMTP_PASS }, connectionTimeout: 5000 }));
 }
 
+/** One plain-text email, or false when SMTP is off or the address is a seeded demo person. */
+export async function sendMail(to: string, subject: string, text: string) {
+  const mail = mailer();
+  if (!mail || to.endsWith("@demo.settleshort.app")) return false;
+  try {
+    await mail.sendMail({ from: process.env.MAIL_FROM, to, subject, text });
+    return true;
+  } catch (e) {
+    console.warn("[notify] email failed:", e instanceof Error ? e.message : "unknown");
+    return false;
+  }
+}
+
 const admins = async (workspaceId: string) =>
   (await db.select({ id: memberships.userId }).from(memberships).where(and(eq(memberships.workspaceId, workspaceId), ne(memberships.role, "member")))).map((r) => r.id);
 

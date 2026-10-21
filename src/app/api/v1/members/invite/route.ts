@@ -1,12 +1,12 @@
-import { createHash, randomBytes } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { body, fail, route } from "@/lib/api";
 import { audit } from "@/lib/audit";
 import { db, memberships, users } from "@/lib/db";
+import { issueInvite } from "@/lib/invites";
 
-// Creates (or reuses) the user. Someone without a password gets a one-time invite link (14 days) that the
-// admin shares; signup refuses to claim an invited email without it.
+// Creates (or reuses) the user. Someone without a password gets a one-time invite link (14 days), emailed when
+// SMTP is configured and always returned for the admin to share; signup refuses to claim an invited email without it.
 export const POST = route(
   async (req, ctx) => {
     const input = await body(
@@ -27,14 +27,10 @@ export const POST = route(
       .values({ workspaceId: ctx.workspace.id, userId: user.id, role: input.role, paypalReceiverEmail: input.paypalEmail || input.email })
       .returning();
     await audit(ctx.workspace.id, ctx.user.id, "member.invited", "membership", m.id, { email: input.email, role: input.role });
-    if (user.passwordHash) return { ...m, inviteUrl: null };
-    const token = randomBytes(24).toString("base64url");
-    await db
-      .update(users)
-      .set({ inviteTokenHash: createHash("sha256").update(token).digest("hex"), inviteExpiresAt: new Date(Date.now() + 14 * 86_400_000) })
-      .where(eq(users.id, user.id));
+    if (user.passwordHash) return { ...m, inviteUrl: null, emailed: false };
     const origin = process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin;
-    return { ...m, inviteUrl: `${origin}/signup?invite=${token}` };
+    const { url, emailed } = await issueInvite(user.id, ctx.workspace.id, ctx.user.name, origin);
+    return { ...m, inviteUrl: url, emailed };
   },
   { admin: true },
 );

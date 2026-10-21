@@ -1,5 +1,5 @@
 import { PageHeader, Pill } from "@/components/ui";
-import { DelegationPanel, EscalatesTo, InviteForm, OffboardButton, LimitCell, PaypalEmailCell, ReleaseToggle, RoleSelect, VerifyPaypal } from "@/components/settings/members-client";
+import { DelegationPanel, EscalatesTo, InviteControls, InviteForm, OffboardButton, LimitCell, PaypalEmailCell, ReleaseToggle, RoleSelect, VerifyPaypal } from "@/components/settings/members-client";
 import { requirePageCtx } from "@/lib/auth";
 import { workspaceMembers } from "@/lib/claims";
 import { db, delegations } from "@/lib/db";
@@ -57,7 +57,12 @@ export default async function MembersPage({ searchParams }: PageProps<"/app/memb
                       {m.offboardedAt ? "Left" : m.role}
                     </Pill>
                   )}
-                  {ctx.isAdmin && m.id !== ctx.user.id && <OffboardButton m={m} />}
+                  {m.invited && !m.offboardedAt && (
+                    <Pill tone="warning" dot className="ml-1.5">
+                      Invited
+                    </Pill>
+                  )}
+                  {ctx.isAdmin && m.id !== ctx.user.id && (m.invited ? <InviteControls m={m} /> : <OffboardButton m={m} />)}
                 </td>
                 <td className="px-5 py-3.5 max-lg:block max-lg:p-0">
                   <p className="mb-1 text-[11px] font-medium tracking-[0.06em] text-muted uppercase lg:hidden">PayPal receiver</p>

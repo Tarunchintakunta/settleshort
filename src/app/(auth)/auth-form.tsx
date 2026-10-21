@@ -4,12 +4,12 @@ import { useActionState, useState } from "react";
 import { Alert, Button, Field, inputCls } from "@/components/ui";
 import type { FormState } from "./actions";
 
-type F = { name: string; label: string; type?: string; autoComplete?: string; placeholder?: string; hint?: string; optional?: boolean };
+type F = { name: string; label: string; type?: string; autoComplete?: string; placeholder?: string; hint?: string; optional?: boolean; value?: string; readOnly?: boolean };
 
 export function AuthForm({ action, fields, submit, hidden = {} }: { action: (s: FormState, f: FormData) => Promise<FormState>; fields: F[]; submit: string; hidden?: Record<string, string> }) {
   const [state, formAction, pending] = useActionState(action, undefined);
   // Controlled values: React resets uncontrolled fields after every action, which wiped the email after a wrong password.
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(fields.filter((f) => f.value != null).map((f) => [f.name, f.value!])));
   // The error belongs to the attempt that caused it; editing any field clears it.
   const [shownFor, setShownFor] = useState<FormState>(undefined);
   const error = state?.error && state !== shownFor ? state.error : null;
@@ -25,8 +25,10 @@ export function AuthForm({ action, fields, submit, hidden = {} }: { action: (s: 
             type={f.type ?? "text"}
             autoComplete={f.autoComplete}
             placeholder={f.placeholder}
-            className={inputCls}
+            className={`${inputCls}${f.readOnly ? " bg-sunken text-ink-2" : ""}`}
             required={!f.optional}
+            readOnly={f.readOnly}
+            aria-readonly={f.readOnly}
             value={values[f.name] ?? ""}
             onChange={(e) => {
               setValues((v) => ({ ...v, [f.name]: e.target.value }));

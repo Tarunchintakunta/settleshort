@@ -7,7 +7,7 @@ import { Button, Field, inputCls } from "@/components/ui";
 import { CopyButton } from "@/components/copy-button";
 import { api } from "@/lib/client";
 
-type Member = { id: string; name: string; email: string; role: string; paypalEmail: string | null; membershipId: string; canRelease: boolean; paypalVerifiedAt: Date | string | null; approvalLimitCents: number | null; escalatesToUserId: string | null; offboardedAt: Date | string | null };
+type Member = { id: string; name: string; email: string; role: string; paypalEmail: string | null; membershipId: string; canRelease: boolean; paypalVerifiedAt: Date | string | null; approvalLimitCents: number | null; escalatesToUserId: string | null; offboardedAt: Date | string | null; invited?: boolean };
 
 export function InviteForm() {
   const router = useRouter();
@@ -26,10 +26,10 @@ export function InviteForm() {
           setBusy(true);
           setMsg(null);
           try {
-            const r = await api<{ inviteUrl: string | null }>("/members/invite", { json: f });
+            const r = await api<{ inviteUrl: string | null; emailed: boolean }>("/members/invite", { json: f });
             setMsg(
               r.inviteUrl
-                ? { ok: true, text: `${f.name} added. Send them this one-time link (valid 14 days) to set a password:`, link: r.inviteUrl }
+                ? { ok: true, text: r.emailed ? `${f.name} added and emailed an invite. The same one-time link (valid 14 days):` : `${f.name} added. Email is off here, so send them this one-time link (valid 14 days):`, link: r.inviteUrl }
                 : { ok: true, text: `${f.name} added. They already have an account and can sign in now.` },
             );
             setF({ name: "", email: "", paypalEmail: "", role: "member" });
@@ -137,6 +137,63 @@ export function ReleaseToggle({ m, canEdit }: { m: Member; canEdit: boolean }) {
         </span>
       )}
     </label>
+  );
+}
+
+/** A teammate who hasn't set a password yet: resend a fresh link, copy it, or take the invite back. */
+export function InviteControls({ m }: { m: Member }) {
+  const router = useRouter();
+  const [link, setLink] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const run = async (fn: () => Promise<void>) => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      await fn();
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={busy}
+        onClick={() =>
+          run(async () => {
+            const r = await api<{ inviteUrl: string; emailed: boolean }>(`/members/${m.membershipId}/invite`, { method: "POST" });
+            setLink(r.inviteUrl);
+            setMsg(r.emailed ? "Emailed a new link." : "New link ready (email is off here):");
+          })
+        }
+      >
+        Resend invite
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={busy}
+        onClick={() =>
+          run(async () => {
+            await api(`/members/${m.membershipId}/invite`, { method: "DELETE" });
+            router.refresh();
+          })
+        }
+      >
+        Revoke
+      </Button>
+      {msg && <span className="text-muted">{msg}</span>}
+      {link && (
+        <span className="flex min-w-0 items-center gap-1.5">
+          <code className="max-w-[220px] truncate rounded-[6px] bg-sunken px-2 py-1 text-[11px]">{link}</code>
+          <CopyButton text={link} label="Copy link" />
+        </span>
+      )}
+    </div>
   );
 }
 

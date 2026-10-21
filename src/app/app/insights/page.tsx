@@ -28,7 +28,7 @@ export default async function Insights() {
   const [appr, payouts, items, owed, feedback] = await Promise.all([
     ids.length ? db.select().from(approvals).where(inArray(approvals.claimId, ids)).orderBy(asc(approvals.createdAt)) : [],
     db.select().from(ledgerEntries).where(eq(ledgerEntries.workspaceId, ws.id)).orderBy(asc(ledgerEntries.createdAt)),
-    db.select({ status: batchItems.status }).from(batchItems).innerJoin(batches, eq(batches.id, batchItems.batchId)).where(eq(batches.workspaceId, ws.id)),
+    db.select({ status: batchItems.status, batchStatus: batches.status }).from(batchItems).innerJoin(batches, eq(batches.id, batchItems.batchId)).where(eq(batches.workspaceId, ws.id)),
     obligationsForMany(all),
     db.select().from(aiFeedback).where(eq(aiFeedback.workspaceId, ws.id)),
   ]);
@@ -48,7 +48,8 @@ export default async function Insights() {
   const dupes = all.filter((c) => c.status === "rejected" && c.duplicateOfId);
   const dupeCents = new Map<string, number>();
   for (const d of dupes) dupeCents.set(d.currency, (dupeCents.get(d.currency) ?? 0) + d.amountCents);
-  const terminal = items.filter((i) => TERMINAL.has(i.status));
+  // A batch PayPal rejected outright never gets item statuses, so its items count as failures too.
+  const terminal = items.filter((i) => TERMINAL.has(i.status) || i.batchStatus === "failed");
   const success = terminal.filter((i) => i.status === "SUCCESS").length;
   // Company money sent beyond what was owed (refunds excluded): the double payment this product exists to prevent.
   const SENT: Record<string, number> = { payout: 1, repayment: 1, payout_reversal: -1, clawback: -1 };
