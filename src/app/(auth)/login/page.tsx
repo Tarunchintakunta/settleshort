@@ -19,7 +19,7 @@ export default function LoginPage() {
       />
       <p className="mt-6 text-center text-sm text-muted">
         New here?{" "}
-        <Link href="/signup" className="font-medium text-accent hover:underline">
+        <Link href="/signup" className="inline-block py-1 font-medium text-accent hover:underline">
           Create an account
         </Link>
       </p>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SignOutIcon } from "@phosphor-icons/react/ssr";
 import { logout } from "@/app/(auth)/actions";
+import { Revalidate } from "@/components/app/revalidate";
 import { MobileNav, SideNav, WorkspaceLabel } from "@/components/app/sidebar";
 import { cx, Logo, PROVIDER_LABEL } from "@/components/ui";
 import { aiProvider } from "@/lib/ai";
@@ -23,6 +24,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
   const ai = aiProvider();
   return (
     <div className="flex min-h-[100dvh] flex-1 flex-col md:flex-row">
+      <Revalidate />
       <aside className="flex flex-col gap-4 border-b border-line px-3 py-2 md:sticky md:top-0 md:h-[100dvh] md:w-[244px] md:shrink-0 md:gap-5 md:border-b-0 md:px-3 md:py-5">
         <div className="flex items-center justify-between gap-3 px-1 md:px-2">
           <Link href="/app" aria-label="Overview" className="min-w-0">
@@ -69,8 +71,8 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
             </span>
             <span className="min-w-0 flex-1 truncate text-[13px] text-ink-2">{ctx.user.name}</span>
             <form action={logout}>
-              <button className="flex size-9 items-center justify-center rounded-[8px] text-muted hover:bg-panel hover:text-ink" aria-label="Sign out" title="Sign out">
-                <SignOutIcon className="size-4" />
+              <button className="flex h-9 items-center gap-1.5 rounded-[8px] px-2 text-xs text-muted hover:bg-panel hover:text-ink" title="Sign out">
+                <SignOutIcon className="size-4" aria-hidden /> Sign out
               </button>
             </form>
           </div>

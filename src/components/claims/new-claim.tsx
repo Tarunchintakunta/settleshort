@@ -175,7 +175,7 @@ export function NewClaim({ provider, claimCount }: { provider: string; claimCoun
             }}
             onClick={() => input.current?.click()}
             className={cx(
-              "flex min-h-[320px] cursor-pointer flex-col items-center justify-center rounded-[12px] border border-dashed px-6 text-center transition-colors duration-200",
+              "flex min-h-[200px] cursor-pointer flex-col sm:min-h-[320px] items-center justify-center rounded-[12px] border border-dashed px-6 text-center transition-colors duration-200",
               drag ? "border-accent bg-accent-soft" : "border-line-strong bg-sunken/60 hover:border-accent/60 hover:bg-sunken",
             )}
           >

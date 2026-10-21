@@ -55,7 +55,7 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
         <Card className="rise w-full max-w-[420px] p-8 sm:p-9">{children}</Card>
         <p className="mt-6 text-center text-sm text-muted">
           Just looking?{" "}
-          <a href="/demo" className="font-medium text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink">
+          <a href="/demo" className="inline-block py-1 font-medium text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink">
             Open the demo workspace
           </a>
         </p>

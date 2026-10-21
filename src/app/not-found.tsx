@@ -18,6 +18,17 @@ export default function NotFound() {
           Home
         </ButtonLink>
       </div>
+      <p className="mt-6 text-sm text-muted">
+        Or read the{" "}
+        <Link href="/docs" className="inline-block py-1 font-medium text-accent underline underline-offset-4">
+          docs
+        </Link>{" "}
+        or{" "}
+        <a href="/demo" className="inline-block py-1 font-medium text-accent underline underline-offset-4">
+          open the demo
+        </a>
+        .
+      </p>
     </main>
   );
 }
