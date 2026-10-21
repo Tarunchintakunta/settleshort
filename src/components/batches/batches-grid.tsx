@@ -2,6 +2,7 @@
 
 import { AgGridReact, type CustomCellRendererProps } from "ag-grid-react";
 import type { ColDef } from "ag-grid-community";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { gridTheme } from "@/components/claims/claims-grid";
 import { StatusPill } from "@/components/ui";
@@ -44,8 +45,29 @@ const cols: ColDef<GridBatch>[] = [
 export function BatchesGrid({ rows }: { rows: GridBatch[] }) {
   const router = useRouter();
   return (
-    <div style={{ height: Math.min(640, 46 + Math.max(rows.length, 4) * 52) }}>
-      <AgGridReact<GridBatch>
+    <>
+      <ul className="space-y-2 lg:hidden" aria-label="Batches">
+        {rows.map((b) => (
+          <li key={b.id}>
+            <Link href={`/app/batches/${b.id}`} className="block rounded-[12px] border border-line bg-panel p-4 shadow-soft transition-colors active:bg-sunken">
+              <div className="flex items-start justify-between gap-3">
+                <p className="min-w-0 font-medium break-words">{b.name}</p>
+                <span className="money shrink-0 font-semibold">{formatMoney(b.totalCents, b.currency)}</span>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted">
+                <StatusPill status={b.status} />
+                <span className="tnum">
+                  {b.paid}/{b.items} paid
+                </span>
+                <span className="tnum">{when(b.createdAt)}</span>
+              </div>
+              {b.paypalPayoutBatchId && <p className="mt-2 font-mono text-[11px] text-muted">{b.paypalPayoutBatchId}</p>}
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <div className="hidden lg:block" style={{ height: Math.min(640, 46 + Math.max(rows.length, 4) * 52) }}>
+        <AgGridReact<GridBatch>
         theme={gridTheme}
         rowData={rows}
         columnDefs={cols}
@@ -55,6 +77,7 @@ export function BatchesGrid({ rows }: { rows: GridBatch[] }) {
         rowClass="cursor-pointer"
         animateRows
       />
-    </div>
+      </div>
+    </>
   );
 }

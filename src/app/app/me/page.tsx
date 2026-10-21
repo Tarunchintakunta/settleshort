@@ -62,8 +62,8 @@ export default async function MyMoney() {
             ))}
           </div>
           <div className="overflow-x-auto rounded-[12px] border border-line shadow-soft">
-            <table className="w-full text-sm">
-              <thead className="border-b border-line text-left text-[11px] font-medium tracking-[0.06em] text-muted uppercase">
+            <table className="w-full text-sm max-lg:block">
+              <thead className="border-b border-line text-left text-[11px] font-medium tracking-[0.06em] text-muted uppercase max-lg:hidden">
                 <tr>
                   <th className="px-5 py-3 font-medium">Claim</th>
                   <th className="px-5 py-3 font-medium">Status</th>
@@ -72,26 +72,29 @@ export default async function MyMoney() {
                   <th className="px-5 py-3 text-right font-medium">Remaining</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-line">
+              <tbody className="divide-y divide-line max-lg:block">
                 {mine.map(({ c, p, truth }) => (
-                  <tr key={c.id}>
-                    <td className="px-5 py-3.5">
+                  <tr key={c.id} className="max-lg:grid max-lg:grid-cols-3 max-lg:gap-x-3 max-lg:gap-y-3 max-lg:p-4">
+                    <td className="px-5 py-3.5 max-lg:col-span-2 max-lg:block max-lg:p-0">
                       <Link href={`/app/claims/${c.id}`} className="hover:underline">
                         <span className="tnum text-muted">#{c.number}</span> {claimTitle(c)}
                       </Link>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-5 py-3.5 max-lg:block max-lg:p-0 max-lg:text-right">
                       <Pill tone={truth.tone} dot>
                         {truth.label}
                       </Pill>
                     </td>
-                    <td className="px-5 py-3.5 text-right">
+                    <td className="px-5 py-3.5 text-right max-lg:block max-lg:p-0 max-lg:text-left">
+                      <p className="text-[11px] font-medium tracking-[0.06em] text-muted uppercase lg:hidden">Owed</p>
                       <Money cents={p.owedCents} currency={c.currency} />
                     </td>
-                    <td className="px-5 py-3.5 text-right">
+                    <td className="px-5 py-3.5 text-right max-lg:block max-lg:p-0 max-lg:text-left">
+                      <p className="text-[11px] font-medium tracking-[0.06em] text-muted uppercase lg:hidden">Paid</p>
                       <Money cents={p.settledCents} currency={c.currency} className="text-ink-2" />
                     </td>
-                    <td className="px-5 py-3.5 text-right">
+                    <td className="px-5 py-3.5 text-right max-lg:block max-lg:p-0 max-lg:text-left">
+                      <p className="text-[11px] font-medium tracking-[0.06em] text-muted uppercase lg:hidden">Remaining</p>
                       {p.outstandingCents >= 0 ? (
                         <Money cents={p.outstandingCents} currency={c.currency} className="font-semibold" />
                       ) : (

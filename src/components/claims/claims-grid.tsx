@@ -278,7 +278,7 @@ export function ClaimsGrid({ rows, isAdmin }: { rows: GridClaim[]; isAdmin: bool
       )}
 
       {/* Phones and small tablets: cards instead of a grid that hides most columns. */}
-      <ul className="space-y-2 md:hidden" aria-label="Claims">
+      <ul className="space-y-2 lg:hidden" aria-label="Claims">
         {visible.length ? (
           visible.map((c) => (
             <li key={c.id}>
@@ -314,7 +314,7 @@ export function ClaimsGrid({ rows, isAdmin }: { rows: GridClaim[]; isAdmin: bool
         )}
       </ul>
 
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         <AgGridReact<GridClaim>
           theme={gridTheme}
           rowData={shown}

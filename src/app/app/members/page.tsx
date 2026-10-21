@@ -24,8 +24,8 @@ export default async function MembersPage({ searchParams }: PageProps<"/app/memb
         </div>
       )}
       <div className="mb-8 overflow-x-auto rounded-[12px] border border-line shadow-soft">
-        <table className="w-full text-sm">
-          <thead className="border-b border-line text-left text-[11px] font-medium tracking-[0.06em] text-muted uppercase">
+        <table className="w-full text-sm max-lg:block">
+          <thead className="border-b border-line text-left text-[11px] font-medium tracking-[0.06em] text-muted uppercase max-lg:hidden">
             <tr>
               <th className="px-5 py-3 font-medium">Name</th>
               <th className="px-5 py-3 font-medium">Role</th>
@@ -34,10 +34,10 @@ export default async function MembersPage({ searchParams }: PageProps<"/app/memb
               <th className="px-5 py-3 font-medium" title="May send approved money to PayPal">Release</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-line">
+          <tbody className="divide-y divide-line max-lg:block">
             {members.map((m) => (
-              <tr key={m.id}>
-                <td className="px-5 py-3.5">
+              <tr key={m.id} className="max-lg:grid max-lg:grid-cols-2 max-lg:gap-x-4 max-lg:gap-y-4 max-lg:p-4">
+                <td className="px-5 py-3.5 max-lg:col-span-2 max-lg:block max-lg:p-0">
                   <div className="flex items-center gap-3">
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sunken text-[12px] font-semibold text-ink" aria-hidden>
                       {m.name[0]}
@@ -48,23 +48,27 @@ export default async function MembersPage({ searchParams }: PageProps<"/app/memb
                     </div>
                   </div>
                 </td>
-                <td className="px-5 py-3.5">
+                <td className="px-5 py-3.5 max-lg:block max-lg:p-0">
+                  <p className="mb-1 text-[11px] font-medium tracking-[0.06em] text-muted uppercase lg:hidden">Role</p>
                   <Pill tone={m.offboardedAt ? "neutral" : m.role === "member" ? "neutral" : "accent"} className="capitalize">
                     {m.offboardedAt ? "Left" : m.role}
                   </Pill>
                   {ctx.isAdmin && m.id !== ctx.user.id && <OffboardButton m={m} />}
                 </td>
-                <td className="px-5 py-3.5">
+                <td className="px-5 py-3.5 max-lg:block max-lg:p-0">
+                  <p className="mb-1 text-[11px] font-medium tracking-[0.06em] text-muted uppercase lg:hidden">PayPal receiver</p>
                   <PaypalEmailCell m={m} canEdit={ctx.isAdmin} />
                   <div className="mt-1">
                     <VerifyPaypal m={m} canVerify={ctx.isAdmin && m.id !== ctx.user.id} />
                   </div>
                 </td>
-                <td className="px-5 py-3.5">
+                <td className="px-5 py-3.5 max-lg:block max-lg:p-0">
+                  <p className="mb-1 text-[11px] font-medium tracking-[0.06em] text-muted uppercase lg:hidden">Approves up to</p>
                   <LimitCell m={m} canEdit={ctx.isAdmin && m.id !== ctx.user.id} />
                   <EscalatesTo m={m} members={members} canEdit={ctx.isAdmin} />
                 </td>
-                <td className="px-5 py-3.5">
+                <td className="px-5 py-3.5 max-lg:block max-lg:p-0">
+                  <p className="mb-1 text-[11px] font-medium tracking-[0.06em] text-muted uppercase lg:hidden">Release</p>
                   <ReleaseToggle m={m} canEdit={canGrant} />
                 </td>
               </tr>

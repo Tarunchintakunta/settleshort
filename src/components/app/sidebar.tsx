@@ -49,7 +49,7 @@ const TABS: { href: string; label: string; icon: Icon }[] = [
 ];
 
 const isActive = (path: string, href: string) =>
-  href === "/app" ? path === href : href === "/app/claims" ? path.startsWith(href) && !path.startsWith("/app/claims/new") : path.startsWith(href);
+  href === "/app" ? path === href : href === "/app/claims" ? (path === href || path.startsWith(href + "/")) && !path.startsWith("/app/claims/new") : path === href || path.startsWith(href + "/");
 
 /** Badges come from the layout, then are re-read on every navigation so a cached layout never shows stale numbers. */
 function useCounts(initial: Record<string, number>) {

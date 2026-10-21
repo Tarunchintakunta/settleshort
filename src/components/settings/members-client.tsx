@@ -78,7 +78,7 @@ export function PaypalEmailCell({ m, canEdit }: { m: Member; canEdit: boolean })
   if (!canEdit) return <span className="font-mono text-xs">{m.paypalEmail ?? "Not set"}</span>;
   return (
     <form
-      className="flex items-center gap-2"
+      className="flex min-w-0 flex-wrap items-center gap-2"
       onSubmit={async (e) => {
         e.preventDefault();
         setState("saving");
@@ -91,7 +91,7 @@ export function PaypalEmailCell({ m, canEdit }: { m: Member; canEdit: boolean })
         }
       }}
     >
-      <input aria-label={`PayPal email for ${m.name}`} type="email" value={v} onChange={(e) => setV(e.target.value)} className={`${inputCls} h-9 min-w-0 font-mono text-xs sm:min-w-[220px]`} />
+      <input aria-label={`PayPal email for ${m.name}`} type="email" value={v} onChange={(e) => setV(e.target.value)} className={`${inputCls} h-9 w-full min-w-0 font-mono text-xs lg:w-auto lg:min-w-[220px]`} />
       {v !== (m.paypalEmail ?? "") && (
         <Button size="sm" variant="secondary" disabled={state === "saving"}>
           Save
