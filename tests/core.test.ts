@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { findMatches, DUPLICATE_THRESHOLD, normalizeMerchant } from "../src/lib/matching";
-import { splitEven, toCents, currencyFromSymbol } from "../src/lib/money";
+import { amountProblem, splitEven, toCents, currencyFromSymbol } from "../src/lib/money";
 
 const base = { id: "a", vendor: "Chipotle Mexican Grill", amountCents: 6400, currency: "USD", txnDate: "2026-09-20", payerUserId: "u1" };
 
@@ -10,6 +10,14 @@ describe("money", () => {
     expect(toCents("1,200")).toBe(120000);
     expect(toCents("abc")).toBeNull();
     expect(toCents(-1)).toBeNull();
+    expect(toCents("10.005")).toBe(1001);
+  });
+  it("names bad amounts in plain words", () => {
+    expect(amountProblem("I paid -$50 for lunch", 5000)).toMatch(/positive/);
+    expect(amountProblem("I paid $0 for lunch for @owner", 0)).toBe("Amount must be more than $0.00.");
+    expect(amountProblem("I paid $999,999,999 for lunch", 99999999900)).toMatch(/above \$1,000,000\.00/);
+    expect(amountProblem("I paid $84 for dinner", 8400)).toBeNull();
+    expect(amountProblem("lunch for the team", 0)).toBeNull();
   });
   it("splits without losing cents", () => {
     expect(splitEven(1000, 3)).toEqual([334, 333, 333]);

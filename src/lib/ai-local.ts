@@ -125,7 +125,7 @@ export async function extractReceiptLocal(file: Buffer, mime: string): Promise<{
 }
 
 export function parseTextLocal(text: string, members: AiMember[], today: string): TextClaim {
-  const amt = text.match(/(?:[$₹€£]|rs\.?\s?)\s?([\d,]+(?:\.\d{1,2})?)|([\d,]+(?:\.\d{1,2})?)\s?(?:usd|inr|dollars|bucks|rupees|rs)\b/i);
+  const amt = text.match(/(?:[$₹€£]|rs\.?\s?)\s?([\d,]+(?:\.\d{1,3})?)|([\d,]+(?:\.\d{1,3})?)\s?(?:usd|inr|dollars|bucks|rupees|rs)\b/i);
   const cents = amt ? toCents(amt[1] ?? amt[2]) : null;
   const mentions = [...text.matchAll(/@(\w+)/g)].map((m) => m[1].toLowerCase());
   // "split with Asha and Ravi": plain names count too; members resolve to their full name, others are kept as written.

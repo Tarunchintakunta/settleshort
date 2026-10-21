@@ -8,7 +8,23 @@ export function formatMoney(cents: number, currency = "USD") {
 export function toCents(value: string | number): number | null {
   const n = typeof value === "number" ? value : Number(String(value).replace(/[,\s]/g, ""));
   if (!Number.isFinite(n) || n < 0) return null;
-  return Math.round(n * 100);
+  // Half-up on the decimal string: 10.005 -> 1001, where Math.round(10.005 * 100) gives 1000.
+  return Math.round(Number((n * 100).toFixed(3)));
+}
+
+/** Max a single claim can be worth, in cents (also the API's PATCH ceiling). */
+export const MAX_CLAIM_CENTS = 100_000_000;
+
+/**
+ * Why a message's amount can't become a claim, in the words the person should read, or null when it can.
+ * Catches what a parser quietly turns into 0 or a positive number: "-$50", "$0", "$999,999,999".
+ */
+export function amountProblem(text: string, cents: number, currency = "USD"): string | null {
+  if (/(?:^|[\s(])-\s?[$₹€£]?\s?\d|[$₹€£]\s?-\s?\d|\bminus\s+[$₹€£]?\d/i.test(text)) return "Amount must be positive. Record a refund on the original claim instead.";
+  const explicitZero = /[$₹€£]\s?0+(?:\.0+)?(?![\d.,]\d)/.test(text) || /(?:^|\s)0+(?:\.0+)?\s?(?:usd|inr|eur|gbp|dollars|bucks|rupees|rs)\b/i.test(text);
+  if (!cents && explicitZero) return `Amount must be more than ${formatMoney(0, currency)}.`;
+  if (cents > MAX_CLAIM_CENTS) return `Amount is above ${formatMoney(MAX_CLAIM_CENTS, currency)}. Check the number.`;
+  return null;
 }
 
 /** PayPal wants "12.50" strings. */

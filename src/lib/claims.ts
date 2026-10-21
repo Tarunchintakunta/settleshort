@@ -6,7 +6,8 @@ import { audit } from "./audit";
 import { claimEvidence, claimLines, claims, claimSplits, db, memberships, merchantMappings, users, type EvidenceKind } from "./db";
 import { DUPLICATE_THRESHOLD, findMapping, findMatches, isAmbiguous } from "./matching";
 import { contentKey } from "./evidence";
-import { formatMoney, splitEven } from "./money";
+import { fail } from "./api";
+import { amountProblem, formatMoney, splitEven } from "./money";
 import { namesSplitWith } from "./title";
 
 export const LOW_CONFIDENCE = 0.55;
@@ -185,6 +186,8 @@ export async function claimFromText(workspaceId: string, userId: string, text: s
     members.map((m) => ({ id: m.id, name: m.name, handle: handleOf(m.name) })),
     todayIn(timeZone),
   );
+  const problem = amountProblem(text, parsed.amount_cents, parsed.currency);
+  if (problem) fail(400, "bad_amount", problem);
   const byName = (raw: string) => {
     const n = raw.replace(/^@/, "").trim().toLowerCase();
     return members.find((m) => m.name.toLowerCase() === n || handleOf(m.name) === n);
