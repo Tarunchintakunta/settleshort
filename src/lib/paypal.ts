@@ -14,9 +14,19 @@ if (BASE().includes("api-m.paypal.com")) throw new Error("Live PayPal endpoint r
  * Never resend on an uncertain error; replay the same request id to learn the outcome.
  */
 export class PayPalError extends Error {
-  constructor(message: string, public uncertain: boolean) {
+  constructor(message: string, public uncertain: boolean, public senderRestricted = false) {
     super(message);
   }
+}
+
+const SENDER_RESTRICTED = /not allowed to send|country|SENDER_RESTRICTED|NOT_ELIGIBLE/i;
+
+/** Judge-readable wording for the errors PayPal actually returns from a sandbox. */
+export function friendlyPaypalError(message: string) {
+  if (SENDER_RESTRICTED.test(message)) return "PayPal refused the sender: the sandbox business account behind these credentials is in a country that cannot send Payouts.";
+  if (/INSUFFICIENT_FUNDS/i.test(message)) return "PayPal refused the payout: the sandbox sender account has no funds.";
+  if (/auth failed|AUTHENTICATION/i.test(message)) return "PayPal rejected the sandbox credentials.";
+  return message;
 }
 
 const TIMEOUT_MS = 20_000;
@@ -51,8 +61,10 @@ async function pp(path: string, init: RequestInit = {}) {
     throw new PayPalError(`No response from PayPal (${e instanceof Error ? e.name : "network error"})`, true);
   }
   const j = await res.json().catch(() => ({}));
-  if (!res.ok)
-    throw new PayPalError(`PayPal ${res.status}: ${j.message ?? j.name ?? "request failed"}${j.details ? ", " + JSON.stringify(j.details) : ""}`, res.status >= 500 || res.status === 408);
+  if (!res.ok) {
+    const message = `PayPal ${res.status}: ${j.message ?? j.name ?? "request failed"}${j.details ? ", " + JSON.stringify(j.details) : ""}`;
+    throw new PayPalError(message, res.status >= 500 || res.status === 408, res.status === 403 && SENDER_RESTRICTED.test(message));
+  }
   return j;
 }
 
@@ -72,12 +84,14 @@ export type PayoutStatus = { payoutBatchId: string; batchStatus: string; items: 
  * `replay` re-sends the identical request with the same PayPal-Request-Id: PayPal returns the original
  * result instead of paying again, which is how an uncertain outcome is verified.
  */
+/** Simulator: a receiver containing "timeout" loses the first response, but the payout went through. */
+export function simulatePayout(senderBatchId: string, items: PayoutItemInput[], replay = false): { payoutBatchId: string; raw: Record<string, unknown> } {
+  if (!replay && items.some((i) => /timeout/i.test(i.email))) throw new PayPalError("No response from PayPal (TimeoutError, simulated)", true);
+  return { payoutBatchId: `SIM-${senderBatchId.slice(0, 8).toUpperCase()}`, raw: { simulated: true, items: items.length, replayed: replay } };
+}
+
 export async function createPayout(senderBatchId: string, items: PayoutItemInput[], replay = false): Promise<{ payoutBatchId: string; raw: unknown }> {
-  if (paypalMode() === "simulated") {
-    // Simulator: a receiver containing "timeout" loses the first response, but the payout went through.
-    if (!replay && items.some((i) => /timeout/i.test(i.email))) throw new PayPalError("No response from PayPal (TimeoutError, simulated)", true);
-    return { payoutBatchId: `SIM-${senderBatchId.slice(0, 8).toUpperCase()}`, raw: { simulated: true, items: items.length, replayed: replay } };
-  }
+  if (paypalMode() === "simulated") return simulatePayout(senderBatchId, items, replay);
   const j = await pp("/v1/payments/payouts", {
     method: "POST",
     // PayPal also rejects a reused sender_batch_id, so a retry can never double-pay.

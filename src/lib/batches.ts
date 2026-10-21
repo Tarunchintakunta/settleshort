@@ -7,7 +7,7 @@ import { batches, batchItems, claims, db, memberships, users, workspaces } from 
 import { obligationsFor, obligationsForMany, recordLedger } from "./ledger";
 import { formatMoney } from "./money";
 import { isForwardTransition, PAID, FAILED, TERMINAL } from "./payout-status";
-import { createPayout, getPayout, PayPalError, paypalMode, PayoutItemStatus } from "./paypal";
+import { createPayout, friendlyPaypalError, getPayout, PayPalError, paypalMode, PayoutItemStatus, simulatePayout } from "./paypal";
 
 /** Claim statuses that can go into a batch: approved, or approved with money still outstanding. */
 const BATCHABLE = ["matched", "partially_paid", "failed"] as const;
@@ -179,6 +179,18 @@ async function sendPayout(workspaceId: string, actorId: string | null, batchId: 
       await audit(workspaceId, actorId, "payout.uncertain", "batch", batchId, { error: message });
       return b;
     }
+    if (e instanceof PayPalError && e.senderRestricted && !replay) {
+      // PayPal refused the sender account itself (region), so nothing can ever go out from these credentials.
+      // The batch completes in the labelled simulator so the flow still demos end to end; the UI says so.
+      const { payoutBatchId, raw } = simulatePayout(batchId, payoutItems(items));
+      await db
+        .update(batches)
+        .set({ status: "submitted", errorMessage: null, paypalPayoutBatchId: payoutBatchId, paypalMode: "simulated", paypalResponse: { ...raw, fallback: true, reason: message } })
+        .where(eq(batches.id, batchId));
+      await db.update(batchItems).set({ status: "PENDING" }).where(eq(batchItems.batchId, batchId));
+      await audit(workspaceId, actorId, "payout.simulated", "batch", batchId, { reason: message });
+      return refreshBatch(workspaceId, batchId, actorId);
+    }
     await db.update(batches).set({ status: "failed", errorMessage: message, paypalMode: paypalMode() }).where(eq(batches.id, batchId));
     // Definitive rejection: nothing was paid, so release claims for a fresh batch (new sender_batch_id).
     for (const id of new Set(items.map((i) => i.claimId))) {
@@ -187,7 +199,7 @@ async function sendPayout(workspaceId: string, actorId: string | null, batchId: 
       await db.update(claims).set({ status: settled ? "partially_paid" : "matched", updatedAt: new Date() }).where(eq(claims.id, id));
     }
     await audit(workspaceId, actorId, "payout.failed", "batch", batchId, { error: message });
-    fail(502, "paypal_error", message);
+    fail(502, "paypal_error", `${friendlyPaypalError(message)} Nothing was paid and the claims were released. Details: ${message}`);
   }
   return refreshBatch(workspaceId, batchId, actorId);
 }

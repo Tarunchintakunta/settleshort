@@ -9,13 +9,14 @@ import { formatMoney } from "@/lib/money";
 
 type Props = {
   batch: { id: string; status: string; totalCents: number; currency: string; name: string };
+  claimIds: string[];
   recipients: number;
   isAdmin: boolean;
   blocked: string | null;
   mode: string;
 };
 
-export function BatchActions({ batch, recipients, isAdmin, blocked, mode }: Props) {
+export function BatchActions({ batch, claimIds, recipients, isAdmin, blocked, mode }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState("");
@@ -73,6 +74,24 @@ export function BatchActions({ batch, recipients, isAdmin, blocked, mode }: Prop
           }}
         >
           <ArrowsClockwiseIcon className={cx("size-4", busy && "animate-spin")} aria-hidden /> {batch.status === "unknown" ? "Verify with PayPal" : "Refresh status"}
+        </Button>
+      )}
+      {batch.status === "failed" && isAdmin && (
+        <Button
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setError(null);
+            try {
+              const b = await api<{ id: string }>("/batches", { json: { claimIds, name: batch.name.replace(/ \(retry\)$/, "") + " (retry)" } });
+              router.push(`/app/batches/${b.id}`);
+            } catch (e) {
+              setError((e as Error).message);
+              setBusy(false);
+            }
+          }}
+        >
+          <ArrowsClockwiseIcon className="size-4" aria-hidden /> Retry payout
         </Button>
       )}
       {batch.status === "awaiting_approval" && (

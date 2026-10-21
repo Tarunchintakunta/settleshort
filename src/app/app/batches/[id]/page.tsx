@@ -10,7 +10,7 @@ import { auditEvents, batches, batchItems, claims, db, memberships } from "@/lib
 import { releaseProblems } from "@/lib/approvals";
 import { unverifiedReceivers } from "@/lib/batches";
 import { formatMoney } from "@/lib/money";
-import { paypalMode } from "@/lib/paypal";
+import { friendlyPaypalError, paypalMode } from "@/lib/paypal";
 import { claimTitle } from "@/lib/title";
 
 export const metadata = { title: "Batch" };
@@ -54,12 +54,18 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
   type StepState = "done" | "failed" | "skipped" | "todo";
   const failed = batch.status === "failed";
   const sent = !!batch.paypalPayoutBatchId;
+  const resp = batch.paypalResponse as { fallback?: boolean; reason?: string } | null;
+  const fallback = resp?.fallback ? (resp.reason ?? "") : null;
   const timeline: { label: string; at: Date | null | undefined; state: StepState }[] = [
     { label: "Batch created", at: batch.createdAt, state: "done" },
     { label: "Approved by a human", at: batch.approvedAt, state: batch.approvedAt ? "done" : "todo" },
     ...(at("payout.uncertain") ? [{ label: "PayPal outcome unknown, held", at: at("payout.uncertain"), state: "done" as const }] : []),
     sent
-      ? { label: at("payout.verified") ? "Verified with PayPal, not resent" : "Sent to PayPal Payouts", at: at("payout.verified") ?? at("payout.created"), state: "done" }
+      ? {
+          label: fallback != null ? "Simulated payout, PayPal sender restricted" : at("payout.verified") ? "Verified with PayPal, not resent" : "Sent to PayPal Payouts",
+          at: at("payout.simulated") ?? at("payout.verified") ?? at("payout.created"),
+          state: "done",
+        }
       : failed
         ? { label: "Rejected by PayPal", at: at("payout.failed"), state: "failed" }
         : { label: "Sent to PayPal Payouts", at: null, state: "todo" },
@@ -88,7 +94,11 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <StatusPill status={batch.status} />
-            {batch.paypalMode && <Pill dot>PayPal {batch.paypalMode}</Pill>}
+            {batch.paypalMode && (
+              <Pill dot tone={fallback != null ? "warning" : "neutral"}>
+                {fallback != null ? "Simulated payout" : `PayPal ${batch.paypalMode}`}
+              </Pill>
+            )}
           </div>
           <h1 className="mt-3 break-words text-[26px] font-semibold tracking-[-0.03em] sm:text-[28px]">{batch.name}</h1>
           <p className="mt-1 text-sm text-muted">
@@ -144,10 +154,23 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
           <b>PayPal didn&apos;t answer in time.</b> The payout may already be on its way, so nothing will be resent and these claims stay locked.
           Verifying replays the same request id, which PayPal answers with the original result instead of paying twice.
         </div>
+      ) : batch.errorMessage && batch.status === "failed" ? (
+        <div role="alert" className="mb-6 rounded-[12px] border border-danger/25 bg-danger-soft p-4 text-sm text-danger">
+          <b>Payout failed.</b> {friendlyPaypalError(batch.errorMessage).replace(/[.\s]+$/, "")}. Nothing was paid and the claims were released, so you can retry.
+          <details className="mt-2 text-xs text-ink-2">
+            <summary className="cursor-pointer font-medium">Details</summary>
+            <p className="mt-1 font-mono break-words">{batch.errorMessage}</p>
+          </details>
+        </div>
       ) : (
-        batch.errorMessage && batch.status === "failed" && (
-          <div role="alert" className="mb-6 rounded-[12px] border border-danger/25 bg-danger-soft p-4 text-sm text-danger">
-            <b>PayPal error:</b> {batch.errorMessage.replace(/[.\s]+$/, "")}. Nothing was paid and the claims were released, so you can batch them again.
+        fallback != null && (
+          <div role="status" className="mb-6 rounded-[12px] border border-warning/40 bg-warning-soft p-4 text-sm text-warning">
+            <b>Simulated payout.</b> PayPal sandbox refused the sender account, so this batch completed in the labelled simulator. No sandbox money moved. Fix: create the REST app under a US
+            sandbox business account.
+            <details className="mt-2 text-xs text-ink-2">
+              <summary className="cursor-pointer font-medium">PayPal response</summary>
+              <p className="mt-1 font-mono break-words">{fallback}</p>
+            </details>
           </div>
         )
       )}
@@ -217,7 +240,7 @@ export default async function BatchPage({ params }: PageProps<"/app/batches/[id]
                 <>Nothing is sent until an admin approves. Caps: {formatMoney(ws.maxSingleCents, batch.currency)} per person, {formatMoney(ws.maxBatchCents, batch.currency)} per batch.</>
               )}
             </p>
-            <BatchActions batch={batch} recipients={recipients} isAdmin={ctx.isAdmin} blocked={blocked} mode={paypalMode()} />
+            <BatchActions batch={batch} claimIds={[...new Set(items.map((i) => i.claim.id))]} recipients={recipients} isAdmin={ctx.isAdmin} blocked={blocked} mode={paypalMode()} />
           </div>
         </div>
 
