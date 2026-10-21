@@ -40,6 +40,7 @@ export async function factsFor(rows: Claim[]) {
           uncertainFields((c.aiJson as { field_confidence?: Record<string, number> } | null)?.field_confidence).length > 0 ||
           openConflicts.length > 0,
         openConflicts,
+        withdrawn: c.status === "rejected" && c.note.startsWith("Withdrawn:"),
         createdAt: c.createdAt,
         approvedAt: appr.find((a) => a.claimId === c.id)?.createdAt ?? null,
         batch: latest ? { status: latest.status, createdAt: latest.createdAt, sentAt: latest.paypalPayoutBatchId ? latest.approvedAt : null } : null,

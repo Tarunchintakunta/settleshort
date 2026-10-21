@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
-import { PageHeader } from "@/components/ui";
+import { LockIcon } from "@phosphor-icons/react/ssr";
+import { ButtonLink, Empty, PageHeader } from "@/components/ui";
 import { requirePageCtx } from "@/lib/auth";
 
 export const metadata = { title: "Exports" };
@@ -7,7 +7,13 @@ export const metadata = { title: "Exports" };
 /** The month-end pack for the accountant: one CSV plus every claim's closure record, printable as one PDF. */
 export default async function Exports({ searchParams }: PageProps<"/app/exports">) {
   const ctx = await requirePageCtx();
-  if (!ctx.isAdmin) redirect("/app");
+  if (!ctx.isAdmin)
+    return (
+      <>
+        <PageHeader title="Exports" sub="The month-end evidence pack for the accountant." />
+        <Empty icon={<LockIcon className="size-5" aria-hidden />} title="Owners and admins only" body="Exports include every member's claims and PayPal references, so only approvers can download them." action={<ButtonLink href="/app/me">See my money</ButtonLink>} />
+      </>
+    );
   const sp = await searchParams;
   const now = new Date();
   const from = typeof sp.from === "string" ? sp.from : new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);

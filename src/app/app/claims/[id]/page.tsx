@@ -30,6 +30,7 @@ import { hasHighRisk } from "@/lib/risk";
 import { ConflictsPanel } from "@/components/claims/conflicts-panel";
 import { DuplicateChooser } from "@/components/claims/duplicate-chooser";
 import { MissingQuestionCard } from "@/components/claims/missing-question";
+import { WithdrawButton } from "@/components/claims/withdraw-button";
 import { approvalBlocker } from "@/lib/policy";
 import { FIELD_LABEL, FIELD_UNSURE, missingQuestions, suggestPurposes, uncertainFields } from "@/lib/evidence";
 import { decisionBrief } from "@/lib/brief";
@@ -162,6 +163,7 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
         <Link href={`/app/claims/${claim.id}/record`} className="inline-flex min-h-11 items-center text-[13px] text-muted transition-colors hover:text-ink md:min-h-0">
           Closure record
         </Link>
+        {claim.submitterId === ctx.user.id && ["draft", "pending_review", "matched"].includes(claim.status) && <WithdrawButton claimId={claim.id} />}
       </div>
 
       {/* Sticky summary: what it is, how much, where it stands, and the decision. */}

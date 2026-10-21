@@ -140,6 +140,38 @@ export function ReleaseToggle({ m, canEdit }: { m: Member; canEdit: boolean }) {
   );
 }
 
+/** Admins promote or demote anyone but the owner and themselves; every change lands in the audit log. */
+export function RoleSelect({ m, canEdit }: { m: Member; canEdit: boolean }) {
+  const router = useRouter();
+  const [state, setState] = useState<"idle" | "saving" | "saved" | string>("idle");
+  if (!canEdit || m.role === "owner" || m.offboardedAt) return null;
+  return (
+    <span className="inline-flex items-center gap-2">
+      <select
+        aria-label={`Role for ${m.name}`}
+        value={m.role}
+        disabled={state === "saving"}
+        onChange={async (e) => {
+          setState("saving");
+          try {
+            await api(`/members/${m.membershipId}`, { method: "PATCH", json: { role: e.target.value } });
+            setState("saved");
+            router.refresh();
+          } catch (x) {
+            setState((x as Error).message);
+          }
+        }}
+        className={`${inputCls} h-8 w-auto text-xs`}
+      >
+        <option value="member">Member</option>
+        <option value="admin">Admin</option>
+      </select>
+      {state === "saved" && <span className="text-xs text-success">Saved</span>}
+      {!["idle", "saving", "saved"].includes(state) && <span className="text-xs text-danger">{state}</span>}
+    </span>
+  );
+}
+
 /** Payee verification: an admin (never the person themselves) confirms the PayPal address is theirs. */
 export function VerifyPaypal({ m, canVerify }: { m: Member; canVerify: boolean }) {
   const router = useRouter();

@@ -19,6 +19,7 @@ export type ClaimFacts = {
   /** Open fix requests from an approver (what the claimant must do). */
   openFixes?: string[];
   openConflicts?: string[];
+  withdrawn?: boolean;
 };
 
 export type Truth = { key: string; label: string; detail: string; tone: Tone };
@@ -26,6 +27,7 @@ export type Truth = { key: string; label: string; detail: string; tone: Tone };
 // Labels follow the one app vocabulary: Draft, Needs review, Approved, In batch, Paid, Failed (plus rarer exception states).
 /** One status a person can trust, distinguishing every stage between submitted and confirmed received. */
 export function truthfulStatus(f: ClaimFacts): Truth {
+  if (f.status === "rejected" && f.withdrawn) return { key: "rejected", label: "Withdrawn", detail: "The submitter took this claim back.", tone: "neutral" };
   if (f.status === "rejected") return { key: "rejected", label: "Rejected", detail: "This claim won't be paid.", tone: "neutral" };
   if (f.status === "draft") return { key: "draft", label: "Draft", detail: "Not submitted yet.", tone: "neutral" };
   if (f.status === "pending_review" && f.openFixes?.length)
