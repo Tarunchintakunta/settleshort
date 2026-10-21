@@ -6,10 +6,10 @@ import { claims, db } from "@/lib/db";
 
 export const POST = route<{ id: string }>(
   async (req, ctx, { id }) => {
-    const { reason } = await body(req, z.object({ reason: z.string().max(500).optional() }));
+    const { reason } = await body(req, z.object({ reason: z.string().trim().min(3, "Give the submitter a reason").max(500) }));
     const [c] = await db
       .update(claims)
-      .set({ status: "rejected", note: reason ? `Rejected: ${reason}` : undefined, updatedAt: new Date() })
+      .set({ status: "rejected", note: `Rejected: ${reason}`, updatedAt: new Date() })
       .where(and(eq(claims.id, id), eq(claims.workspaceId, ctx.workspace.id), inArray(claims.status, ["draft", "pending_review", "matched"])))
       .returning();
     if (!c) fail(409, "not_rejectable", "Claim not found or already in a batch");

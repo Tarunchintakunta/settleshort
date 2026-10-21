@@ -133,11 +133,11 @@ export function parseTextLocal(text: string, members: AiMember[], today: string)
   const byHandle = (h: string) => members.find((m) => m.handle.toLowerCase() === h.toLowerCase() || m.name.toLowerCase() === h.toLowerCase());
   const mentioned = members.filter((m) => mentions.includes(m.handle.toLowerCase())).map((m) => m.name);
   const payees = [...new Set([...mentioned, ...named.map((n) => byHandle(n)?.name ?? n)])];
+  const isPerson = (v: string) => members.some((m) => m.name.toLowerCase() === v.toLowerCase() || m.handle.toLowerCase() === v.toLowerCase()) || named.includes(v);
   const vendor =
-    text.match(/\b(?:at|from)\s+([A-Z][\w'&]*(?:\s+[A-Z][\w'&]*)*)/)?.[1] ??
-    text.match(/\bfor\s+([A-Z][\w'&]*(?:\s+[A-Z][\w'&]*)*)/)?.[1] ??
-    text.match(/^\s*([A-Z][\w'&]+)\s+[$₹€£]/)?.[1] ??
-    null;
+    [text.match(/\b(?:at|from)\s+([A-Z][\w'&]*(?:\s+[A-Z][\w'&]*)*)/)?.[1], text.match(/\bfor\s+([A-Z][\w'&]*(?:\s+[A-Z][\w'&]*)*)/)?.[1], text.match(/^\s*([A-Z][\w'&]+)\s+[$₹€£]/)?.[1]].find(
+      (v): v is string => !!v && !isPerson(v),
+    ) ?? null;
   // An explicit date wins; "yesterday" is relative; otherwise today is only a guess (low date confidence).
   const explicit = findDate(text)?.iso ?? null;
   const yesterday = /yesterday/i.test(text);

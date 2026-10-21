@@ -33,9 +33,11 @@ export default async function Exceptions({ searchParams }: PageProps<"/app/excep
         <Link href="/app/exceptions" aria-current={!riskOnly ? "page" : undefined} className={tabBtn(!riskOnly)}>
           All <span className="tnum ml-1 opacity-60">{all.length}</span>
         </Link>
-        <Link href="/app/exceptions?filter=risk" aria-current={riskOnly ? "page" : undefined} className={tabBtn(riskOnly)}>
-          Has soft fraud signal <span className="tnum ml-1 opacity-60">{all.filter((e) => e.kind === "risk").length}</span>
-        </Link>
+        {(riskOnly || all.some((e) => e.kind === "risk")) && (
+          <Link href="/app/exceptions?filter=risk" aria-current={riskOnly ? "page" : undefined} className={tabBtn(riskOnly)}>
+            Has soft fraud signal <span className="tnum ml-1 opacity-60">{all.filter((e) => e.kind === "risk").length}</span>
+          </Link>
+        )}
       </nav>
       {items.length === 0 ? (
         <Empty icon={<CheckCircleIcon className="size-5" aria-hidden />} title="Nothing needs you" body="No stuck, conflicting or unusual claims. Payouts are clean." />

@@ -200,7 +200,7 @@ export default function Home() {
             />
             <p className="mt-4 text-sm text-muted">
               Want the exact request?{" "}
-              <a href="/docs" className="font-medium text-accent hover:underline">
+              <a href="/docs" className="font-medium text-accent underline underline-offset-4">
                 See the API docs
               </a>
               .
@@ -217,8 +217,8 @@ export default function Home() {
               Questions
             </h2>
             <p className="mt-4 text-sm leading-relaxed text-muted">
-              The <Link href="/security" className="text-accent underline-offset-4 hover:underline">security page</Link> and{" "}
-              <Link href="/docs" className="text-accent underline-offset-4 hover:underline">docs</Link> go deeper.
+              The <Link href="/security" className="text-accent underline underline-offset-4">security page</Link> and{" "}
+              <Link href="/docs" className="text-accent underline underline-offset-4">docs</Link> go deeper.
             </p>
           </div>
           <div className="divide-y divide-line border-y border-line lg:col-span-8">

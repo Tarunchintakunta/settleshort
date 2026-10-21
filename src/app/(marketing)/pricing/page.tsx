@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { CheckIcon } from "@phosphor-icons/react/ssr";
 import type { ReactNode } from "react";
 import { DemoLink, wrap } from "@/components/marketing/Nav";
-import { Button, cx, Pill } from "@/components/ui";
+import { cx, Pill } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -73,9 +73,9 @@ export default function PricingPage() {
           blurb="For teams settling real expenses. Pricing comes once live payouts are supported."
           items={TEAM}
           cta={
-            <Button variant="secondary" disabled className="h-11 w-full px-5 text-[15px] sm:w-auto">
-              Coming soon
-            </Button>
+            <p className="inline-flex h-11 items-center gap-2 rounded-full border border-dashed border-line-strong px-4 text-sm font-medium text-ink-2">
+              <span className="size-1.5 rounded-full bg-warning" aria-hidden /> Coming soon, after live payouts
+            </p>
           }
         />
       </div>

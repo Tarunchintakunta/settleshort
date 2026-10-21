@@ -20,7 +20,7 @@ export default async function MembersPage({ searchParams }: PageProps<"/app/memb
       <PageHeader title="Members" sub="Who submits claims, who approves them, who can release money, and where PayPal sends reimbursements." />
       {welcome && (
         <div className="rise mb-8 rounded-[12px] border border-accent/20 bg-accent-soft px-4 py-4 text-sm leading-relaxed text-ink-2">
-          <b className="text-ink">Last step:</b> add your teammates and their PayPal sandbox emails, then create your first claim.
+          <b className="text-ink">Step 2 of 2:</b> add your teammates and their PayPal sandbox emails, then create your first claim.
         </div>
       )}
       <div className="mb-8 overflow-x-auto rounded-[12px] border border-line shadow-soft">

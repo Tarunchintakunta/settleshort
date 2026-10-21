@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CheckIcon, XIcon } from "@phosphor-icons/react";
-import { Button, cx } from "@/components/ui";
+import { Button, cx, inputCls } from "@/components/ui";
 import { api } from "@/lib/client";
 import { getRiskAck } from "@/components/claims/risk-signals";
 
@@ -34,9 +34,31 @@ export function ClaimActions({ claimId, canApprove, approveBlocked, canReject, n
   const [left, setLeft] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState("");
+  const dialog = useRef<HTMLDialogElement>(null);
   const timer = useRef<ReturnType<typeof setInterval>>(null);
 
   useEffect(() => () => void (timer.current && clearInterval(timer.current)), []);
+  useEffect(() => {
+    if (rejecting) dialog.current?.showModal();
+    else dialog.current?.close();
+  }, [rejecting]);
+
+  async function reject() {
+    setBusy(true);
+    try {
+      await api(`/claims/${claimId}/reject`, { json: { reason } });
+      setRejecting(false);
+      setMsg({ ok: true, text: "Claim rejected. The submitter sees your reason." });
+      router.refresh();
+    } catch (e) {
+      setMsg({ ok: false, text: (e as Error).message });
+      setRejecting(false);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function send() {
     setBusy(true);
@@ -97,20 +119,10 @@ export function ClaimActions({ claimId, canApprove, approveBlocked, canReject, n
             variant="danger"
             className={cx(variant === "bar" && "h-11 flex-1")}
             disabled={busy || pending}
-            onClick={async () => {
-              const reason = prompt("Reason for rejecting (optional)");
-              if (reason === null) return;
-              setBusy(true);
+            onClick={() => {
               setMsg(null);
-              try {
-                await api(`/claims/${claimId}/reject`, { json: { reason: reason || undefined } });
-                setMsg({ ok: true, text: "Claim rejected" });
-                router.refresh();
-              } catch (e) {
-                setMsg({ ok: false, text: (e as Error).message });
-              } finally {
-                setBusy(false);
-              }
+              setReason("");
+              setRejecting(true);
             }}
           >
             <XIcon className="size-4" aria-hidden /> Reject
@@ -130,6 +142,51 @@ export function ClaimActions({ claimId, canApprove, approveBlocked, canReject, n
         )}
       </div>
       {variant === "inline" && approveBlocked && canApprove && <p className="mt-1 max-w-[32ch] text-right text-xs text-muted">{approveBlocked}</p>}
+
+      {canReject && (
+        <dialog
+          ref={dialog}
+          onClose={() => setRejecting(false)}
+          aria-labelledby={`reject-title-${variant}`}
+          className="m-auto w-[min(92vw,440px)] max-w-full rounded-[16px] border border-line bg-panel p-0 text-ink shadow-pop backdrop:bg-[rgb(12_12_14/0.55)] backdrop:backdrop-blur-[6px] open:animate-[rise_280ms_cubic-bezier(0.16,1,0.3,1)]"
+        >
+          <form
+            method="dialog"
+            className="p-6"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (reason.trim().length >= 3) void reject();
+            }}
+          >
+            <h2 id={`reject-title-${variant}`} className="text-[20px] font-semibold tracking-[-0.03em]">
+              Reject this claim?
+            </h2>
+            <p className="mt-1 text-sm text-ink-2">The submitter gets your reason. Nothing is paid.</p>
+            <label className="mt-4 block text-sm font-medium" htmlFor={`reject-reason-${variant}`}>
+              Reason
+            </label>
+            <textarea
+              id={`reject-reason-${variant}`}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              required
+              minLength={3}
+              maxLength={500}
+              rows={3}
+              placeholder="e.g. Personal expense, not a team one"
+              className={cx(inputCls, "mt-1.5 h-auto py-2")}
+            />
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => setRejecting(false)}>
+                Keep it
+              </Button>
+              <Button type="submit" variant="danger" disabled={busy || reason.trim().length < 3}>
+                {busy ? "Rejecting…" : "Reject claim"}
+              </Button>
+            </div>
+          </form>
+        </dialog>
+      )}
 
       {/* Portal: the sticky header's backdrop blur would otherwise trap this fixed toast inside it. */}
       {(pending || msg) &&
