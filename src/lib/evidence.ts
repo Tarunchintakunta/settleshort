@@ -45,10 +45,18 @@ const sameMerchant = (a: string, b: string) => {
  * The key is stable for the same disagreement, so a human can acknowledge it once. Fields the extractor
  * only guessed (low field confidence) never count as a contradiction. Pass evidence oldest first.
  */
-export function findContradictions(evidence: EvidenceFacts[]): Contradiction[] {
+export function findContradictions(evidence: EvidenceFacts[], claim?: { amountCents: number; currency: string }): Contradiction[] {
   const out: Contradiction[] = [];
   const seen = new Set<string>();
   const ev = evidence.filter((e) => e.extract);
+  // The claimed amount must match at least one confident piece of evidence; an edited figure nobody can source is a contradiction.
+  const sureAmounts = ev.filter((e) => (e.extract!.field_confidence?.amount ?? 1) >= FIELD_UNSURE && e.extract!.amount_cents && (!e.extract!.currency || e.extract!.currency === claim?.currency));
+  if (claim?.amountCents && sureAmounts.length && !sureAmounts.some((e) => e.extract!.amount_cents === claim.amountCents)) {
+    const e = sureAmounts[sureAmounts.length - 1];
+    const key = `claim-amount:${claim.amountCents}|${e.extract!.amount_cents}`;
+    seen.add(key);
+    out.push({ key, field: "amount", message: `The claim says ${formatMoney(claim.amountCents, claim.currency)} but ${KIND_LABEL[e.kind] ?? e.kind} says ${formatMoney(e.extract!.amount_cents!, claim.currency)}` });
+  }
   for (let i = 0; i < ev.length; i++)
     for (let j = i + 1; j < ev.length; j++) {
       const [a, b] = [ev[i], ev[j]];

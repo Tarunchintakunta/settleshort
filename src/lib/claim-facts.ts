@@ -26,15 +26,20 @@ export async function factsFor(rows: Claim[]) {
       const mine = items.filter((i) => i.item.claimId === c.id);
       const latest = mine[0]?.batch ?? null;
       const latestItems = mine.filter((i) => i.batch.id === latest?.id).map((i) => i.item);
+      const openConflicts = findContradictions(
+        evidence.filter((e) => e.claimId === c.id).map((e) => ({ id: e.id, kind: e.kind, extract: e.extractJson as EvidenceFacts["extract"] })),
+        c,
+      )
+        .filter((x) => !c.acknowledgedConflicts.some((a) => a.key === x.key))
+        .map((x) => x.message);
       const facts: ClaimFacts = {
         status: c.status,
         flagged:
           !!c.duplicateOfId ||
           (c.aiConfidence != null && c.aiConfidence < LOW_CONFIDENCE) ||
           uncertainFields((c.aiJson as { field_confidence?: Record<string, number> } | null)?.field_confidence).length > 0 ||
-          findContradictions(evidence.filter((e) => e.claimId === c.id).map((e) => ({ id: e.id, kind: e.kind, extract: e.extractJson as EvidenceFacts["extract"] }))).some(
-            (x) => !c.acknowledgedConflicts.some((a) => a.key === x.key),
-          ),
+          openConflicts.length > 0,
+        openConflicts,
         createdAt: c.createdAt,
         approvedAt: appr.find((a) => a.claimId === c.id)?.createdAt ?? null,
         batch: latest ? { status: latest.status, createdAt: latest.createdAt, sentAt: latest.paypalPayoutBatchId ? latest.approvedAt : null } : null,

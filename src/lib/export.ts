@@ -31,7 +31,7 @@ export async function evidencePackCsv(workspaceId: string, from: string, to: str
   ]);
   const name = (id: string | null) => (id ? members.find((m) => m.id === id)?.name ?? "" : "");
   const header = [
-    "claim", "expense_date", "merchant", "category", "purpose", "status", "claimed", "currency", "receipt_amount", "receipt_currency", "fx_rate", "fx_source",
+    "claim", "expense_date", "merchant", "category", "purpose", "status", "claimed", "currency", "evidence_amount", "amount_mismatch", "receipt_amount", "receipt_currency", "fx_rate", "fx_source",
     "reimbursable", "excluded", "company_funded", "advance_funded", "adjustment", "adjustment_reason", "approved_by", "evidence", "missing_receipt_declared",
     "paypal_batches", "paypal_transactions", "open_exceptions", "client_to_bill", "recovery_status", "deposit_status", "closure_record",
   ];
@@ -39,13 +39,17 @@ export async function evidencePackCsv(workspaceId: string, from: string, to: str
     const o = owed.get(c.id)!;
     const e = ev.filter((x) => x.claimId === c.id);
     const its = items.filter((i) => i.item.claimId === c.id);
+    const conflicts = findContradictions(e.map((x) => ({ id: x.id, kind: x.kind, extract: x.extractJson as EvidenceFacts["extract"] })), c);
+    const evidenceAmounts = [...new Set(e.map((x) => (x.extractJson as EvidenceFacts["extract"])?.amount_cents).filter((n): n is number => !!n))];
     const exceptions = [
-      ...findContradictions(e.map((x) => ({ id: x.id, kind: x.kind, extract: x.extractJson as EvidenceFacts["extract"] }))).filter((x) => !c.acknowledgedConflicts.some((a) => a.key === x.key)).map((x) => x.message),
+      ...conflicts.filter((x) => !c.acknowledgedConflicts.some((a) => a.key === x.key)).map((x) => x.message),
       ...inv.filter((i) => i.claimId === c.id && i.status === "open").map(() => "payout reported missing"),
       ...(c.duplicateOfId && c.status === "pending_review" ? ["possible duplicate"] : []),
     ];
     return [
       `#${c.number}`, c.txnDate, c.vendor, c.category, c.purpose, facts.get(c.id)!.truth.label, centsToDecimal(c.amountCents), c.currency,
+      evidenceAmounts.map(centsToDecimal).join("; "),
+      conflicts.some((x) => x.key.startsWith("claim-amount:")) ? (c.acknowledgedConflicts.some((a) => a.key.startsWith("claim-amount:")) ? "accepted" : "yes") : "no",
       c.receiptCents != null ? centsToDecimal(c.receiptCents) : "", c.receiptCurrency, c.fxRate ?? "", c.fxSource,
       centsToDecimal(o.reimbursableCents), centsToDecimal(o.excludedCents), centsToDecimal(o.companyFundedCents), centsToDecimal(o.advanceFundedCents),
       c.adjustmentCents ? centsToDecimal(c.adjustmentCents) : "", c.adjustmentReason,

@@ -57,6 +57,8 @@ export async function workspaceExceptions(ws: typeof workspaces.$inferSelect): P
     const flagged = c.status === "pending_review" ? flaggedRisk(risk.get(c.id) ?? []) : [];
     if (flagged.length)
       out.push({ key: `risk-${c.id}`, kind: "risk", title: label(c), why: flagged.map((s) => s.message).join(". ") + ".", action: "Review the risk signals", href: claimLink(c), at: c.updatedAt });
+    if (c.status === "pending_review" && f.facts.openConflicts?.length)
+      out.push({ key: `conflict-${c.id}`, kind: "conflict", title: label(c), why: f.facts.openConflicts.join(". ") + ".", action: "Fix the amount or accept the difference with a reason", href: claimLink(c), at: c.updatedAt });
     if (c.status === "pending_review" && c.duplicateOfId)
       out.push({ key: `dup-${c.id}`, kind: "conflict", title: label(c), why: "Looks like a duplicate of another claim.", action: "Merge it or approve it as separate", href: claimLink(c), at: c.updatedAt });
     else if (c.status === "pending_review" && c.createdAt < stuckBefore)

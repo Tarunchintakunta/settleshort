@@ -59,6 +59,13 @@ describe("contradictions", () => {
     expect(c.field).toBe("amount");
     expect(c.message).toBe("The message says ₹2,000.00 but the receipt says ₹2,500.00");
   });
+  it("flags a claimed amount that no evidence supports, but not one the message backs", () => {
+    const [c] = findContradictions([msg], { amountCents: 123400, currency: "INR" });
+    expect(c.key).toBe("claim-amount:123400|200000");
+    expect(c.message).toBe("The claim says ₹1,234.00 but the message says ₹2,000.00");
+    expect(findContradictions([msg], { amountCents: 200000, currency: "INR" })).toEqual([]);
+    expect(findContradictions([{ ...msg, extract: { ...msg.extract, field_confidence: { amount: 0.2 } } }], { amountCents: 1, currency: "INR" })).toEqual([]);
+  });
   it("is quiet when evidence agrees", () => {
     expect(findContradictions([msg, { ...rcpt, extract: { ...rcpt.extract, amount_cents: 200000 } }])).toEqual([]);
   });

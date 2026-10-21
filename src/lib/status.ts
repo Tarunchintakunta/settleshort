@@ -18,6 +18,7 @@ export type ClaimFacts = {
   money: MoneyState;
   /** Open fix requests from an approver (what the claimant must do). */
   openFixes?: string[];
+  openConflicts?: string[];
 };
 
 export type Truth = { key: string; label: string; detail: string; tone: Tone };

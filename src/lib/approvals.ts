@@ -14,7 +14,10 @@ type Claim = typeof claims.$inferSelect;
 export async function openContradictions(claim: Claim) {
   const ev = await db.select().from(claimEvidence).where(eq(claimEvidence.claimId, claim.id)).orderBy(claimEvidence.createdAt);
   const acked = new Set(claim.acknowledgedConflicts.map((a) => a.key));
-  return findContradictions(ev.map((e) => ({ id: e.id, kind: e.kind, extract: e.extractJson as EvidenceFacts["extract"] }))).filter((c) => !acked.has(c.key));
+  return findContradictions(
+    ev.map((e) => ({ id: e.id, kind: e.kind, extract: e.extractJson as EvidenceFacts["extract"] })),
+    claim,
+  ).filter((c) => !acked.has(c.key));
 }
 
 /** Who is reimbursed how much for this claim (employee payers only). Single source for snapshots. */
