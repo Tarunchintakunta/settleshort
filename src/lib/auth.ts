@@ -18,12 +18,12 @@ const secret = () => {
 };
 const sha256 = (t: string) => createHmac("sha256", secret()).update(t).digest("hex");
 
-export async function startSession(userId: string, workspaceId: string | null) {
+export async function startSession(userId: string, workspaceId: string | null, ttlMs = TTL_MS) {
   const jar = await cookies();
   const old = jar.get(COOKIE)?.value;
   if (old) await db.delete(sessions).where(eq(sessions.tokenHash, sha256(old)));
   const token = randomBytes(32).toString("base64url");
-  const expiresAt = new Date(Date.now() + TTL_MS);
+  const expiresAt = new Date(Date.now() + ttlMs);
   await db.insert(sessions).values({ tokenHash: sha256(token), userId, workspaceId, expiresAt });
   jar.set(COOKIE, token, {
     httpOnly: true,
