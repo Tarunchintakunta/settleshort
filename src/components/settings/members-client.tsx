@@ -106,31 +106,36 @@ export function PaypalEmailCell({ m, canEdit }: { m: Member; canEdit: boolean })
 /** Release authority: may send approved money to PayPal. Approving claims is separate. */
 export function ReleaseToggle({ m, canEdit }: { m: Member; canEdit: boolean }) {
   const router = useRouter();
-  const [err, setErr] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [state, setState] = useState<"idle" | "saving" | "saved" | string>("idle");
+  const why = m.role === "member" ? "Members can't release money. Make them an admin first." : !canEdit ? "Only people with release authority can change this." : undefined;
   return (
-    <label className="inline-flex items-center gap-2 text-xs">
+    <label className="inline-flex min-h-6 items-center gap-2 text-xs" title={why}>
       <input
         type="checkbox"
         checked={m.canRelease}
-        disabled={!canEdit || busy}
+        disabled={!!why || state === "saving"}
         onChange={async (e) => {
-          setBusy(true);
-          setErr(null);
+          setState("saving");
           try {
             await api(`/members/${m.membershipId}`, { method: "PATCH", json: { canRelease: e.target.checked } });
+            setState("saved");
             router.refresh();
           } catch (x) {
-            setErr((x as Error).message);
-          } finally {
-            setBusy(false);
+            setState((x as Error).message);
           }
         }}
-        className="size-4 accent-[var(--accent)]"
+        className="size-5 accent-[var(--accent)]"
         aria-label={`Release authority for ${m.name}`}
+        aria-describedby={why ? `release-why-${m.membershipId}` : undefined}
       />
       <span className={m.canRelease ? "text-ink" : "text-muted"}>{m.canRelease ? "Can release" : "No"}</span>
-      {err && <span className="text-danger">{err}</span>}
+      {state === "saved" && <span className="text-success">Saved</span>}
+      {!["idle", "saving", "saved"].includes(state) && <span className="text-danger">{state}</span>}
+      {why && m.role === "member" && (
+        <span id={`release-why-${m.membershipId}`} className="sr-only">
+          {why}
+        </span>
+      )}
     </label>
   );
 }
@@ -207,7 +212,9 @@ export function DelegationPanel({ me, members, rows, canDelegate }: { me: string
   const router = useRouter();
   const [f, setF] = useState({ to: "", until: "" });
   const [err, setErr] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
   const name = (id: string) => members.find((m) => m.id === id)?.name ?? "Unknown";
+  const today = new Date().toISOString().slice(0, 10);
   return (
     <section className="mb-8 rounded-[12px] border border-line p-6 shadow-soft">
       <h2 className="mb-1 text-[15px] font-semibold tracking-[-0.015em]">Approval cover</h2>
@@ -238,8 +245,10 @@ export function DelegationPanel({ me, members, rows, canDelegate }: { me: string
           onSubmit={async (e) => {
             e.preventDefault();
             setErr(null);
+            setDone(null);
             try {
               await api("/delegations", { json: { toUserId: f.to, endsAt: f.until } });
+              setDone(`${name(f.to)} covers for you until ${new Date(`${f.until}T12:00:00`).toLocaleDateString("en-US", { dateStyle: "medium" })}.`);
               setF({ to: "", until: "" });
               router.refresh();
             } catch (x) {
@@ -257,11 +266,12 @@ export function DelegationPanel({ me, members, rows, canDelegate }: { me: string
                 </option>
               ))}
           </select>
-          <input aria-label="Until" type="date" value={f.until} onChange={(e) => setF({ ...f, until: e.target.value })} className={`${inputCls} w-auto`} required />
+          <input aria-label="Until" type="date" min={today} value={f.until} onChange={(e) => setF({ ...f, until: e.target.value })} className={`${inputCls} w-auto`} required />
           <Button size="sm" variant="secondary">
             Hand over
           </Button>
           {err && <span className="text-xs text-danger">{err}</span>}
+          {done && <span className="text-xs text-success">{done}</span>}
         </form>
       )}
     </section>

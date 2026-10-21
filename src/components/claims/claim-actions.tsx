@@ -19,6 +19,8 @@ type Props = {
   canReject: boolean;
   /** High soft-fraud signal present: Approve needs "I reviewed these signals" ticked first. */
   needsRiskAck?: boolean;
+  /** Open questions the claim still needs answered; Approve points at them instead of waiting five seconds to fail. */
+  missing?: string[];
   /** "bar": fixed bottom bar for phones. "inline": the sticky header on larger screens. */
   variant: "bar" | "inline";
 };
@@ -27,7 +29,7 @@ type Props = {
  * Approve / Reject for the claim header. Approve waits five seconds with an Undo before anything is sent,
  * so a mis-tap never approves; the server-side approval rules are unchanged.
  */
-export function ClaimActions({ claimId, canApprove, approveBlocked, canReject, needsRiskAck, variant }: Props) {
+export function ClaimActions({ claimId, canApprove, approveBlocked, canReject, needsRiskAck, missing = [], variant }: Props) {
   const router = useRouter();
   const [left, setLeft] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
@@ -54,6 +56,13 @@ export function ClaimActions({ claimId, canApprove, approveBlocked, canReject, n
 
   function startApprove() {
     setMsg(null);
+    if (missing.length) {
+      setMsg({ ok: false, text: `Answer first: ${missing.join(" ")}` });
+      const card = document.getElementById("missing-h")?.closest("section");
+      card?.scrollIntoView({ behavior: "smooth", block: "center" });
+      card?.querySelector<HTMLElement>("input, textarea, select")?.focus({ preventScroll: true });
+      return;
+    }
     if (needsRiskAck && !getRiskAck(claimId).acknowledged) {
       setMsg({ ok: false, text: "Review the risk signals and tick \"I reviewed these signals\" before approving." });
       document.getElementById("risk-signals")?.scrollIntoView({ behavior: "smooth", block: "start" });

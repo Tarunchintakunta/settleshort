@@ -110,8 +110,9 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
     .where(and(eq(auditEvents.workspaceId, ctx.workspace.id), eq(auditEvents.entityId, claim.id)))
     .orderBy(desc(auditEvents.createdAt))
     .limit(5);
+  const missingQs = missingQuestions(claim, { kinds: evidence_.map((e) => e.kind), receiptRequiredCents: ctx.workspace.receiptRequiredCents }).map((q) => q.question);
   const waiting = blockerFor(truth, {
-    missing: missingQuestions(claim, { kinds: evidence_.map((e) => e.kind), receiptRequiredCents: ctx.workspace.receiptRequiredCents }).map((q) => q.question),
+    missing: missingQs,
     contradictions: conflicts.map((c) => c.message),
     duplicate: !!claim.duplicateOfId,
     batchName: batchRow?.batch.name,
@@ -142,7 +143,14 @@ export default async function ClaimPage({ params }: PageProps<"/app/claims/[id]"
       })
     : null;
 
-  const actions = { claimId: claim.id, canApprove: approvable && (ctx.isAdmin || !blocker), approveBlocked: blocker?.message ?? null, canReject: ctx.isAdmin && ["draft", "pending_review", "matched"].includes(claim.status), needsRiskAck: hasHighRisk(risk) };
+  const actions = {
+    claimId: claim.id,
+    canApprove: approvable && (ctx.isAdmin || !blocker),
+    approveBlocked: blocker?.message ?? null,
+    canReject: ctx.isAdmin && ["draft", "pending_review", "matched"].includes(claim.status),
+    needsRiskAck: hasHighRisk(risk),
+    missing: missingQs,
+  };
   const attendees = (claim.attendeeNames ?? []).filter(Boolean);
 
   return (
