@@ -104,9 +104,10 @@
   font-size: 1.05rem;
   border-radius: 8px;
 }
-.lh-logo svg {
-  width: 22px;
-  height: 22px;
+.lh-logo-img {
+  display: block;
+  height: clamp(24px, 2.2222cqw, 34px);
+  width: auto;
 }
 .lh-nav {
   display: none;
@@ -288,28 +289,22 @@
   transform-style: preserve-3d;
 }
 .lh-card {
-  position: relative;
-  height: min(36lvh, 60vw * 13 / 9);
-  aspect-ratio: 9 / 13;
-  border-radius: 22px;
-  overflow: hidden;
-  background: linear-gradient(160deg, #1b1340 0%, #0a0526 45%, #140038 100%);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  box-shadow:
-    0 30px 80px rgba(0, 0, 20, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  display: flex;
-  flex-direction: column;
-  padding: clamp(0.7rem, 2lvh, 1.6rem);
-  font-size: clamp(0.5rem, 1.1lvh, 0.95rem);
-  line-height: 1.35;
-  color: #fff;
+  display: block;
+  height: min(36lvh, 60vw * 1314 / 900);
+  width: auto;
+  aspect-ratio: 900 / 1314;
+  user-select: none;
+  filter: drop-shadow(0 30px 60px rgba(0, 0, 20, 0.55));
 }
 .lh-sheen {
   position: absolute;
   inset: 0;
   pointer-events: none;
   mix-blend-mode: hard-light;
+  -webkit-mask-image: url(/lumen-settleshort/card.png);
+  mask-image: url(/lumen-settleshort/card.png);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
   background: linear-gradient(
     calc(108deg + var(--ry) * 1.5deg),
     rgba(0, 0, 0, 0.2) 0%,
@@ -323,79 +318,6 @@
     rgba(0, 0, 0, 0.14) calc((var(--p) + 50) * 1%),
     rgba(255, 255, 255, 0.03) 100%
   );
-}
-.lh-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 0.85em;
-}
-.lh-card-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45em;
-  color: #fff;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-.lh-card-brand svg {
-  width: 1.5em;
-  height: 1.5em;
-}
-.lh-card-lines {
-  margin-top: auto;
-  display: grid;
-  gap: 0.45em;
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 0.92em;
-  color: rgba(255, 255, 255, 0.72);
-}
-.lh-card-lines div {
-  display: flex;
-  justify-content: space-between;
-  gap: 1em;
-}
-.lh-card-lines .tot {
-  color: #fff;
-  font-weight: 600;
-  border-top: 1px dashed rgba(255, 255, 255, 0.28);
-  padding-top: 0.6em;
-  margin-top: 0.2em;
-}
-.lh-card-amt {
-  margin-top: 1.1em;
-  font-size: 2.35em;
-  line-height: 1;
-  letter-spacing: -0.03em;
-  font-weight: 500;
-}
-.lh-card-foot {
-  margin-top: 0.9em;
-  display: flex;
-  justify-content: space-between;
-  align-items: end;
-  gap: 1em;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 0.85em;
-}
-.lh-card-paid {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4em;
-  padding: 0.35em 0.7em;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #fff;
-  white-space: nowrap;
-}
-.lh-card-paid i {
-  width: 0.55em;
-  height: 0.55em;
-  border-radius: 9999px;
-  background: #7cf0b4;
-  box-shadow: 0 0 10px #7cf0b4;
 }
 .lh-refl {
   position: absolute;
@@ -434,16 +356,9 @@
   position: absolute;
   left: 2.222%;
   top: 2%;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  font-size: 1.05rem;
-}
-.lh-pre-logo svg {
-  width: 22px;
-  height: 22px;
+  height: clamp(24px, 2.2222vw, 34px);
+  width: auto;
+  filter: brightness(0);
 }
 .lh-ring {
   position: relative;
@@ -520,8 +435,6 @@
   }
   .lh-card {
     height: 54lvh;
-    padding: clamp(0.9rem, 3lvh, 1.6rem);
-    font-size: clamp(0.62rem, 1.65lvh, 0.95rem);
   }
   .lh-h1 {
     position: absolute;

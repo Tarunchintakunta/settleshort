@@ -22,13 +22,12 @@ const COUNT_MS = 1800;
 const MAX_TILT = 12;
 const SEEN_KEY = "ss-hero-seen";
 
-function Mark() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden>
-      <rect width="24" height="24" rx="7" fill="#1a45e8" />
-      <path d="M7.1 12.4 10.3 15.6 16.9 8.7" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+const CARD = "/lumen-settleshort/card.png";
+const LOGO = "/lumen-settleshort/logo.svg";
+
+function Logo({ className }: { className: string }) {
+  // eslint-disable-next-line @next/next/no-img-element -- static SVG, no optimisation to gain
+  return <img src={LOGO} alt="SettleShort" width={188} height={32} className={className} />;
 }
 
 function Words({ text, delay, className }: { text: string; delay: number; className?: string }) {
@@ -45,35 +44,8 @@ function Words({ text, delay, className }: { text: string; delay: number; classN
 }
 
 function ReceiptCard() {
-  return (
-    <div className="lh-card" aria-hidden>
-      <div className="lh-card-top">
-        <span className="lh-card-brand">
-          <Mark />
-          SettleShort
-        </span>
-        <span>Claim #10</span>
-      </div>
-      <div className="lh-card-lines">
-        <div><span>NOPA · San Francisco</span><span>Sep 26</span></div>
-        <div><span>Food</span><span>$128.00</span></div>
-        <div><span>Drinks</span><span>$14.00</span></div>
-        <div><span>Tax + tip</span><span>$44.50</span></div>
-        <div className="tot"><span>TOTAL</span><span>$186.50</span></div>
-      </div>
-      <div className="lh-card-amt">$186.50</div>
-      <div className="lh-card-foot">
-        <span>
-          Paid by Maya
-          <br />
-          split with Sam, Rita
-        </span>
-        <span className="lh-card-paid">
-          <i /> PayPal Payouts
-        </span>
-      </div>
-    </div>
-  );
+  // eslint-disable-next-line @next/next/no-img-element -- also used as the sheen mask, so it must be the raw file
+  return <img src={CARD} alt="" width={900} height={1314} draggable={false} className="lh-card" />;
 }
 
 function Preloader({ onReveal, onDone }: { onReveal: () => void; onDone: () => void }) {
@@ -113,10 +85,7 @@ function Preloader({ onReveal, onDone }: { onReveal: () => void; onDone: () => v
   return (
     <div ref={ref} className="lh-pre" role="status" aria-live="polite" aria-label={`Loading ${n}%`}>
       <div ref={inner} style={{ position: "absolute", inset: 0 }}>
-        <span className="lh-pre-logo">
-          <Mark />
-          SettleShort
-        </span>
+        <Logo className="lh-pre-logo" />
         <div className="lh-ring" style={{ position: "absolute", left: "50%", top: "50%", translate: "-50% -50%" }}>
           <svg viewBox="0 0 385 385" aria-hidden>
             <defs>
@@ -224,7 +193,7 @@ export function Hero() {
         <div className="lh-rise">
           <div className="lh-tilt">
             <ReceiptCard />
-            <div className="lh-sheen" style={{ borderRadius: 22 }} />
+            <div className="lh-sheen" />
           </div>
         </div>
       </div>
@@ -238,8 +207,7 @@ export function Hero() {
 
       <header className="lh-head lh-in lh-down" style={d(100)}>
         <Link href="/" className="lh-logo" aria-label="SettleShort home">
-          <Mark />
-          SettleShort
+          <Logo className="lh-logo-img" />
         </Link>
         <nav aria-label="Main">
           <ul className="lh-nav">
