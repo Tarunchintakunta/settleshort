@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1314" viewBox="0 0 900 1314" fill="none">
+  <defs>
+    <linearGradient id="card-bg" x1="60" y1="40" x2="840" y2="1280" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1d1347"/>
+      <stop offset="38%" stop-color="#0d0728"/>
+      <stop offset="76%" stop-color="#15063a"/>
+      <stop offset="100%" stop-color="#2b165e"/>
+    </linearGradient>
+    <radialGradient id="peach-glow" cx="0.78" cy="0.18" r="0.58">
+      <stop offset="0%" stop-color="#ff8670" stop-opacity="0.34"/>
+      <stop offset="45%" stop-color="#5244bb" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#060057" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="violet-orb" cx="0.18" cy="0.82" r="0.62">
+      <stop offset="0%" stop-color="#3700bd" stop-opacity="0.5"/>
+      <stop offset="60%" stop-color="#d8c2eb" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#000219" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="border-rim" x1="0" y1="0" x2="900" y2="1314" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="35%" stop-color="#ff8670" stop-opacity="0.35"/>
+      <stop offset="70%" stop-color="#5244bb" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#d8c2eb" stop-opacity="0.5"/>
+    </linearGradient>
+    <linearGradient id="chip-gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffe2c8"/>
+      <stop offset="50%" stop-color="#ff8670"/>
+      <stop offset="100%" stop-color="#b56576"/>
+    </linearGradient>
+    <linearGradient id="pill-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="5.58%" stop-color="#08001f"/>
+      <stop offset="59.63%" stop-color="#3700bd"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer rounded silhouette (alpha outside RX=56) -->
+  <rect x="6" y="6" width="888" height="1302" rx="56" fill="url(#card-bg)"/>
+  <rect x="6" y="6" width="888" height="1302" rx="56" fill="url(#peach-glow)"/>
+  <rect x="6" y="6" width="888" height="1302" rx="56" fill="url(#violet-orb)"/>
+
+  <!-- Subtle Halcyon Gate ring watermark -->
+  <circle cx="450" cy="480" r="290" stroke="url(#border-rim)" stroke-width="2" stroke-opacity="0.28"/>
+  <circle cx="450" cy="480" r="215" stroke="#ffffff" stroke-width="1" stroke-opacity="0.1" stroke-dasharray="6 8"/>
+
+  <!-- Top Header -->
+  <g transform="translate(68, 72)">
+    <rect x="0" y="0" width="52" height="52" rx="15" fill="#3700bd" stroke="rgba(255,255,255,0.5)" stroke-width="2"/>
+    <path d="M16 27.5L23.5 35L37.5 19.5" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="70" y="36" fill="#ffffff" font-family="Mulish, sans-serif" font-size="34" font-weight="400" letter-spacing="-0.02em">SettleShort</text>
+    <rect x="556" y="4" width="208" height="44" rx="22" fill="rgba(255,255,255,0.09)" stroke="rgba(255,255,255,0.24)" stroke-width="1.5"/>
+    <circle cx="582" cy="26" r="6" fill="#ff8670"/>
+    <text x="600" y="33" fill="rgba(255,255,255,0.88)" font-family="Mulish, sans-serif" font-size="21" font-weight="400">BATCH #SS-104</text>
+  </g>
+
+  <!-- EMV / Verification Chip + Quoted Evidence Tag -->
+  <g transform="translate(68, 178)">
+    <rect x="0" y="0" width="86" height="64" rx="12" fill="url(#chip-gold)" fill-opacity="0.88"/>
+    <path d="M0 22H86M0 42H86M28 0V64M58 0V64" stroke="#140038" stroke-width="1.6" stroke-opacity="0.45"/>
+    <text x="112" y="28" fill="rgba(255,255,255,0.55)" font-family="Mulish, sans-serif" font-size="19" letter-spacing="0.12em">EXTRACTED RECEIPT EVIDENCE</text>
+    <text x="112" y="56" fill="#ffffff" font-family="Mulish, sans-serif" font-size="24" font-weight="400">NOPA · San Francisco · 98% confidence</text>
+  </g>
+
+  <!-- Quoted Receipt Lines Glass Card -->
+  <g transform="translate(68, 286)">
+    <rect x="0" y="0" width="764" height="420" rx="30" fill="rgba(255,255,255,0.055)" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"/>
+    <text x="38" y="54" fill="rgba(255,255,255,0.5)" font-family="monospace" font-size="20">QUOTED LINE</text>
+    <text x="530" y="54" fill="rgba(255,255,255,0.5)" font-family="monospace" font-size="20">SPLIT</text>
+    <text x="656" y="54" fill="rgba(255,255,255,0.5)" font-family="monospace" font-size="20">AMOUNT</text>
+    <line x1="38" y1="76" x2="726" y2="76" stroke="rgba(255,255,255,0.14)" stroke-width="1.5"/>
+
+    <text x="38" y="128" fill="#ffffff" font-family="monospace" font-size="24">"TEAM DINNER · NOPA SF"</text>
+    <text x="530" y="128" fill="rgba(255,255,255,0.72)" font-family="monospace" font-size="22">3 ways</text>
+    <text x="642" y="128" fill="#ffffff" font-family="monospace" font-size="24">$128.00</text>
+
+    <text x="38" y="192" fill="#ffffff" font-family="monospace" font-size="24">"BEVERAGES &amp; COFFEE"</text>
+    <text x="530" y="192" fill="rgba(255,255,255,0.72)" font-family="monospace" font-size="22">3 ways</text>
+    <text x="656" y="192" fill="#ffffff" font-family="monospace" font-size="24">$14.00</text>
+
+    <text x="38" y="256" fill="#ffffff" font-family="monospace" font-size="24">"TAX 8.625% + TIP 18%"</text>
+    <text x="530" y="256" fill="rgba(255,255,255,0.72)" font-family="monospace" font-size="22">Pro-rata</text>
+    <text x="656" y="256" fill="#ffffff" font-family="monospace" font-size="24">$44.50</text>
+
+    <line x1="38" y1="298" x2="726" y2="298" stroke="rgba(255,255,255,0.22)" stroke-width="1.5" stroke-dasharray="6 6"/>
+
+    <rect x="38" y="324" width="352" height="58" rx="16" fill="rgba(124,240,180,0.12)" stroke="rgba(124,240,180,0.4)" stroke-width="1.5"/>
+    <circle cx="68" cy="353" r="7" fill="#7cf0b4"/>
+    <text x="88" y="360" fill="#7cf0b4" font-family="Mulish, sans-serif" font-size="21" font-weight="400">0 duplicate claims found</text>
+
+    <text x="454" y="362" fill="rgba(255,255,255,0.65)" font-family="monospace" font-size="22">QUOTED TOTAL</text>
+    <text x="628" y="362" fill="#ff8670" font-family="monospace" font-size="28" font-weight="700">$186.50</text>
+  </g>
+
+  <!-- Big Settlement Amount -->
+  <g transform="translate(68, 770)">
+    <text x="0" y="28" fill="rgba(255,255,255,0.52)" font-family="Mulish, sans-serif" font-size="22" letter-spacing="0.14em">READY FOR ADMIN RELEASE</text>
+    <text x="0" y="138" fill="#ffffff" font-family="Mulish, sans-serif" font-size="112" font-weight="300" letter-spacing="-0.03em">$186.50</text>
+    <text x="445" y="132" fill="rgba(255,255,255,0.55)" font-family="Mulish, sans-serif" font-size="34" font-weight="300">USD</text>
+  </g>
+
+  <!-- Divider -->
+  <line x1="68" y1="964" x2="832" y2="964" stroke="rgba(255,255,255,0.16)" stroke-width="1.5"/>
+
+  <!-- Bottom PayPal Payouts Gate -->
+  <g transform="translate(68, 1008)">
+    <text x="0" y="30" fill="rgba(255,255,255,0.52)" font-family="Mulish, sans-serif" font-size="20" letter-spacing="0.1em">PAYEES · VERIFIED PAYPAL SANDBOX</text>
+    <text x="0" y="72" fill="#ffffff" font-family="Mulish, sans-serif" font-size="27" font-weight="400">Maya Lin → sam@demo · rita@demo</text>
+    <text x="0" y="112" fill="rgba(255,255,255,0.62)" font-family="monospace" font-size="20">sender_batch_id: batch_9f42e1c · OAuth 2.0</text>
+
+    <!-- Bottom Strip -->
+    <rect x="0" y="148" width="764" height="76" rx="38" fill="url(#pill-grad)" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+    <circle cx="46" cy="186" r="8" fill="#7cf0b4"/>
+    <text x="70" y="194" fill="#ffffff" font-family="Mulish, sans-serif" font-size="24" font-weight="400">Approved by Admin · Settled via PayPal Payouts</text>
+    <circle cx="720" cy="186" r="9" stroke="#ffffff" stroke-width="2" fill="none"/>
+  </g>
+
+  <!-- Crisp Outer Border -->
+  <rect x="6" y="6" width="888" height="1302" rx="56" stroke="url(#border-rim)" stroke-width="3"/>
+</svg>
