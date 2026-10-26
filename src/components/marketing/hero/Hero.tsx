@@ -268,11 +268,11 @@ export function Hero() {
 
         <div className="lh-bottom">
           <p className="lh-copy lh-in" style={d(550)}>
-            Receipts and “I paid for dinner” messages become claims. Duplicates get caught. PayPal pays your team, only after an admin approves.
+            Receipts and Slack expense messages become verified claims, settled through PayPal Payouts the moment an admin approves.
           </p>
           <ul className="lh-feat lh-in" style={d(620)}>
             <li>Every field quotes the receipt</li>
-            <li>Sandbox only. No real money moves</li>
+            <li>Zero duplicate payouts · PayPal Sandbox</li>
           </ul>
           <div className="lh-ctas">
             <a href="/demo" className="lh-btn lh-btn-primary lh-in" style={d(680)}>
