@@ -150,6 +150,14 @@
   border: 1px solid var(--bd);
   background: var(--sf);
   color: #fff;
+  position: relative;
+}
+.lh-bar {
+  position: absolute;
+  width: 18px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: currentColor;
 }
 .lh-menu {
   position: absolute;
@@ -165,7 +173,7 @@
   padding: 0.5rem;
   display: grid;
   gap: 2px;
-  animation: lh-pop 0.35s var(--ease) both;
+  transform-origin: top right;
 }
 .lh-menu a {
   display: block;
@@ -176,13 +184,6 @@
 .lh-menu a:hover {
   background: var(--sf);
 }
-@keyframes lh-pop {
-  from {
-    opacity: 0;
-    transform: translateY(-8px) scale(0.96);
-  }
-}
-
 /* text */
 .lh-h1,
 .lh-outro {

@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { animate } from "motion";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ListIcon, XIcon } from "@phosphor-icons/react";
 import { mountHalcyon, type Halcyon } from "./halcyon";
 import "./hero.css";
 
@@ -21,6 +21,7 @@ const WAKE: [number, number, number][] = [
 
 const COUNT_MS = 2600;
 const MAX_TILT = 12;
+const BURGER = { type: "spring", stiffness: 220, damping: 24 } as const;
 const SEEN_KEY = "ss-lumen-preloader-seen";
 
 const CARD = "/lumen-settleshort/card.png";
@@ -194,90 +195,103 @@ export function Hero() {
   const d = (ms: number) => ({ "--d": `${ms}ms` }) as React.CSSProperties;
 
   return (
-    <section ref={root} className={`lh${on ? " on" : ""}`} aria-label="SettleShort">
-      <canvas ref={canvas} className="lh-canvas" aria-hidden />
-      <div className="lh-rule" aria-hidden />
+    <MotionConfig reducedMotion="user">
+      <section ref={root} className={`lh${on ? " on" : ""}`} aria-label="SettleShort">
+        <canvas ref={canvas} className="lh-canvas" aria-hidden />
+        <div className="lh-rule" aria-hidden />
 
-      <div className="lh-stage" aria-hidden>
-        <div className="lh-rise">
-          <div className="lh-tilt">
-            <ReceiptCard />
-            <div className="lh-sheen" />
+        <div className="lh-stage" aria-hidden>
+          <div className="lh-rise">
+            <div className="lh-tilt">
+              <ReceiptCard />
+              <div className="lh-sheen" />
+            </div>
           </div>
         </div>
-      </div>
-      <div className="lh-refl" aria-hidden>
-        <div className="lh-rise">
-          <div className="lh-tilt">
-            <ReceiptCard />
+        <div className="lh-refl" aria-hidden>
+          <div className="lh-rise">
+            <div className="lh-tilt">
+              <ReceiptCard />
+            </div>
           </div>
         </div>
-      </div>
 
-      <header className="lh-head lh-in lh-down" style={d(100)}>
-        <Link href="/" className="lh-logo" aria-label="SettleShort home">
-          <Logo className="lh-logo-img" />
-        </Link>
-        <nav aria-label="Main">
-          <ul className="lh-nav">
-            {LINKS.map((l) => (
-              <li key={l.href}>
-                <a href={l.href}>{l.label}</a>
-              </li>
-            ))}
+        <header className="lh-head lh-in lh-down" style={d(100)}>
+          <Link href="/" className="lh-logo" aria-label="SettleShort home">
+            <Logo className="lh-logo-img" />
+          </Link>
+          <nav aria-label="Main">
+            <ul className="lh-nav">
+              {LINKS.map((l) => (
+                <li key={l.href}>
+                  <a href={l.href}>{l.label}</a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          <a href="/demo" className="lh-pill lh-head-cta">
+            Open the demo <span className="lh-dot" />
+          </a>
+          <button type="button" className="lh-burger" aria-expanded={menu} aria-controls="lh-menu" aria-label={menu ? "Close menu" : "Open menu"} onClick={() => setMenu((m) => !m)}>
+            <motion.span className="lh-bar" initial={false} animate={menu ? { y: 0, rotate: 45 } : { y: -4, rotate: 0 }} transition={BURGER} />
+            <motion.span className="lh-bar" initial={false} animate={menu ? { y: 0, rotate: -45 } : { y: 4, rotate: 0 }} transition={BURGER} />
+          </button>
+        </header>
+        <AnimatePresence>
+          {menu && (
+            <motion.nav
+              id="lh-menu"
+              className="lh-menu"
+              aria-label="Menu"
+              initial={{ opacity: 0, y: -8, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.96 }}
+              transition={BURGER}
+            >
+              {LINKS.map((l) => (
+                <a key={l.href} href={l.href} onClick={() => setMenu(false)}>
+                  {l.label}
+                </a>
+              ))}
+              <a href="/demo" className="lh-btn lh-btn-primary" style={{ marginTop: 6 }}>
+                Open the demo <span className="lh-dot" />
+              </a>
+            </motion.nav>
+          )}
+        </AnimatePresence>
+
+        <h1 className="lh-h1">
+          <Words text="Receipt in. Settled out." delay={300} />
+          <br />
+          <Words text="One approve." delay={470} className="lh-l2" />
+        </h1>
+
+        <div className="lh-bottom">
+          <p className="lh-copy lh-in" style={d(550)}>
+            Receipts and “I paid for dinner” messages become claims. Duplicates get caught. PayPal pays your team, only after an admin approves.
+          </p>
+          <ul className="lh-feat lh-in" style={d(620)}>
+            <li>Every field quotes the receipt</li>
+            <li>Sandbox only. No real money moves</li>
           </ul>
-        </nav>
-        <a href="/demo" className="lh-pill lh-head-cta">
-          Open the demo <span className="lh-dot" />
-        </a>
-        <button type="button" className="lh-burger" aria-expanded={menu} aria-controls="lh-menu" aria-label={menu ? "Close menu" : "Open menu"} onClick={() => setMenu((m) => !m)}>
-          {menu ? <XIcon size={20} aria-hidden /> : <ListIcon size={20} aria-hidden />}
-        </button>
-      </header>
-      {menu && (
-        <nav id="lh-menu" className="lh-menu" aria-label="Menu">
-          {LINKS.map((l) => (
-            <a key={l.href} href={l.href} onClick={() => setMenu(false)}>
-              {l.label}
+          <div className="lh-ctas">
+            <a href="/demo" className="lh-btn lh-btn-primary lh-in" style={d(680)}>
+              Open the demo <span className="lh-dot" />
             </a>
-          ))}
-          <a href="/demo" className="lh-btn lh-btn-primary" style={{ marginTop: 6 }}>
-            Open the demo <span className="lh-dot" />
-          </a>
-        </nav>
-      )}
-
-      <h1 className="lh-h1">
-        <Words text="Receipt in. Settled out." delay={300} />
-        <br />
-        <Words text="One approve." delay={470} className="lh-l2" />
-      </h1>
-
-      <div className="lh-bottom">
-        <p className="lh-copy lh-in" style={d(550)}>
-          Receipts and “I paid for dinner” messages become claims. Duplicates get caught. PayPal pays your team, only after an admin approves.
-        </p>
-        <ul className="lh-feat lh-in" style={d(620)}>
-          <li>Every field quotes the receipt</li>
-          <li>Sandbox only. No real money moves</li>
-        </ul>
-        <div className="lh-ctas">
-          <a href="/demo" className="lh-btn lh-btn-primary lh-in" style={d(680)}>
-            Open the demo <span className="lh-dot" />
-          </a>
-          <a href="#how" className="lh-btn lh-btn-ghost lh-in" style={d(770)}>
-            How it works
-          </a>
+            <a href="#how" className="lh-btn lh-btn-ghost lh-in" style={d(770)}>
+              How it works
+            </a>
+          </div>
         </div>
-      </div>
 
-      <p className="lh-outro" aria-hidden>
-        <Words text="PayPal Payouts," delay={520} className="lh-l1" />
-        <br />
-        <Words text="one human approve." delay={640} />
-      </p>
+        <p className="lh-outro" aria-hidden>
+          <Words text="PayPal Payouts," delay={520} className="lh-l1" />
+          <br />
+          <Words text="one human approve." delay={640} />
+        </p>
 
-      {pre && <Preloader onReveal={reveal} onDone={done} />}
-    </section>
+        {pre && <Preloader onReveal={reveal} onDone={done} />}
+      </section>
+    </MotionConfig>
   );
 }
