@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { animate } from "motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ListIcon, XIcon } from "@phosphor-icons/react";
 import { mountHalcyon, type Halcyon } from "./halcyon";
@@ -18,9 +19,9 @@ const WAKE: [number, number, number][] = [
   [0.5, 0.23, 220], [0.4, 0.21, 320], [0.6, 0.21, 360], [0.34, 0.19, 470], [0.66, 0.19, 510], [0.5, 0.25, 650],
 ];
 
-const COUNT_MS = 1800;
+const COUNT_MS = 2600;
 const MAX_TILT = 12;
-const SEEN_KEY = "ss-hero-seen";
+const SEEN_KEY = "ss-lumen-preloader-seen";
 
 const CARD = "/lumen-settleshort/card.png";
 const LOGO = "/lumen-settleshort/logo.svg";
@@ -56,19 +57,23 @@ function Preloader({ onReveal, onDone }: { onReveal: () => void; onDone: () => v
   const C = 2 * Math.PI * R;
   useEffect(() => {
     let raf = 0;
+    let stop: (() => void) | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const t0 = performance.now();
     const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
     const exit = () => {
-      const s0 = performance.now();
-      const step = () => {
-        const e = Math.min(1, (performance.now() - s0) / 900);
-        const k = 1 - Math.pow(1 - e, 3);
-        if (ref.current) ref.current.style.maskImage = ref.current.style.webkitMaskImage = `linear-gradient(to bottom, transparent ${k * 116}%, #000 ${k * 116}%)`;
-        if (inner.current) inner.current.style.transform = `translateY(${k * 46}%) scale(${1 - 0.05 * k})`;
-        if (e < 1) raf = requestAnimationFrame(step);
-        else onDone();
-      };
-      raf = requestAnimationFrame(step);
+      stop = animate(0, 1, {
+        type: "spring",
+        stiffness: 90,
+        damping: 20,
+        mass: 1,
+        restDelta: 0.001,
+        onUpdate: (e) => {
+          if (ref.current) ref.current.style.maskImage = ref.current.style.webkitMaskImage = `linear-gradient(to bottom, transparent ${e * 116}%, #000 ${e * 116}%)`;
+          if (inner.current) inner.current.style.transform = `translateY(${e * 46}%) scale(${1 - 0.05 * e})`;
+        },
+        onComplete: onDone,
+      }).stop;
     };
     const count = () => {
       const p = Math.min(1, (performance.now() - t0) / COUNT_MS);
@@ -76,11 +81,15 @@ function Preloader({ onReveal, onDone }: { onReveal: () => void; onDone: () => v
       if (p < 1) raf = requestAnimationFrame(count);
       else {
         onReveal();
-        setTimeout(exit, 120);
+        timer = setTimeout(exit, 120);
       }
     };
     raf = requestAnimationFrame(count);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(timer);
+      stop?.();
+    };
   }, [onReveal, onDone]);
   return (
     <div ref={ref} className="lh-pre" role="status" aria-live="polite" aria-label={`Loading ${n}%`}>

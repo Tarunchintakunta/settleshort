@@ -362,7 +362,7 @@
 }
 .lh-ring {
   position: relative;
-  width: min(60vw, 300px);
+  width: min(80vw, 385px);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
