@@ -3,7 +3,7 @@ import Link from "next/link";
 import { CpuIcon, GitMergeIcon, GaugeIcon, PlusIcon, QuotesIcon } from "@phosphor-icons/react/ssr";
 import { HowItWorks } from "@/components/marketing/HowItWorks";
 import { Hero } from "@/components/marketing/hero/Hero";
-import { DemoLink, wrap } from "@/components/marketing/Nav";
+import { wrap } from "@/components/marketing/Nav";
 import { Reveal } from "@/components/marketing/Reveal";
 import { Shot } from "@/components/marketing/Shot";
 
@@ -241,13 +241,19 @@ export default function Home() {
       {/* Final CTA */}
       <section className={`${wrap} pb-28`}>
         <div className="grid overflow-hidden rounded-[12px] border border-line bg-panel shadow-pop lg:grid-cols-12">
-          <div className="flex flex-col justify-center p-8 sm:p-12 lg:col-span-5">
-            <p className={eyebrow}>Demo workspace</p>
-            <h2 className={`${h2} mt-3`}>Try it on a real receipt.</h2>
-            <p className="mt-4 max-w-[40ch] text-[17px] leading-relaxed text-ink-2">
+          {/* Halcyon brand gradient, sized so white text only ever sits on the dark violet end */}
+          <div className="flex flex-col justify-center bg-[linear-gradient(100deg,#000_5.58%,#3700bd_59.63%,#d8c2eb_113.68%)] bg-[length:160%_100%] p-8 text-white sm:p-12 lg:col-span-5">
+            <p className="text-[12px] font-medium uppercase tracking-[0.14em] text-white/70">Demo workspace</p>
+            <h2 className={`${h2.replace("text-ink", "text-white")} mt-3`}>Try it on a real receipt.</h2>
+            <p className="mt-4 max-w-[40ch] text-[17px] leading-relaxed text-white/80">
               The demo opens a sandbox workspace for Northbeam Labs with sample claims. No signup.
             </p>
-            <DemoLink className="mt-8 self-start" />
+            <a
+              href="/demo"
+              className="mt-8 inline-flex h-11 items-center gap-2 self-start rounded-full bg-white px-5 text-[15px] font-medium tracking-[-0.011em] text-[#140038] transition-[background,transform] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-white/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-[0.98]"
+            >
+              Open the demo <span className="size-[5px] rounded-full border border-[#140038]" aria-hidden />
+            </a>
           </div>
           <div className="flex items-center border-t border-line bg-sunken p-4 sm:p-6 lg:col-span-7 lg:border-t-0 lg:border-l">
             <Shot
