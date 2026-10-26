@@ -1,8 +1,11 @@
+import { Mulish } from "next/font/google";
 import { Footer } from "@/components/marketing/Footer";
+
+const mulish = Mulish({ variable: "--font-mulish", subsets: ["latin"] });
 
 export default function HomeLayout({ children }: LayoutProps<"/">) {
   return (
-    <div className="light-site flex min-h-dvh flex-col">
+    <div className={`light-site ${mulish.variable} flex min-h-dvh flex-col`}>
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[110] focus:rounded-[8px] focus:bg-panel focus:px-4 focus:py-2 focus:shadow-pop">
         Skip to content
       </a>

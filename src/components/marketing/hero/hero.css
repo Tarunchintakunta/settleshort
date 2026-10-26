@@ -8,6 +8,7 @@
   --gl: rgba(255, 255, 255, 0.22);
   --gle: rgba(255, 255, 255, 0.4);
   --brand: linear-gradient(100deg, #000 5.58%, #3700bd 59.63%, #d8c2eb 113.68%);
+  --font-hero: var(--font-mulish), "Mulish", system-ui, sans-serif;
   --display: clamp(2rem, 4.1667cqw, 5rem);
   --fluid: clamp(0.9375rem, 1.1111cqw, 1.25rem);
   --edge: clamp(1rem, 2.2222cqw, 2.5rem);
@@ -31,6 +32,7 @@
   container-type: size;
   color: var(--fg);
   background: #000219;
+  font-family: var(--font-hero);
   font-weight: 400;
   display: flex;
   flex-direction: column;
@@ -467,6 +469,15 @@
 
 @media (min-width: 1024px) {
   .lh {
+    --display: 4.1667cqw;
+    --fluid: max(0.8125rem, 1.1111cqw);
+    --edge: 2.2222cqw;
+    --md: 1.1111cqw;
+    --sm: 0.5556cqw;
+    --px: 1.6667cqw;
+    --py: 0.8333cqw;
+    --by: 0.9722cqw;
+    --dot: 0.3472cqw;
     display: block;
     padding: 0;
   }
