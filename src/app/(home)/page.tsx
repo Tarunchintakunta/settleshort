@@ -84,20 +84,23 @@ export default function Home() {
       <Hero />
 
       <main id="main" className="min-w-0 flex-1">
-      {/* Problem */}
-      <section className={`${wrap} py-20 sm:py-28`} aria-labelledby="problem">
+      {/* Problem: continues the hero's night sea, then fades into the editorial page */}
+      <section className="bg-[linear-gradient(to_bottom,#03000f,#050214_35%,#0d0728)] text-white" aria-labelledby="problem">
         <h2 id="problem" className="sr-only">
           Why paying people back is slow
         </h2>
-        <Reveal>
-          <p className="max-w-[920px] text-[24px] font-medium leading-[1.35] tracking-[-0.015em] text-ink sm:text-[32px]">
-            After an offsite, receipts sit in camera rolls and Slack threads. Someone rebuilds them in a spreadsheet, the same dinner gets claimed twice, and the person
-            tagged in passing never gets paid back.{" "}
-            <span className="text-muted">
-              Handing it to an agent that pays on its own does not fix that. It just moves the mistake closer to the money.
-            </span>
-          </p>
-        </Reveal>
+        <div className={`${wrap} py-20 sm:py-28`}>
+          <Reveal>
+            <p className="max-w-[920px] text-[24px] font-medium leading-[1.35] tracking-[-0.015em] sm:text-[32px]">
+              After an offsite, receipts sit in camera rolls and Slack threads. Someone rebuilds them in a spreadsheet, the same dinner gets claimed twice, and the person
+              tagged in passing never gets paid back.{" "}
+              <span className="text-white/55">
+                Handing it to an agent that pays on its own does not fix that. It just moves the mistake closer to the money.
+              </span>
+            </p>
+          </Reveal>
+        </div>
+        <div aria-hidden className="h-24 bg-[linear-gradient(to_bottom,#0d0728,var(--bg))] sm:h-32" />
       </section>
 
       {/* How it works */}
